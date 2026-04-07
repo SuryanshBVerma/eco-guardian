@@ -3,12 +3,20 @@
 const fsp = require('fs/promises');
 const path = require('path');
 const { PLATFORM } = require('../config/constants');
+const { detectProjectOS } = require('../findings/fix');
+
+function generatePowerShellStep(step) {
+  if (step.project === '(global)') return step.command;
+  return `Set-Location -LiteralPath "${step.project}"; ${step.command}`;
+}
+
+function generateBashStep(step) {
+  if (step.project === '(global)') return step.command;
+  return `cd "${step.project}" && ${step.command}`;
+}
 
 async function writeFixScript(findings, options) {
   if (!options.fix || findings.length === 0) return null;
-
-  const isWin = PLATFORM === 'win32';
-  const file = isWin ? path.join(process.cwd(), 'npm-guardian-fixes.bat') : path.join(process.cwd(), 'npm-guardian-fixes.sh');
 
   const steps = new Map();
   for (const finding of findings) {
@@ -20,35 +28,39 @@ async function writeFixScript(findings, options) {
     }
   }
 
-  const lines = [];
   const stamp = new Date().toISOString();
-  if (isWin) {
-    lines.push('@echo off');
-    lines.push(`REM npm-guardian fix script - generated ${stamp}`);
-    lines.push('REM Review before running. This will modify your node_modules.');
-    lines.push('');
-    for (const step of steps.values()) {
-      lines.push(`echo Fixing ${step.pkg} in ${step.project}...`);
-      if (step.project === '(global)') lines.push(step.command);
-      else lines.push(`cd /d "${step.project}" && ${step.command}`);
-      lines.push('');
-    }
-  } else {
-    lines.push('#!/bin/bash');
-    lines.push(`# npm-guardian fix script - generated ${stamp}`);
-    lines.push('# Review before running. This will modify your node_modules.');
-    lines.push('');
-    for (const step of steps.values()) {
-      lines.push(`echo "Fixing ${step.pkg} in ${step.project}..."`);
-      if (step.project === '(global)') lines.push(step.command);
-      else lines.push(`cd "${step.project}" && ${step.command}`);
-      lines.push('');
-    }
+  const ps1Lines = [];
+  const shLines = [];
+
+  ps1Lines.push('# npm-guardian fix script - generated ' + stamp);
+  ps1Lines.push('# Review before running. This will modify your node_modules.');
+  ps1Lines.push('');
+
+  shLines.push('#!/bin/bash');
+  shLines.push(`# npm-guardian fix script - generated ${stamp}`);
+  shLines.push('# Review before running. This will modify your node_modules.');
+  shLines.push('');
+
+  for (const step of steps.values()) {
+    const targetOS = detectProjectOS(step.project);
+
+    ps1Lines.push(`Write-Host "Fixing ${step.pkg} in ${step.project}..."`);
+    ps1Lines.push(generatePowerShellStep(step));
+    ps1Lines.push('');
+
+    shLines.push(`echo "Fixing ${step.pkg} in ${step.project}..."`);
+    shLines.push(generateBashStep(step));
+    shLines.push('');
   }
 
-  await fsp.writeFile(file, `${lines.join('\n')}\n`, 'utf8');
-  if (!isWin) await fsp.chmod(file, 0o755);
-  return file;
+  const ps1File = path.join(process.cwd(), 'npm-guardian-fixes.ps1');
+  const shFile = path.join(process.cwd(), 'npm-guardian-fixes.sh');
+
+  await fsp.writeFile(ps1File, `${ps1Lines.join('\n')}\n`, 'utf8');
+  await fsp.writeFile(shFile, `${shLines.join('\n')}\n`, 'utf8');
+  await fsp.chmod(shFile, 0o755);
+
+  return ps1File;
 }
 
 module.exports = {

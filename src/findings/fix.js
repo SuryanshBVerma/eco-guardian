@@ -1,6 +1,19 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const { PLATFORM } = require('../config/constants');
+
+function detectProjectOS(projectPath) {
+  if (!projectPath || projectPath === '(unknown project)' || projectPath === '(global)') return PLATFORM;
+  try {
+    const entries = fs.readdirSync(projectPath);
+    const lowerEntries = entries.map(e => e.toLowerCase());
+    if (lowerEntries.some(e => e.endsWith('.bat') || e.endsWith('.cmd') || e.endsWith('.ps1'))) return 'win32';
+    if (lowerEntries.some(e => e.endsWith('.sh'))) return 'linux';
+  } catch (_) {}
+  return PLATFORM;
+}
 
 function pickBestFixedVersion(advisories) {
   for (const advisory of advisories) {
@@ -21,7 +34,9 @@ function buildFixCommand({ packageName, fixedVersion, dependencyType, isGlobal, 
 
 function buildScopedProjectCommand(project, command) {
   if (!project || project === '(unknown project)') return null;
-  return PLATFORM === 'win32' ? `cd /d "${project}" && ${command}` : `cd "${project}" && ${command}`;
+  const targetOS = detectProjectOS(project);
+  if (targetOS === 'win32') return `Set-Location -LiteralPath "${project}"; ${command}`;
+  return `cd "${project}" && ${command}`;
 }
 
 function buildFixSteps(foundIn, packageName, fixedVersion) {
@@ -64,6 +79,7 @@ function fixStepsToDisplayCommands(steps) {
 }
 
 module.exports = {
+  detectProjectOS,
   pickBestFixedVersion,
   buildFixCommand,
   buildFixSteps,

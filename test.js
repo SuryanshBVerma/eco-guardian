@@ -260,7 +260,7 @@ async function testTableNoTruncation() {
     version: '9.9.9',
     advisory_id: 'ADV-ULTRA-LONG-IDENTIFIER-123456789',
     found_in: [{ project: 'project-1' }],
-    fix_command: 'cd /d "D:\\Some\\Very\\Long\\Project\\Path\\With\\No\\Truncation" && npm install very-long-package-name-that-should-not-be-truncated@latest'
+    fix_command: 'Set-Location -LiteralPath "D:\\Some\\Very\\Long\\Project\\Path\\With\\No\\Truncation"; npm install very-long-package-name-that-should-not-be-truncated@latest'
   }]);
   assert(!table.includes('...'), 'table should not truncate text');
   assert(table.includes('very-long-package-name-that-should-not-be-truncated@9.9.9'), 'table should include full package');
@@ -282,10 +282,18 @@ async function testFixScriptGeneration() {
       }];
       const file = await writeFixScript(findings, { fix: true });
       assert(file && fs.existsSync(file), 'fix script should be written');
-      const text = await fsp.readFile(file, 'utf8');
-      assert(text.includes('npm-guardian fix script - generated'), 'fix script should include generation header');
-      assert(text.includes('npm install -g lodash@latest'), 'fix script should include global command');
-      assert(text.includes('npm install lodash@latest'), 'fix script should include project command');
+      const ps1File = path.join(root, 'npm-guardian-fixes.ps1');
+      const shFile = path.join(root, 'npm-guardian-fixes.sh');
+      assert(fs.existsSync(ps1File), 'PowerShell script should exist');
+      assert(fs.existsSync(shFile), 'Bash script should exist');
+      const ps1Text = await fsp.readFile(ps1File, 'utf8');
+      const shText = await fsp.readFile(shFile, 'utf8');
+      assert(ps1Text.includes('# npm-guardian fix script - generated'), 'ps1 should include header');
+      assert(shText.includes('# npm-guardian fix script - generated'), 'sh should include header');
+      assert(ps1Text.includes('Set-Location'), 'ps1 should use Set-Location');
+      assert(shText.includes('cd "/tmp/project-a"'), 'sh should use cd');
+      assert(ps1Text.includes('npm install -g lodash@latest'), 'ps1 should include global command');
+      assert(shText.includes('npm install -g lodash@latest'), 'sh should include global command');
     } finally {
       process.chdir(prevCwd);
     }

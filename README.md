@@ -1,6 +1,6 @@
 ﻿# npm-guardian
 
-Zero-dependency Node.js CLI that scans your machine for vulnerable npm packages.
+Unlike `npm audit` which only checks your current project, npm-guardian scans your entire machine for vulnerable npm packages across all projects.
 
 ## Quick Start
 
