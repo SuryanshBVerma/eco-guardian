@@ -5,7 +5,6 @@ Zero-dependency Node.js CLI that scans your machine for vulnerable npm packages.
 ## Quick Start
 
 ```bash
-curl -o npm-guardian.js https://raw.githubusercontent.com/<your-org>/<your-repo>/main/npm-guardian.js
 node npm-guardian.js
 ```
 
