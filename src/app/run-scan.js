@@ -1,0 +1,77 @@
+﻿'use strict';
+
+const path = require('path');
+const { nowMs } = require('../shared/async');
+const { log } = require('../cli/output');
+const { discoverScanRoots, discoverNodeModules } = require('../scan/discovery');
+const { harvestPackages } = require('../scan/harvest');
+const { queryVulnerabilities } = require('../vuln/query-service');
+const { buildFindings } = require('../findings/builder');
+const { printSummary, printFindingsHuman } = require('../report/console');
+const { writeFixScript } = require('../report/fix-script');
+const { writeTxtReport } = require('../report/txt');
+
+async function runScan(options, state = {}) {
+  const phaseTimes = {};
+  const counters = { found: 0, skippedPermissions: 0 };
+
+  const rootsStart = nowMs();
+  const rootsInfo = await discoverScanRoots(options, state);
+  phaseTimes.roots = Date.now() - rootsStart;
+  state.globalRoot = rootsInfo.globalRoot;
+
+  log('info', 'Scanning roots:', options);
+  for (const root of rootsInfo.roots) {
+    const label = rootsInfo.globalRoot && path.resolve(root) === path.resolve(rootsInfo.globalRoot) ? ' (global)' : '';
+    if (!options.json) process.stderr.write(`  -> ${root}${label}\n`);
+  }
+  if (state.globalRootUnavailable) log('warn', 'npm not found on PATH. Global packages were not scanned.', options);
+
+  const discoveryStart = nowMs();
+  const nodeModulesDirs = options.globalOnly
+    ? rootsInfo.roots.filter((r) => path.basename(path.resolve(r)) === 'node_modules')
+    : await discoverNodeModules(rootsInfo.roots, options, counters);
+  phaseTimes.discovery = Date.now() - discoveryStart;
+
+  const harvestStart = nowMs();
+  const packageMap = await harvestPackages(nodeModulesDirs, options, state);
+  phaseTimes.harvest = Date.now() - harvestStart;
+
+  const queryStart = nowMs();
+  const vulnerabilityMap = await queryVulnerabilities(packageMap, options);
+  phaseTimes.query = Date.now() - queryStart;
+
+  const reportStart = nowMs();
+  const findings = await buildFindings(packageMap, vulnerabilityMap, state);
+  phaseTimes.report = Date.now() - reportStart;
+
+  const fixFile = await writeFixScript(findings, options);
+  const txtFile = await writeTxtReport(findings, packageMap.size, options);
+
+  if (options.json) {
+    process.stdout.write(`${JSON.stringify(findings, null, 2)}\n`);
+  } else {
+    printSummary(packageMap.size, findings, options);
+    if (findings.length === 0) process.stdout.write(`[OK] All clear. No known vulnerabilities found in ${packageMap.size.toLocaleString()} packages.\n`);
+    else printFindingsHuman(findings, options);
+
+    if (fixFile) log('success', `Fix script written to: ${fixFile}`, options);
+    if (txtFile) log('success', `TXT report written to: ${txtFile}`, options);
+    if (counters.skippedPermissions > 0) log('info', `Skipped ${counters.skippedPermissions} unreadable directories due to permissions.`, options);
+  }
+
+  if (options.verbose && !options.json) {
+    const total = Object.values(phaseTimes).reduce((a, b) => a + b, 0);
+    process.stderr.write(`Phase 1 (discovery):  ${(phaseTimes.discovery / 1000).toFixed(1)}s\n`);
+    process.stderr.write(`Phase 2 (harvesting): ${(phaseTimes.harvest / 1000).toFixed(1)}s\n`);
+    process.stderr.write(`Phase 3 (API query):  ${(phaseTimes.query / 1000).toFixed(1)}s\n`);
+    process.stderr.write(`Phase 4 (reporting):  ${(phaseTimes.report / 1000).toFixed(1)}s\n`);
+    process.stderr.write(`Total:                ${(total / 1000).toFixed(1)}s\n`);
+  }
+
+  return { findings, packageCount: packageMap.size };
+}
+
+module.exports = {
+  runScan
+};
