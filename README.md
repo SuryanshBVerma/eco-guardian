@@ -4,11 +4,17 @@ Unlike `npm audit` which only checks your current project, eco-guardian scans yo
 
 ## Quick Start
 
+Run instantly without installation:
+
+```bash
+npx github:boredom1234/eco-guardian
+```
+
+Or run locally:
+
 ```bash
 node eco-guardian.js
 ```
-
-No `npm install` required.
 
 ## Flags
 
