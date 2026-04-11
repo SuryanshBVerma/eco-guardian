@@ -22,6 +22,7 @@ No `npm install` required.
 | `--no-cache` | Disable 1-hour local cache |
 | `--fix` | Generate fix script in current directory (npm only) |
 | `--export-txt <file>` | Export findings report to TXT |
+| `--export-html <file>` | Export findings report to HTML |
 | `--help` | Show help |
 | `--version` | Show tool version |
 | `--global` | On Unix, include `/` root scan |
@@ -61,10 +62,14 @@ echo $?   # 0 clean, 1 vulnerabilities found, 2 scan error
 ## How It Works
 
 1. Discover scan roots (target path, global npm path, optional full-disk roots).
-2. Discover package manifests depending on the target ecosystem (`node_modules`, `pom.xml`, `.csproj`, `packages.config`, `VSCode extensions`, etc).
+2. Discover package sources depending on the target ecosystem.
+   - npm: installed packages under discovered `node_modules`
+   - Maven/NuGet: direct dependencies declared in supported manifests
+   - VSCode: installed extensions from the VSCode extensions directory or the explicit `--path`
 3. Harvest unique packages and version pairs across the ecosystems.
 4. Query OSV and npm advisories (only package identifiers leave your machine).
-5. Build findings with local path/project mapping and actionable remediation hints or fix commands.
+5. Build findings with local path/project mapping and remediation guidance.
+   Automated fix scripts are npm-only in the current version.
 
 ## Privacy
 

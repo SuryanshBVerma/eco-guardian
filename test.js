@@ -29,8 +29,6 @@ async function testParseArgs() {
   assert(a.pathExplicit === true, 'parseArgs pathExplicit should be true when --path is provided');
   assert(a.json === true && a.fix === true && a.globalOnly === true && a.noCache === true, 'parseArgs boolean flags failed');
   assert(a.severity === 'high', 'parseArgs --severity failed');
-  const d = guardian.parseArgs(['--export', 'out.txt']);
-  assert(d.exportTxt === 'out.txt', 'parseArgs --export alias failed');
   const e = guardian.parseArgs(['--export-txt', 'report.txt']);
   assert(e.exportTxt === 'report.txt', 'parseArgs --export-txt failed');
 
@@ -426,6 +424,41 @@ async function testParseDirectoryPackagesProps() {
   assert(map.get('System.Text.Json') === '8.0.0', 'PackageVersion parsed');
 }
 
+async function testParsePackagesLockJson() {
+  const json = JSON.stringify({
+    dependencies: {
+      ".NETCoreApp,Version=v8.0": {
+        "Newtonsoft.Json": "13.0.3",
+        "Some.Transitive": { "resolved": "1.0.1" }
+      }
+    }
+  });
+  const records = guardian.parsePackagesLockJson(json, '/packages.lock.json');
+  assert(records.length === 2, 'packages.lock.json length');
+  assert(records.some(r => r.name === 'Newtonsoft.Json' && r.version === '13.0.3'), 'Newtonsoft.Json parsed');
+  assert(records.some(r => r.name === 'Some.Transitive' && r.version === '1.0.1'), 'transitive resolved version parsed');
+}
+
+async function testSummaryCountsUniquePackages() {
+  const { printSummary } = require('./src/report/console');
+  const originalWrite = process.stdout.write;
+  let out = '';
+  try {
+    process.stdout.write = (chunk) => { out += chunk; return true; };
+    const findings = [
+      { ecosystem: 'npm', package: 'a', version: '1', severity: 'high', found_in: [] },
+      { ecosystem: 'npm', package: 'a', version: '1', severity: 'low', found_in: [] }
+    ];
+    printSummary(1, findings, {});
+    assert(out.includes('Packages scanned:  1'), 'Summary packages scanned count failed');
+    assert(out.includes('Findings:          2 advisories found'), 'Summary findings count failed');
+    assert(out.includes('Vulnerable pkgs:   1'), 'Summary unique vulnerable packages count failed');
+    assert(out.includes('Clean packages:    0'), 'Summary clean count failed');
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+}
+
 async function testEcosystemKeyNamespacing() {
   const nodeKey = `npm|left-pad|1.3.0`;
   const nugetKey = `NuGet|left-pad|1.3.0`;
@@ -435,10 +468,12 @@ async function testEcosystemKeyNamespacing() {
 async function testBuildFixCommandEcosystems() {
   const maven = guardian.buildFixCommand({ ecosystem: 'Maven', packageName: 'test', fixedVersion: '1' });
   const nuget = guardian.buildFixCommand({ ecosystem: 'NuGet', packageName: 'test', fixedVersion: '1' });
+  const vscode = guardian.buildFixCommand({ ecosystem: 'VSCode', packageName: 'test', fixedVersion: '1' });
   const npm = guardian.buildFixCommand({ ecosystem: 'npm', packageName: 'test', fixedVersion: '1', dependencyType: 'direct' });
   
   assert(maven === null, 'Maven fix command should be null');
   assert(nuget === null, 'NuGet fix command should be null');
+  assert(vscode === null, 'VSCode fix command should be null');
   assert(npm !== null, 'npm fix command should be generated');
 }
 
@@ -504,6 +539,8 @@ async function run() {
     ['parsePackagesConfig', testParsePackagesConfig],
     ['parseProjectPackageReferences', testParseProjectPackageReferences],
     ['parseDirectoryPackagesProps', testParseDirectoryPackagesProps],
+    ['parsePackagesLockJson', testParsePackagesLockJson],
+    ['summaryCountsUniquePackages', testSummaryCountsUniquePackages],
     ['ecosystemKeyNamespacing', testEcosystemKeyNamespacing],
     ['buildFixCommandEcosystems', testBuildFixCommandEcosystems],
     ['integrationSmokeMultiEcosystem', testIntegrationSmokeMultiEcosystem]

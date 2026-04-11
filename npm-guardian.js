@@ -11,7 +11,7 @@ const { buildFixCommand } = require('./src/findings/fix');
 const { runScan } = require('./src/app/run-scan');
 const { main } = require('./src/app/main');
 const { parsePomDependencies } = require('./src/scan/maven');
-const { parsePackagesConfig, parseProjectPackageReferences, parseDirectoryPackagesProps } = require('./src/scan/nuget');
+const { parsePackagesConfig, parseProjectPackageReferences, parseDirectoryPackagesProps, parsePackagesLockJson } = require('./src/scan/nuget');
 const { parseEcosystemList } = require('./src/cli/args');
 const { collectVSCodeExtensions } = require('./src/scan/vscode');
 
@@ -33,6 +33,7 @@ module.exports = {
   parsePackagesConfig,
   parseProjectPackageReferences,
   parseDirectoryPackagesProps,
+  parsePackagesLockJson,
   parseEcosystemList,
   collectVSCodeExtensions
 };

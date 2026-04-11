@@ -66,7 +66,28 @@ function parsePomDependencies(xmlText, filePath) {
     let v = resolveProperty(rawV, properties) || dependencyManagement[`${g}:${a}`];
     
     const name = `${g}:${a}`;
-    const version = v || 'unresolved';
+    const version = v || null;
+    
+    if (!version) {
+      records.push({
+        key: `Maven|${name}|unresolved`,
+        ecosystem: 'Maven',
+        name,
+        version: 'unresolved',
+        unresolved: true,
+        osvEcosystem: 'Maven',
+        paths: [],
+        occurrences: [
+          {
+            project: path.dirname(filePath),
+            manifest_path: filePath,
+            dependency_type: 'direct',
+            raw_source: 'pom.xml'
+          }
+        ]
+      });
+      continue;
+    }
     
     records.push({
       key: `Maven|${name}|${version}`,

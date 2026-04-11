@@ -11,6 +11,41 @@ const { log } = require('../cli/output');
 const { extractTagText, extractAllElements, extractAttr } = require('../shared/xml-lite');
 const { discoverManifestFiles } = require('./discovery');
 
+async function findNearestDirectoryPackagesProps(startDir) {
+  let current = startDir;
+  while (true) {
+    const propsPath = path.join(current, 'Directory.Packages.props');
+    try {
+      await fsp.access(propsPath);
+      return propsPath;
+    } catch (_) {}
+
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return null;
+}
+
+function parsePackagesLockJson(jsonText, filePath) {
+  const records = [];
+  try {
+    const data = JSON.parse(jsonText);
+    const deps = data.dependencies || {};
+    for (const framework of Object.keys(deps)) {
+      const frameworksDeps = deps[framework] || {};
+      for (const id of Object.keys(frameworksDeps)) {
+        const info = frameworksDeps[id];
+        const version = typeof info === 'string' ? info : info.resolved;
+        if (id && version) {
+          records.push(createNuGetRecord(id, version, filePath, 'packages.lock.json', true));
+        }
+      }
+    }
+  } catch (_) {}
+  return records;
+}
+
 function createNuGetRecord(name, version, filePath, rawSource, isDirect = true) {
   return {
     key: `NuGet|${name}|${version}`,
@@ -86,12 +121,14 @@ async function collectNuGetPackages(roots, options, state) {
   const centralVersionsByDir = new Map();
   
   for (const dir of manifestDirs) {
-    const propsPath = path.join(dir, 'Directory.Packages.props');
-    try {
-      const raw = await fsp.readFile(propsPath, 'utf8');
-      const versions = parseDirectoryPackagesProps(raw, propsPath);
-      centralVersionsByDir.set(dir, versions);
-    } catch (_) {}
+    const propsPath = await findNearestDirectoryPackagesProps(dir);
+    if (propsPath) {
+      try {
+        const raw = await fsp.readFile(propsPath, 'utf8');
+        const versions = parseDirectoryPackagesProps(raw, propsPath);
+        centralVersionsByDir.set(dir, versions);
+      } catch (_) {}
+    }
   }
   
   await asyncPool(PACKAGE_READ_CONCURRENCY, manifestDirs, async (dir) => {
@@ -111,6 +148,9 @@ async function collectNuGetPackages(roots, options, state) {
       } else if (file.endsWith('.csproj') || file.endsWith('.vbproj') || file.endsWith('.fsproj')) {
         try { raw = await fsp.readFile(filePath, 'utf8'); } catch (_) { continue; }
         records.push(...parseProjectPackageReferences(raw, filePath, propsVersions));
+      } else if (file === 'packages.lock.json') {
+        try { raw = await fsp.readFile(filePath, 'utf8'); } catch (_) { continue; }
+        records.push(...parsePackagesLockJson(raw, filePath));
       }
     }
     
@@ -135,5 +175,6 @@ module.exports = {
   parsePackagesConfig,
   parseProjectPackageReferences,
   parseDirectoryPackagesProps,
+  parsePackagesLockJson,
   collectNuGetPackages
 };

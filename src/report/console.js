@@ -7,12 +7,14 @@ const { summarizeSeverities } = require('./common');
 function printSummary(totalPackages, findings, options) {
   if (options.json) return;
   const sev = summarizeSeverities(findings);
-  const clean = Math.max(0, totalPackages - findings.length);
+  const vulnerablePackages = new Set(findings.map((f) => `${f.ecosystem}|${f.package}|${f.version}`)).size;
+  const clean = Math.max(0, totalPackages - vulnerablePackages);
   const line = '='.repeat(55);
   process.stdout.write(`${line}\n`);
   process.stdout.write('npm-guardian scan complete\n');
   process.stdout.write(`Packages scanned:  ${totalPackages.toLocaleString()} unique across selected ecosystems\n`);
-  process.stdout.write(`Vulnerabilities:   ${findings.length} found (${sev.critical} CRITICAL, ${sev.high} HIGH, ${sev.moderate} MODERATE)\n`);
+  process.stdout.write(`Findings:          ${findings.length} advisories found (${sev.critical} CRITICAL, ${sev.high} HIGH, ${sev.moderate} MODERATE)\n`);
+  process.stdout.write(`Vulnerable pkgs:   ${vulnerablePackages}\n`);
   process.stdout.write(`Clean packages:    ${clean.toLocaleString()}\n`);
   process.stdout.write(`${line}\n`);
 }

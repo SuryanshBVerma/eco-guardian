@@ -1,14 +1,14 @@
 {
   "name": "npm-guardian",
   "version": "1.1.0",
-  "description": "Zero-dependency CLI that scans your machine for vulnerable npm packages across all projects",
+  "description": "Zero-dependency CLI that scans your machine for vulnerable packages across npm, Maven, NuGet, and VSCode",
   "bin": {
     "npm-guardian": "./npm-guardian.js"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/anomalyco/npm-guardian"
+    "url": "https://github.com/boredom1234/npm-guardian"
   },
   "keywords": ["npm", "security", "vulnerability", "audit", "scanner", "cli"],
   "scripts": {

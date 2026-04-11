@@ -32,7 +32,7 @@ function pickBestFixedVersion(advisories) {
 }
 
 function buildFixCommand({ ecosystem, packageName, fixedVersion, dependencyType, isGlobal, parentPackage }) {
-  if (ecosystem === 'Maven' || ecosystem === 'NuGet') return null;
+  if (ecosystem !== 'npm') return null;
   if (isGlobal) return fixedVersion ? `npm install -g ${packageName}@${fixedVersion}` : `npm uninstall -g ${packageName}`;
   if (dependencyType === 'direct') return fixedVersion ? `npm install ${packageName}@${fixedVersion}` : `npm uninstall ${packageName}`;
   if (dependencyType === 'transitive') return parentPackage && parentPackage.name ? `npm install ${parentPackage.name}@latest` : null;
