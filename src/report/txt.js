@@ -11,7 +11,7 @@ async function writeTxtReport(findings, packageCount, options) {
   const generatedAt = new Date().toISOString();
 
   const lines = [];
-  lines.push('npm-guardian report');
+  lines.push('eco-guardian report');
   lines.push(`Generated: ${generatedAt}`);
   lines.push(`Packages scanned: ${packageCount}`);
   lines.push(`Vulnerabilities: ${findings.length} (Critical: ${severity.critical}, High: ${severity.high}, Moderate: ${severity.moderate}, Low: ${severity.low})`);

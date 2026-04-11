@@ -13,8 +13,8 @@ function parseEcosystemList(value) {
 }
 
 function printUsage() {
-  process.stdout.write(`npm-guardian v${VERSION}\n`);
-  process.stdout.write('Usage:\n  node npm-guardian.js [flags]\n\n');
+  process.stdout.write(`eco-guardian v${VERSION}\n`);
+  process.stdout.write('Usage:\n  node eco-guardian.js [flags]\n\n');
   process.stdout.write('Flags:\n');
   process.stdout.write('  --path <dir>         Scan specific directory (default: home directory)\n');
   process.stdout.write('  --global-only        Only scan global npm installs\n');

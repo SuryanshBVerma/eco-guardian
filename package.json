@@ -1,18 +1,18 @@
 {
-  "name": "npm-guardian",
-  "version": "1.1.0",
+  "name": "eco-guardian",
+  "version": "1.6.0",
   "description": "Zero-dependency CLI that scans your machine for vulnerable packages across npm, Maven, NuGet, VSCode, Python, and Go",
   "bin": {
-    "npm-guardian": "./npm-guardian.js"
+    "eco-guardian": "./eco-guardian.js"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/boredom1234/npm-guardian"
+    "url": "https://github.com/boredom1234/eco-guardian"
   },
   "keywords": ["npm", "maven", "nuget", "vscode", "python", "go", "security", "vulnerability", "audit", "scanner", "cli", "benchmark", "performance"],
   "scripts": {
-    "start": "node npm-guardian.js",
+    "start": "node eco-guardian.js",
     "test": "node test.js"
   }
 }

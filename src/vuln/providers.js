@@ -14,7 +14,7 @@ function httpsPost(url, body, timeoutMs = 10000) {
       headers: {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(payload),
-        'User-Agent': `npm-guardian/${VERSION}`
+        'User-Agent': `eco-guardian/${VERSION}`
       }
     }, (res) => {
       let chunks = '';
@@ -36,7 +36,7 @@ function httpsGet(url, timeoutMs = 10000) {
   return new Promise((resolve, reject) => {
     const req = https.get(url, {
       headers: {
-        'User-Agent': `npm-guardian/${VERSION}`
+        'User-Agent': `eco-guardian/${VERSION}`
       }
     }, (res) => {
       let chunks = '';

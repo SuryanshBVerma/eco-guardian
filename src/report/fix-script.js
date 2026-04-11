@@ -32,12 +32,12 @@ async function writeFixScript(findings, options) {
   const ps1Lines = [];
   const shLines = [];
 
-  ps1Lines.push('# npm-guardian fix script - generated ' + stamp);
+  ps1Lines.push('# eco-guardian fix script - generated ' + stamp);
   ps1Lines.push('# Review before running. This will modify your node_modules.');
   ps1Lines.push('');
 
   shLines.push('#!/bin/bash');
-  shLines.push(`# npm-guardian fix script - generated ${stamp}`);
+  shLines.push(`# eco-guardian fix script - generated ${stamp}`);
   shLines.push('# Review before running. This will modify your node_modules.');
   shLines.push('');
 
@@ -53,8 +53,8 @@ async function writeFixScript(findings, options) {
     shLines.push('');
   }
 
-  const ps1File = path.join(process.cwd(), 'npm-guardian-fixes.ps1');
-  const shFile = path.join(process.cwd(), 'npm-guardian-fixes.sh');
+  const ps1File = path.join(process.cwd(), 'eco-guardian-fixes.ps1');
+  const shFile = path.join(process.cwd(), 'eco-guardian-fixes.sh');
 
   await fsp.writeFile(ps1File, `${ps1Lines.join('\n')}\n`, 'utf8');
   await fsp.writeFile(shFile, `${shLines.join('\n')}\n`, 'utf8');

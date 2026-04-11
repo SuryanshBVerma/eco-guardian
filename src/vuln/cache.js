@@ -5,7 +5,7 @@ const os = require('os');
 const path = require('path');
 const { CACHE_TTL_MS } = require('../config/constants');
 
-function cacheFilePath() { return path.join(os.tmpdir(), 'npm-guardian-cache.json'); }
+function cacheFilePath() { return path.join(os.tmpdir(), 'eco-guardian-cache.json'); }
 
 async function safeUnlink(filePath) {
   try { await fsp.unlink(filePath); } catch (error) {

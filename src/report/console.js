@@ -11,7 +11,7 @@ function printSummary(totalPackages, findings, options, metrics = null) {
   const clean = Math.max(0, totalPackages - vulnerablePackages);
   const line = '='.repeat(55);
   process.stdout.write(`${line}\n`);
-  process.stdout.write('npm-guardian scan complete\n');
+  process.stdout.write('eco-guardian scan complete\n');
   process.stdout.write(`Packages scanned:  ${totalPackages.toLocaleString()} unique across selected ecosystems\n`);
   process.stdout.write(`Findings:          ${findings.length} advisories found (${sev.critical} CRITICAL, ${sev.high} HIGH, ${sev.moderate} MODERATE)\n`);
   process.stdout.write(`Vulnerable pkgs:   ${vulnerablePackages}\n`);

@@ -1,4 +1,4 @@
-npm-guardian report
+eco-guardian report
 Generated: 2026-04-11T16:55:30.239Z
 Packages scanned: 57
 Vulnerabilities: 0 (Critical: 0, High: 0, Moderate: 0, Low: 0)

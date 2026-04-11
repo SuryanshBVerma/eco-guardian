@@ -1,11 +1,11 @@
-# npm-guardian
+# eco-guardian
 
-Unlike `npm audit` which only checks your current project, npm-guardian scans your entire machine for vulnerable packages across multiple ecosystems (`npm`, `Maven`, `NuGet`, `VSCode`, `Python`, and `Go`).
+Unlike `npm audit` which only checks your current project, eco-guardian scans your entire machine for vulnerable packages across multiple ecosystems (`npm`, `Maven`, `NuGet`, `VSCode`, `Python`, and `Go`).
 
 ## Quick Start
 
 ```bash
-node npm-guardian.js
+node eco-guardian.js
 ```
 
 No `npm install` required.
@@ -32,19 +32,19 @@ No `npm install` required.
 ## Examples
 
 ```bash
-node npm-guardian.js
-node npm-guardian.js --path ~/projects --severity high
-node npm-guardian.js --ecosystems npm,maven,nuget,vscode,python,go
-node npm-guardian.js --global-only --json
-node npm-guardian.js --fix
-node npm-guardian.js --path "D:\\Projects\\my-app" --export-txt report.txt
+node eco-guardian.js
+node eco-guardian.js --path ~/projects --severity high
+node eco-guardian.js --ecosystems npm,maven,nuget,vscode,python,go
+node eco-guardian.js --global-only --json
+node eco-guardian.js --fix
+node eco-guardian.js --path "D:\\Projects\\my-app" --export-txt report.txt
 ```
 
 ## Example Output
 
 ```text
 =======================================================
-npm-guardian scan complete
+eco-guardian scan complete
 Packages scanned:  6,080 unique across selected ecosystems
 Vulnerabilities:   721 advisories found (12 CRITICAL, 37 HIGH, 661 MODERATE)
 Vulnerable pkgs:   252
@@ -60,7 +60,7 @@ Scan Duration:     65.0s
 `--json` is designed for pipelines.
 
 ```bash
-node npm-guardian.js --json
+node eco-guardian.js --json
 echo $?   # 0 clean, 1 vulnerabilities found, 2 scan error
 ```
 

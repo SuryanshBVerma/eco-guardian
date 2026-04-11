@@ -2,7 +2,7 @@
 
 ## Add a New Vulnerability Data Source
 
-`npm-guardian` is intentionally dependency-free and single-file. Keep new sources aligned with that model.
+`eco-guardian` is intentionally dependency-free and single-file. Keep new sources aligned with that model.
 
 ## Requirements
 
@@ -25,5 +25,5 @@
 
 ```bash
 node test.js
-node npm-guardian.js --path . --json --no-cache
+node eco-guardian.js --path . --json --no-cache
 ```

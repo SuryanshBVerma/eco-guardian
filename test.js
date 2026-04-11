@@ -4,7 +4,7 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const os = require('os');
 const path = require('path');
-const guardian = require('./npm-guardian');
+const guardian = require('./eco-guardian');
 const { writeTxtReport } = require('./src/report/txt');
 const { writeHtmlReport } = require('./src/report/html');
 const { writeFixScript } = require('./src/report/fix-script');
@@ -15,7 +15,7 @@ function assert(condition, message) {
 }
 
 async function withTempDir(fn) {
-  const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'npm-guardian-test-'));
+  const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'eco-guardian-test-'));
   try {
     return await fn(root);
   } finally {
@@ -205,7 +205,7 @@ async function testIntegrationSmoke() {
     const exists = fs.existsSync(exportPath);
     assert(exists, 'integration smoke expected TXT report file');
     const report = await fsp.readFile(exportPath, 'utf8');
-    assert(report.includes('npm-guardian report'), 'integration smoke expected report content');
+    assert(report.includes('eco-guardian report'), 'integration smoke expected report content');
     assert(report.includes('Generated:'), 'integration smoke expected generated timestamp');
     assert(report.includes('Findings'), 'integration smoke expected findings section');
   });
@@ -311,14 +311,14 @@ async function testFixScriptGeneration() {
       }];
       const file = await writeFixScript(findings, { fix: true });
       assert(file && fs.existsSync(file), 'fix script should be written');
-      const ps1File = path.join(root, 'npm-guardian-fixes.ps1');
-      const shFile = path.join(root, 'npm-guardian-fixes.sh');
+      const ps1File = path.join(root, 'eco-guardian-fixes.ps1');
+      const shFile = path.join(root, 'eco-guardian-fixes.sh');
       assert(fs.existsSync(ps1File), 'PowerShell script should exist');
       assert(fs.existsSync(shFile), 'Bash script should exist');
       const ps1Text = await fsp.readFile(ps1File, 'utf8');
       const shText = await fsp.readFile(shFile, 'utf8');
-      assert(ps1Text.includes('# npm-guardian fix script - generated'), 'ps1 should include header');
-      assert(shText.includes('# npm-guardian fix script - generated'), 'sh should include header');
+      assert(ps1Text.includes('# eco-guardian fix script - generated'), 'ps1 should include header');
+      assert(shText.includes('# eco-guardian fix script - generated'), 'sh should include header');
       assert(ps1Text.includes('Set-Location'), 'ps1 should use Set-Location');
       assert(shText.includes('cd "/tmp/project-a"'), 'sh should use cd');
       assert(ps1Text.includes('npm install -g lodash@latest'), 'ps1 should include global command');
