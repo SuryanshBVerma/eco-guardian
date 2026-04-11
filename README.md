@@ -72,7 +72,7 @@ echo $?   # 0 clean, 1 vulnerabilities found, 2 scan error
 
 ## Automation and Scheduling
 
-For instructions on how to automate scans weekly using Windows Task Scheduler or cron (macOS/Linux), see the [Scheduler Guide](Scheduler_Guide.md).
+For instructions on how to automate scans weekly using Windows Task Scheduler or cron (macOS/Linux), see the [Scheduler Guide](SCHEDULER_GUIDE.md).
 
 ## How It Works
 
