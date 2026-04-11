@@ -1,7 +1,16 @@
-﻿'use strict';
+'use strict';
 
 const os = require('os');
-const { VERSION, SEVERITY_ORDER } = require('../config/constants');
+const { VERSION, SEVERITY_ORDER, SUPPORTED_ECOSYSTEMS } = require('../config/constants');
+
+function parseEcosystemList(value) {
+  const list = value.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  if (list.length === 0) throw new Error('Empty ecosystem list');
+  for (const item of list) {
+    if (!SUPPORTED_ECOSYSTEMS.includes(item)) throw new Error(`Unsupported ecosystem: ${item}`);
+  }
+  return list;
+}
 
 function printUsage() {
   process.stdout.write(`npm-guardian v${VERSION}\n`);
@@ -9,6 +18,7 @@ function printUsage() {
   process.stdout.write('Flags:\n');
   process.stdout.write('  --path <dir>         Scan specific directory (default: home directory)\n');
   process.stdout.write('  --global-only        Only scan global npm installs\n');
+  process.stdout.write('  --ecosystems <list>  Comma-separated ecosystems: npm,maven,nuget (default: npm)\n');
   process.stdout.write('  --severity <level>   Minimum: low|moderate|high|critical (default: low)\n');
   process.stdout.write('  --json               Output only JSON findings to stdout\n');
   process.stdout.write('  --no-cache           Disable cache read/write\n');
@@ -26,6 +36,7 @@ function parseArgs(argv) {
     path: os.homedir(),
     pathExplicit: false,
     globalOnly: false,
+    ecosystems: ['npm'],
     severity: 'low',
     json: false,
     noCache: false,
@@ -56,6 +67,13 @@ function parseArgs(argv) {
       args.severity = normalized; i += 1; continue;
     }
     if (token === '--global-only') { args.globalOnly = true; continue; }
+    if (token === '--ecosystems') {
+      const next = argv[i + 1];
+      if (!next || next.startsWith('--')) throw new Error('Missing value for --ecosystems');
+      args.ecosystems = parseEcosystemList(next);
+      i += 1;
+      continue;
+    }
     if (token === '--json') { args.json = true; continue; }
     if (token === '--no-cache') { args.noCache = true; continue; }
     if (token === '--fix') { args.fix = true; continue; }
@@ -82,5 +100,6 @@ function parseArgs(argv) {
 
 module.exports = {
   printUsage,
-  parseArgs
+  parseArgs,
+  parseEcosystemList
 };

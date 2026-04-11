@@ -82,7 +82,7 @@ function findParentInPackageLock(lock, packageName) {
   return walk(lock.dependencies);
 }
 
-async function enrichLocations(paths, packageName, globalRoot) {
+async function enrichNpmLocations(paths, packageName, globalRoot) {
   const entries = [];
   await asyncPool(DISCOVERY_CONCURRENCY, paths, async (pkgPath) => {
     const project = await findOwningProject(pkgPath);
@@ -109,5 +109,6 @@ async function enrichLocations(paths, packageName, globalRoot) {
 }
 
 module.exports = {
-  enrichLocations
+  enrichNpmLocations,
+  enrichLocations: enrichNpmLocations
 };

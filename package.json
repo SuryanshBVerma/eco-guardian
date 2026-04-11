@@ -13,6 +13,6 @@
   "keywords": ["npm", "security", "vulnerability", "audit", "scanner", "cli"],
   "scripts": {
     "start": "node npm-guardian.js",
-    "test": "node npm-guardian.js"
+    "test": "node test.js"
   }
 }

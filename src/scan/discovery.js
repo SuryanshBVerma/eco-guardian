@@ -157,7 +157,66 @@ async function discoverNodeModules(roots, options, counters) {
   }
 }
 
+async function discoverManifestFiles(roots, filenameSet, options, counters, label = 'manifest files') {
+  const started = nowMs();
+  const found = [];
+  const timer = setInterval(() => {
+    process.stderr.write(`\r Searching for ${label}... ${counters.found} found`);
+  }, 120);
+
+  const queue = roots.map((r) => path.resolve(r));
+  let index = 0;
+
+  try {
+    async function worker() {
+      while (true) {
+        const current = queue[index];
+        if (!current) return;
+        index += 1;
+
+        let dirents;
+        try {
+          dirents = await fsp.readdir(current, { withFileTypes: true });
+        } catch (error) {
+          if (error && (error.code === 'EACCES' || error.code === 'EPERM' || error.code === 'ENOENT' || error.code === 'ENOTDIR')) counters.skippedPermissions += 1;
+          continue;
+        }
+
+        for (const dirent of dirents) {
+          const name = dirent.name;
+          if (dirent.isDirectory && dirent.isDirectory()) {
+            if (!dirent.isSymbolicLink || !dirent.isSymbolicLink()) {
+              if (name === 'node_modules') continue;
+              if (WALK_SKIP_NAMES.has(name)) continue;
+              queue.push(path.join(current, name));
+            }
+          } else if (dirent.isFile && dirent.isFile()) {
+            if (filenameSet.has(name) || name.endsWith('.csproj') || name.endsWith('.vbproj') || name.endsWith('.fsproj')) {
+              found.push(current);
+              counters.found += 1;
+            }
+          }
+        }
+      }
+    }
+
+    await Promise.all(Array.from({ length: DISCOVERY_CONCURRENCY }, () => worker()));
+    
+    // Deduplicate directories since resolving to directories means multiple matches in one dir create dupes 
+    // actually, a dir with multiple manifests would be pushed multiple times to found.
+    const deduped = Array.from(new Set(found));
+    
+    process.stderr.write('\r');
+    log('success', `Found ${deduped.length} directories containing ${label} in ${hrSeconds(started)}s`, options);
+    return deduped;
+  } finally {
+    clearInterval(timer);
+    process.stderr.write('\r');
+  }
+}
+
 module.exports = {
   discoverScanRoots,
-  discoverNodeModules
+  discoverNodeModules,
+  discoverManifestFiles
 };

@@ -20,16 +20,23 @@ async function writeTxtReport(findings, packageCount, options) {
   lines.push('--------');
 
   findings.forEach((finding, index) => {
-    lines.push(`${index + 1}. ${finding.severity} | ${finding.package}@${finding.version} | ${finding.advisory_id || 'N/A'}`);
-    lines.push(`   Title: ${finding.title || ''}`);
+    lines.push(`${index + 1}. ${finding.severity} | ${finding.ecosystem || 'npm'} | ${finding.package}@${finding.version} | ${finding.advisory_id || 'N/A'}`);
+    lines.push(`   Title: ${finding.title || finding.advisory_id || ''}`);
     lines.push(`   Locations: ${(finding.found_in || []).length}`);
+    for (const entry of finding.found_in || []) {
+      lines.push(`      -> ${entry.manifest_path || entry.project} (${entry.dependency_type || 'dependency'})`);
+    }
+    if (finding.fixed_version) lines.push(`   Fixed version: ${finding.fixed_version}`);
     if (Array.isArray(finding.fix_commands) && finding.fix_commands.length > 0) {
       lines.push('   Fix commands:');
       for (const cmd of finding.fix_commands) lines.push(`   - ${cmd}`);
+    } else if (finding.remediation_hint) {
+      lines.push(`   Remediation: ${finding.remediation_hint}`);
     } else {
       lines.push('   Fix: Manual review required');
     }
-    if (finding.references && finding.references[0]) lines.push(`   Reference: ${finding.references[0]}`);
+    const ref = (finding.references && finding.references[0]) || `https://osv.dev/vulnerability/${finding.advisory_id}`;
+    lines.push(`   Reference: ${ref}`);
     lines.push('');
   });
 

@@ -1,10 +1,12 @@
-﻿'use strict';
+'use strict';
 
 const path = require('path');
 const { nowMs } = require('../shared/async');
 const { log } = require('../cli/output');
-const { discoverScanRoots, discoverNodeModules } = require('../scan/discovery');
-const { harvestPackages } = require('../scan/harvest');
+const { discoverScanRoots, discoverNodeModules, discoverManifestFiles } = require('../scan/discovery');
+const { harvestNpmPackages } = require('../scan/harvest');
+const { collectMavenPackages } = require('../scan/maven');
+const { collectNuGetPackages } = require('../scan/nuget');
 const { queryVulnerabilities } = require('../vuln/query-service');
 const { buildFindings } = require('../findings/builder');
 const { printSummary, printFindingsHuman } = require('../report/console');
@@ -27,14 +29,39 @@ async function runScan(options, state = {}) {
   }
   if (state.globalRootUnavailable) log('warn', 'npm not found on PATH. Global packages were not scanned.', options);
 
+  function mergePackageMaps(target, source) {
+    for (const [key, record] of source.entries()) {
+      const existing = target.get(key);
+      if (!existing) {
+        target.set(key, record);
+      } else {
+        existing.paths.push(...record.paths);
+        existing.occurrences.push(...record.occurrences);
+      }
+    }
+  }
+
   const discoveryStart = nowMs();
-  const nodeModulesDirs = options.globalOnly
-    ? rootsInfo.roots.filter((r) => path.basename(path.resolve(r)) === 'node_modules')
-    : await discoverNodeModules(rootsInfo.roots, options, counters);
+  let nodeModulesDirs = [];
+  if (options.ecosystems.includes('npm')) {
+    nodeModulesDirs = options.globalOnly
+      ? rootsInfo.roots.filter((r) => path.basename(path.resolve(r)) === 'node_modules')
+      : await discoverNodeModules(rootsInfo.roots, options, counters);
+  }
   phaseTimes.discovery = Date.now() - discoveryStart;
 
   const harvestStart = nowMs();
-  const packageMap = await harvestPackages(nodeModulesDirs, options, state);
+  const packageMap = new Map();
+  if (options.ecosystems.includes('npm')) {
+    mergePackageMaps(packageMap, await harvestNpmPackages(nodeModulesDirs, options, state));
+  }
+  if (options.ecosystems.includes('maven')) {
+    mergePackageMaps(packageMap, await collectMavenPackages(rootsInfo.roots, options, state));
+  }
+  if (options.ecosystems.includes('nuget')) {
+    mergePackageMaps(packageMap, await collectNuGetPackages(rootsInfo.roots, options, state));
+  }
+  state.packageMap = packageMap;
   phaseTimes.harvest = Date.now() - harvestStart;
 
   const queryStart = nowMs();

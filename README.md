@@ -1,6 +1,6 @@
-﻿# npm-guardian
+# npm-guardian
 
-Unlike `npm audit` which only checks your current project, npm-guardian scans your entire machine for vulnerable npm packages across all projects.
+Unlike `npm audit` which only checks your current project, npm-guardian scans your entire machine for vulnerable packages across multiple ecosystems (`npm`, `Maven`, and `NuGet`).
 
 ## Quick Start
 
@@ -15,11 +15,12 @@ No `npm install` required.
 | Flag | Description |
 |---|---|
 | `--path <dir>` | Scan specific directory (default: home directory) |
+| `--ecosystems <list>` | Comma-separated list of ecosystems to scan. Supported: `npm`, `maven`, `nuget` (default: `npm`) |
 | `--global-only` | Only scan global npm installs |
 | `--severity <level>` | Minimum severity: `low`, `moderate`, `high`, `critical` |
 | `--json` | Print findings JSON only to stdout |
 | `--no-cache` | Disable 1-hour local cache |
-| `--fix` | Generate fix script in current directory |
+| `--fix` | Generate fix script in current directory (npm only) |
 | `--export-txt <file>` | Export findings report to TXT |
 | `--export <file>` | Alias of `--export-txt` |
 | `--help` | Show help |
@@ -32,6 +33,7 @@ No `npm install` required.
 ```bash
 node npm-guardian.js
 node npm-guardian.js --path ~/projects --severity high
+node npm-guardian.js --ecosystems npm,maven,nuget
 node npm-guardian.js --global-only --json
 node npm-guardian.js --fix
 node npm-guardian.js --path "D:\\Projects\\my-app" --export-txt report.txt
@@ -42,7 +44,7 @@ node npm-guardian.js --path "D:\\Projects\\my-app" --export-txt report.txt
 ```text
 =======================================================
 npm-guardian scan complete
-Packages scanned:  2,847 unique
+Packages scanned:  2,847 unique across selected ecosystems
 Vulnerabilities:   3 found (1 CRITICAL, 1 HIGH, 1 MODERATE)
 Clean packages:    2,844
 =======================================================
@@ -60,10 +62,10 @@ echo $?   # 0 clean, 1 vulnerabilities found, 2 scan error
 ## How It Works
 
 1. Discover scan roots (target path, global npm path, optional full-disk roots).
-2. Discover `node_modules` directories with OS-native search and fallback walker.
-3. Harvest unique `name@version` pairs.
-4. Query OSV and npm advisories (only package name/version leaves machine).
-5. Build findings with local path/project mapping and fix commands.
+2. Discover package manifests depending on the target ecosystem (`node_modules`, `pom.xml`, `.csproj`, `packages.config`, etc).
+3. Harvest unique packages and version pairs across the ecosystems.
+4. Query OSV and npm advisories (only package identifiers leave your machine).
+5. Build findings with local path/project mapping and actionable remediation hints or fix commands.
 
 ## Privacy
 

@@ -4,20 +4,21 @@ const { CACHE_TTL_MS } = require('../config/constants');
 const { nowMs, hrSeconds } = require('../shared/async');
 const { log } = require('../cli/output');
 const { loadCache, saveCache } = require('./cache');
-const { queryOsvForKeys, queryNpmBulk } = require('./providers');
+const { queryOsvForPackages, queryNpmBulk } = require('./providers');
 const { normalizeNpmAdvisory, dedupeAdvisories, advisoryPasses } = require('./normalizers');
 
 async function queryVulnerabilities(packageMap, options) {
   const started = nowMs();
-  const keys = Array.from(packageMap.keys());
+  const packages = Array.from(packageMap.values());
+  const keys = packages.map((pkg) => pkg.key);
   const cache = await loadCache(options);
   const results = {};
 
   const cachedKeys = [];
-  const uncachedKeys = [];
-  for (const key of keys) {
-    if (cache.results[key]) cachedKeys.push(key);
-    else uncachedKeys.push(key);
+  const uncachedPackages = [];
+  for (const pkg of packages) {
+    if (cache.results[pkg.key]) cachedKeys.push(pkg.key);
+    else uncachedPackages.push(pkg);
   }
 
   for (const key of cachedKeys) {
@@ -28,19 +29,19 @@ async function queryVulnerabilities(packageMap, options) {
 
   let osvResults = {};
   let osvFailed = false;
-  if (uncachedKeys.length > 0) {
-    try { osvResults = await queryOsvForKeys(uncachedKeys, options); }
+  if (uncachedPackages.length > 0) {
+    try { osvResults = await queryOsvForPackages(uncachedPackages, options); }
     catch (error) { osvFailed = true; log('warn', `OSV unavailable: ${error.message}`, options); }
   }
 
-  const npmTarget = osvFailed ? uncachedKeys : Object.keys(osvResults).filter((k) => osvResults[k] && osvResults[k].vulnerable);
+  const npmTarget = (osvFailed ? uncachedPackages : uncachedPackages.filter((pkg) => osvResults[pkg.key] && osvResults[pkg.key].vulnerable))
+    .filter((pkg) => pkg.ecosystem === 'npm');
   let npmCross = {};
   if (npmTarget.length > 0) {
     const byName = {};
-    for (const key of npmTarget) {
-      const split = key.lastIndexOf('@');
-      const name = key.slice(0, split);
-      const version = key.slice(split + 1);
+    for (const pkg of npmTarget) {
+      const name = pkg.name;
+      const version = pkg.version;
       if (!byName[name]) byName[name] = [];
       byName[name].push(version);
     }
@@ -48,14 +49,14 @@ async function queryVulnerabilities(packageMap, options) {
     catch (error) { log('warn', `npm advisory cross-check unavailable: ${error.message}`, options); }
   }
 
-  if (osvFailed && Object.keys(npmCross).length === 0 && uncachedKeys.length > 0) {
+  if (osvFailed && Object.keys(npmCross).length === 0 && uncachedPackages.length > 0) {
     throw new Error('No vulnerability scan possible. OSV and npm advisory endpoints are unreachable.');
   }
 
-  for (const key of uncachedKeys) {
-    const split = key.lastIndexOf('@');
-    const pkgName = key.slice(0, split);
-    const pkgVersion = key.slice(split + 1);
+  for (const pkg of uncachedPackages) {
+    const key = pkg.key;
+    const pkgName = pkg.name;
+    const pkgVersion = pkg.version;
 
     const advisories = [];
     if (osvResults[key] && Array.isArray(osvResults[key].advisories)) advisories.push(...osvResults[key].advisories);

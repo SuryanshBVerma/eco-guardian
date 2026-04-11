@@ -10,6 +10,9 @@ const { normalizeOsvAdvisory } = require('./src/vuln/normalizers');
 const { buildFixCommand } = require('./src/findings/fix');
 const { runScan } = require('./src/app/run-scan');
 const { main } = require('./src/app/main');
+const { parsePomDependencies } = require('./src/scan/maven');
+const { parsePackagesConfig, parseProjectPackageReferences, parseDirectoryPackagesProps } = require('./src/scan/nuget');
+const { parseEcosystemList } = require('./src/cli/args');
 
 if (require.main === module) main();
 
@@ -24,5 +27,10 @@ module.exports = {
   normalizeOsvAdvisory,
   buildFixCommand,
   runScan,
-  main
+  main,
+  parsePomDependencies,
+  parsePackagesConfig,
+  parseProjectPackageReferences,
+  parseDirectoryPackagesProps,
+  parseEcosystemList
 };

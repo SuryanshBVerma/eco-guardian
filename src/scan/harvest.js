@@ -49,7 +49,7 @@ async function listPackagesUnderNodeModules(nodeModulesDir) {
   return packageDirs;
 }
 
-async function harvestPackages(nodeModulesDirs, options, state) {
+async function harvestNpmPackages(nodeModulesDirs, options, state) {
   const packageMap = new Map();
   let totalEntries = 0;
 
@@ -60,9 +60,9 @@ async function harvestPackages(nodeModulesDirs, options, state) {
     await asyncPool(PACKAGE_READ_CONCURRENCY, packageDirs, async (pkgDir) => {
       const pkg = await readPackageJson(pkgDir);
       if (!pkg) return;
-      const key = `${pkg.name}@${pkg.version}`;
+      const key = `npm|${pkg.name}|${pkg.version}`;
       const existing = packageMap.get(key);
-      if (!existing) packageMap.set(key, { name: pkg.name, version: pkg.version, paths: [pkgDir] });
+      if (!existing) packageMap.set(key, { key, ecosystem: 'npm', name: pkg.name, version: pkg.version, osvEcosystem: 'npm', paths: [pkgDir], occurrences: [] });
       else existing.paths.push(pkgDir);
     });
   });
@@ -75,5 +75,6 @@ async function harvestPackages(nodeModulesDirs, options, state) {
 
 module.exports = {
   readPackageJson,
-  harvestPackages
+  harvestNpmPackages,
+  harvestPackages: harvestNpmPackages
 };

@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const fs = require('fs');
 const fsp = require('fs/promises');
@@ -61,7 +61,12 @@ async function testPublicExportsSurface() {
     'normalizeOsvAdvisory',
     'buildFixCommand',
     'runScan',
-    'main'
+    'main',
+    'parsePomDependencies',
+    'parsePackagesConfig',
+    'parseProjectPackageReferences',
+    'parseDirectoryPackagesProps',
+    'parseEcosystemList'
   ];
   for (const key of expected) {
     assert(Object.prototype.hasOwnProperty.call(guardian, key), `missing export: ${key}`);
@@ -112,16 +117,16 @@ async function testFilterNestedNodeModules() {
 }
 
 async function testBuildFixCommand() {
-  const direct = guardian.buildFixCommand({ packageName: 'axios', fixedVersion: '1.2.3', dependencyType: 'direct', isGlobal: false, parentPackage: null });
+  const direct = guardian.buildFixCommand({ ecosystem: 'npm', packageName: 'axios', fixedVersion: '1.2.3', dependencyType: 'direct', isGlobal: false, parentPackage: null });
   assert(direct === 'npm install axios@1.2.3', 'buildFixCommand direct fix failed');
 
-  const noFixDirect = guardian.buildFixCommand({ packageName: 'left-pad', fixedVersion: null, dependencyType: 'direct', isGlobal: false, parentPackage: null });
+  const noFixDirect = guardian.buildFixCommand({ ecosystem: 'npm', packageName: 'left-pad', fixedVersion: null, dependencyType: 'direct', isGlobal: false, parentPackage: null });
   assert(noFixDirect === 'npm uninstall left-pad', 'buildFixCommand direct no-fix failed');
 
-  const globalFix = guardian.buildFixCommand({ packageName: 'npm', fixedVersion: '10.0.0', dependencyType: 'direct', isGlobal: true, parentPackage: null });
+  const globalFix = guardian.buildFixCommand({ ecosystem: 'npm', packageName: 'npm', fixedVersion: '10.0.0', dependencyType: 'direct', isGlobal: true, parentPackage: null });
   assert(globalFix === 'npm install -g npm@10.0.0', 'buildFixCommand global fix failed');
 
-  const transitive = guardian.buildFixCommand({ packageName: 'lodash', fixedVersion: null, dependencyType: 'transitive', isGlobal: false, parentPackage: { name: 'webpack' } });
+  const transitive = guardian.buildFixCommand({ ecosystem: 'npm', packageName: 'lodash', fixedVersion: null, dependencyType: 'transitive', isGlobal: false, parentPackage: { name: 'webpack' } });
   assert(transitive === 'npm install webpack@latest', 'buildFixCommand transitive failed');
 }
 
@@ -179,7 +184,7 @@ async function testIntegrationSmoke() {
       result = await guardian.runScan({
       path: root,
       pathExplicit: true,
-        globalOnly: false,
+        ecosystems: ['npm'],
         severity: 'critical',
         json: true,
         noCache: true,
@@ -300,6 +305,158 @@ async function testFixScriptGeneration() {
   });
 }
 
+async function testParseEcosystemList() {
+  const list = guardian.parseEcosystemList('npm,Maven, nUget');
+  assert(list.length === 3, 'parseEcosystemList length failed');
+  assert(list[0] === 'npm' && list[1] === 'maven' && list[2] === 'nuget', 'parseEcosystemList parse failed');
+
+  let threw = false;
+  try { guardian.parseEcosystemList('npm,cargo'); } catch (_) { threw = true; }
+  assert(threw, 'parseEcosystemList should reject unsupported');
+}
+
+async function testParsePomDependencies() {
+  const xml = `
+    <project>
+      <properties>
+        <guava.version>33.4.0-jre</guava.version>
+      </properties>
+      <dependencyManagement>
+        <dependencies>
+          <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.36</version>
+          </dependency>
+        </dependencies>
+      </dependencyManagement>
+      <dependencies>
+        <dependency> <!-- explicit -->
+          <groupId>junit</groupId>
+          <artifactId>junit</artifactId>
+          <version>4.13.2</version>
+        </dependency>
+        <dependency> <!-- property -->
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+          <version>\${guava.version}</version>
+        </dependency>
+        <dependency> <!-- management -->
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </dependency>
+      </dependencies>
+    </project>
+  `;
+  const records = guardian.parsePomDependencies(xml, '/pom.xml');
+  assert(records.length === 3, 'parsePomDependencies length');
+  assert(records[0].name === 'junit:junit' && records[0].version === '4.13.2', 'explicit version');
+  assert(records[1].name === 'com.google.guava:guava' && records[1].version === '33.4.0-jre', 'property version');
+  assert(records[2].name === 'org.slf4j:slf4j-api' && records[2].version === '1.7.36', 'managed version');
+}
+
+async function testParsePackagesConfig() {
+  const xml = `
+    <packages>
+      <package id="Newtonsoft.Json" version="13.0.3" targetFramework="net48" />
+    </packages>
+  `;
+  const records = guardian.parsePackagesConfig(xml, '/packages.config');
+  assert(records.length === 1, 'packages.config length');
+  assert(records[0].name === 'Newtonsoft.Json' && records[0].version === '13.0.3', 'packages.config parsed');
+}
+
+async function testParseProjectPackageReferences() {
+  const xml = `
+    <Project>
+      <ItemGroup>
+        <PackageReference Include="AutoMapper" Version="12.0.1" />
+        <PackageReference Include="MediatR">
+          <Version>12.2.0</Version>
+        </PackageReference>
+        <PackageReference Include="SharedPkg" />
+      </ItemGroup>
+    </Project>
+  `;
+  const centralVersions = new Map();
+  centralVersions.set('SharedPkg', '1.0.0');
+  
+  const records = guardian.parseProjectPackageReferences(xml, '/proj.csproj', centralVersions);
+  assert(records.length === 3, 'PackageReference length');
+  assert(records[0].name === 'AutoMapper' && records[0].version === '12.0.1', 'attr version');
+  assert(records[1].name === 'MediatR' && records[1].version === '12.2.0', 'element version');
+  assert(records[2].name === 'SharedPkg' && records[2].version === '1.0.0', 'managed version');
+}
+
+async function testParseDirectoryPackagesProps() {
+  const xml = `
+    <Project>
+      <ItemGroup>
+        <PackageVersion Include="System.Text.Json" Version="8.0.0" />
+      </ItemGroup>
+    </Project>
+  `;
+  const map = guardian.parseDirectoryPackagesProps(xml, '/props');
+  assert(map.get('System.Text.Json') === '8.0.0', 'PackageVersion parsed');
+}
+
+async function testEcosystemKeyNamespacing() {
+  const nodeKey = `npm|left-pad|1.3.0`;
+  const nugetKey = `NuGet|left-pad|1.3.0`;
+  assert(nodeKey !== nugetKey, 'Keys should not collide');
+}
+
+async function testBuildFixCommandEcosystems() {
+  const maven = guardian.buildFixCommand({ ecosystem: 'Maven', packageName: 'test', fixedVersion: '1' });
+  const nuget = guardian.buildFixCommand({ ecosystem: 'NuGet', packageName: 'test', fixedVersion: '1' });
+  const npm = guardian.buildFixCommand({ ecosystem: 'npm', packageName: 'test', fixedVersion: '1', dependencyType: 'direct' });
+  
+  assert(maven === null, 'Maven fix command should be null');
+  assert(nuget === null, 'NuGet fix command should be null');
+  assert(npm !== null, 'npm fix command should be generated');
+}
+
+async function testIntegrationSmokeMultiEcosystem() {
+  await withTempDir(async (root) => {
+    const exportPath = path.join(root, 'report.txt');
+    process.env.NPM_GUARDIAN_DISABLE_GLOBAL = '1';
+    
+    await fsp.mkdir(path.join(root, 'node_modules', 'dummy'), { recursive: true });
+    await fsp.writeFile(path.join(root, 'node_modules', 'dummy', 'package.json'), JSON.stringify({name: 'dummy', version: '1.0.0'}));
+    await fsp.writeFile(path.join(root, 'pom.xml'), '<project></project>');
+    await fsp.writeFile(path.join(root, 'test.csproj'), '<Project></Project>');
+    
+    const originalWrite = process.stdout.write;
+    const originalStderrWrite = process.stderr.write;
+    let result;
+    try {
+      process.stdout.write = () => true;
+      process.stderr.write = () => true;
+      result = await guardian.runScan({
+        path: root,
+        pathExplicit: true,
+        globalOnly: false,
+        ecosystems: ['npm', 'maven', 'nuget'],
+        severity: 'critical',
+        json: true,
+        noCache: true,
+        fix: false,
+        exportTxt: exportPath,
+        help: false,
+        version: false,
+        global: false,
+        allDrives: false,
+        verbose: false
+      });
+    } finally {
+      process.stdout.write = originalWrite;
+      process.stderr.write = originalStderrWrite;
+    }
+    
+    assert(Array.isArray(result.findings), 'integration smoke multi findings should be array');
+  });
+}
+
 async function run() {
   const tests = [
     ['publicExportsSurface', testPublicExportsSurface],
@@ -314,7 +471,15 @@ async function run() {
     ['cliHelpAndVersion', testCliHelpAndVersion],
     ['txtReportGeneration', testHtmlReportEscaping],
     ['tableNoTruncation', testTableNoTruncation],
-    ['fixScriptGeneration', testFixScriptGeneration]
+    ['fixScriptGeneration', testFixScriptGeneration],
+    ['parseEcosystemList', testParseEcosystemList],
+    ['parsePomDependencies', testParsePomDependencies],
+    ['parsePackagesConfig', testParsePackagesConfig],
+    ['parseProjectPackageReferences', testParseProjectPackageReferences],
+    ['parseDirectoryPackagesProps', testParseDirectoryPackagesProps],
+    ['ecosystemKeyNamespacing', testEcosystemKeyNamespacing],
+    ['buildFixCommandEcosystems', testBuildFixCommandEcosystems],
+    ['integrationSmokeMultiEcosystem', testIntegrationSmokeMultiEcosystem]
   ];
 
   let passed = 0;

@@ -1,7 +1,8 @@
 'use strict';
 
-const { enrichLocations } = require('./location');
+const { enrichNpmLocations } = require('./location');
 const { pickBestFixedVersion, buildFixSteps, fixStepsToDisplayCommands } = require('./fix');
+const path = require('path');
 
 async function buildFindings(packageMap, vulnerabilityMap, state) {
   const findings = [];
@@ -12,18 +13,39 @@ async function buildFindings(packageMap, vulnerabilityMap, state) {
     const pkg = packageMap.get(key);
     if (!pkg) continue;
 
-    const foundIn = await enrichLocations(pkg.paths, pkg.name, globalRoot);
+    const foundIn = pkg.ecosystem === 'npm'
+      ? await enrichNpmLocations(pkg.paths, pkg.name, globalRoot)
+      : (pkg.occurrences || []);
+
     const fixedVersion = pickBestFixedVersion(record.advisories);
-    const fixSteps = buildFixSteps(foundIn, pkg.name, fixedVersion);
+    const fixSteps = buildFixSteps({
+      ecosystem: pkg.ecosystem,
+      foundIn,
+      packageName: pkg.name,
+      fixedVersion
+    });
     const fixCommands = fixStepsToDisplayCommands(fixSteps);
     const fixCommand = fixCommands.length === 0
       ? null
       : (fixCommands.length === 1 ? fixCommands[0] : `${fixCommands[0]} (+${fixCommands.length - 1} more)`);
 
+    let remediationHint = null;
+    if ((pkg.ecosystem === 'Maven' || pkg.ecosystem === 'NuGet') && fixedVersion) {
+      const manifests = Array.from(new Set(foundIn.map(o => o.manifest_path).filter(Boolean)));
+      if (manifests.length > 0) {
+        remediationHint = `Update ${pkg.name} in ${manifests.map(p => path.basename(p)).join(', ')} to version ${fixedVersion}`;
+      } else {
+        remediationHint = `Update ${pkg.name} to version ${fixedVersion}`;
+      }
+    }
+
     for (const advisory of record.advisories) {
       findings.push({
+        ecosystem: pkg.ecosystem,
         package: pkg.name,
         version: pkg.version,
+        fixed_version: fixedVersion,
+        remediation_hint: remediationHint,
         severity: advisory.severity,
         cvss: advisory.cvss_score,
         advisory_id: advisory.id,

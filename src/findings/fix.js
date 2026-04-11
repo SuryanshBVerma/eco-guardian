@@ -25,7 +25,8 @@ function pickBestFixedVersion(advisories) {
   return null;
 }
 
-function buildFixCommand({ packageName, fixedVersion, dependencyType, isGlobal, parentPackage }) {
+function buildFixCommand({ ecosystem, packageName, fixedVersion, dependencyType, isGlobal, parentPackage }) {
+  if (ecosystem === 'Maven' || ecosystem === 'NuGet') return null;
   if (isGlobal) return fixedVersion ? `npm install -g ${packageName}@${fixedVersion}` : `npm uninstall -g ${packageName}`;
   if (dependencyType === 'direct') return fixedVersion ? `npm install ${packageName}@${fixedVersion}` : `npm uninstall ${packageName}`;
   if (dependencyType === 'transitive') return parentPackage && parentPackage.name ? `npm install ${parentPackage.name}@latest` : null;
@@ -39,7 +40,7 @@ function buildScopedProjectCommand(project, command) {
   return `cd "${project}" && ${command}`;
 }
 
-function buildFixSteps(foundIn, packageName, fixedVersion) {
+function buildFixSteps({ ecosystem, foundIn, packageName, fixedVersion }) {
   const steps = [];
   const seen = new Set();
 
@@ -47,6 +48,7 @@ function buildFixSteps(foundIn, packageName, fixedVersion) {
     const dependencyType = entry && entry.dependency_type ? entry.dependency_type : 'transitive';
     const isGlobal = dependencyType === 'global';
     const command = buildFixCommand({
+      ecosystem,
       packageName,
       fixedVersion,
       dependencyType,

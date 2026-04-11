@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const { SEVERITY_ORDER, COLORS } = require('../config/constants');
 const { colorize } = require('../cli/output');
@@ -11,7 +11,7 @@ function printSummary(totalPackages, findings, options) {
   const line = '='.repeat(55);
   process.stdout.write(`${line}\n`);
   process.stdout.write('npm-guardian scan complete\n');
-  process.stdout.write(`Packages scanned:  ${totalPackages.toLocaleString()} unique\n`);
+  process.stdout.write(`Packages scanned:  ${totalPackages.toLocaleString()} unique across selected ecosystems\n`);
   process.stdout.write(`Vulnerabilities:   ${findings.length} found (${sev.critical} CRITICAL, ${sev.high} HIGH, ${sev.moderate} MODERATE)\n`);
   process.stdout.write(`Clean packages:    ${clean.toLocaleString()}\n`);
   process.stdout.write(`${line}\n`);
@@ -58,6 +58,7 @@ function renderFindingsTable(findings) {
 
   const cols = [
     { key: 'severity', label: 'SEVERITY' },
+    { key: 'ecosystem', label: 'ECOSYSTEM' },
     { key: 'package', label: 'PACKAGE' },
     { key: 'advisory', label: 'ADVISORY' },
     { key: 'projects', label: 'PROJECTS' },
@@ -67,11 +68,12 @@ function renderFindingsTable(findings) {
 
   const rows = sorted.map((finding) => ({
     severity: finding.severity || 'N/A',
+    ecosystem: finding.ecosystem || 'npm',
     package: `${finding.package}@${finding.version}`,
     advisory: finding.advisory_id || 'N/A',
     projects: String(uniqueProjectCount(finding)),
     locations: String((finding.found_in || []).length),
-    fix: finding.fix_command || 'Manual review required'
+    fix: finding.fix_command || finding.remediation_hint || 'Manual review required'
   }));
 
   const widths = {};
@@ -110,15 +112,18 @@ function printFindingsDetailed(findings, options) {
     process.stdout.write(`|- Found in ${finding.found_in.length} locations:\n`);
     for (const entry of finding.found_in) {
       const via = entry.parent && entry.parent.name ? ` via ${entry.parent.name}${entry.parent.version ? `@${entry.parent.version}` : ''}` : '';
-      process.stdout.write(`|   -> ${entry.project} (${entry.dependency_type} dependency${via})\n`);
+      process.stdout.write(`|   -> ${entry.manifest_path || entry.project} (${entry.dependency_type} dependency${via})\n`);
     }
     if (Array.isArray(finding.fix_commands) && finding.fix_commands.length > 0) {
       process.stdout.write('|- Fix commands:\n');
       for (const cmd of finding.fix_commands) process.stdout.write(`|   -> ${cmd}\n`);
+    } else if (finding.remediation_hint) {
+      process.stdout.write(`|- Fix: ${finding.remediation_hint}\n`);
     } else {
       process.stdout.write('|- Fix: Manual review required\n');
     }
-    process.stdout.write(`' - More info: ${(finding.references && finding.references[0]) || 'N/A'}\n`);
+    const ref = (finding.references && finding.references[0]) || `https://osv.dev/vulnerability/${finding.advisory_id}`;
+    process.stdout.write(`' - More info: ${ref}\n`);
   }
 }
 

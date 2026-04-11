@@ -1,8 +1,17 @@
-﻿'use strict';
+'use strict';
 
 const VERSION = '1.0.0';
 const PLATFORM = process.platform;
 const SEVERITY_ORDER = { low: 1, moderate: 2, high: 3, critical: 4 };
+
+const SUPPORTED_ECOSYSTEMS = ['npm', 'maven', 'nuget'];
+const OSV_ECOSYSTEM_MAP = { npm: 'npm', maven: 'Maven', nuget: 'NuGet' };
+
+const MAVEN_MANIFEST_NAMES = new Set(['pom.xml']);
+const NUGET_MANIFEST_NAMES = new Set([
+  'packages.config', 'Directory.Packages.props',
+  '.csproj', '.vbproj', '.fsproj', 'packages.lock.json'
+]);
 
 const COLORS = {
   reset: '\x1b[0m',
@@ -46,5 +55,9 @@ module.exports = {
   API_CONCURRENCY,
   OSV_BATCH_SIZE,
   CACHE_TTL_MS,
-  WALK_SKIP_NAMES
+  WALK_SKIP_NAMES,
+  SUPPORTED_ECOSYSTEMS,
+  OSV_ECOSYSTEM_MAP,
+  MAVEN_MANIFEST_NAMES,
+  NUGET_MANIFEST_NAMES
 };
