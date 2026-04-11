@@ -518,6 +518,98 @@ async function testIntegrationSmokeMultiEcosystem() {
   });
 }
 
+async function testParseRequirementsTxt() {
+  const content = `
+requests==2.31.0
+numpy==1.26.4 # some comment
+# hashed line
+django==4.2
+  `;
+  const records = guardian.parseRequirementsTxt(content, '/requirements.txt');
+  assert(records.length === 3, 'parseRequirementsTxt length');
+  assert(records[0].name === 'requests' && records[0].version === '2.31.0', 'requests parsed');
+  assert(records[1].name === 'numpy' && records[1].version === '1.26.4', 'numpy parsed');
+  assert(records[2].name === 'django' && records[2].version === '4.2', 'django parsed');
+}
+
+async function testParsePipfileLock() {
+  const json = JSON.stringify({
+    default: {
+      requests: { version: "==2.31.0" }
+    },
+    develop: {
+      pytest: { version: "==7.4.0" }
+    }
+  });
+  const records = guardian.parsePipfileLock(json, '/Pipfile.lock');
+  assert(records.length === 2, 'parsePipfileLock length');
+  assert(records.some(r => r.name === 'requests' && r.version === '2.31.0'), 'requests parsed');
+  assert(records.some(r => r.name === 'pytest' && r.version === '7.4.0'), 'pytest parsed');
+}
+
+async function testParsePoetryLock() {
+  const content = `
+[[package]]
+name = "requests"
+version = "2.31.0"
+
+[[package]]
+name = "flask"
+version = "3.0.0"
+  `;
+  const records = guardian.parsePoetryLock(content, '/poetry.lock');
+  assert(records.length === 2, 'parsePoetryLock length');
+  assert(records[0].name === 'requests' && records[0].version === '2.31.0', 'requests parsed');
+  assert(records[1].name === 'flask' && records[1].version === '3.0.0', 'flask parsed');
+}
+
+async function testParseGoMod() {
+  const content = `
+module my-app
+
+go 1.22
+
+require (
+    github.com/gin-gonic/gin v1.9.1
+    github.com/sirupsen/logrus v1.9.3 // indirect
+)
+
+require github.com/google/uuid v1.6.0
+  `;
+  const records = guardian.parseGoMod(content, '/go.mod');
+  assert(records.length === 3, 'parseGoMod length');
+  assert(records[0].name === 'github.com/gin-gonic/gin' && records[0].version === 'v1.9.1', 'gin parsed');
+  assert(records[1].name === 'github.com/sirupsen/logrus' && records[1].version === 'v1.9.3', 'logrus parsed');
+  assert(records[2].name === 'github.com/google/uuid' && records[2].version === 'v1.6.0', 'uuid parsed');
+}
+
+async function testGenerateRemediationHintPythonGo() {
+  const { generateRemediationHint } = require('./src/findings/remediation.js');
+  
+  const python = generateRemediationHint({ 
+    ecosystem: 'python', 
+    packageName: 'requests', 
+    fixedVersion: '2.31.0',
+    foundIn: [{ manifest_path: '/requirements.txt' }]
+  });
+  assert(python.includes('Pin or update requests to version 2.31.0 in requirements.txt'), 'python hint failed');
+
+  const go = generateRemediationHint({ 
+    ecosystem: 'Go', 
+    packageName: 'github.com/gin-gonic/gin', 
+    fixedVersion: 'v1.9.1',
+    foundIn: [{ manifest_path: '/go.mod' }]
+  });
+  assert(go.includes("Update github.com/gin-gonic/gin to version v1.9.1 in go.mod, then run 'go mod tidy'"), 'go hint failed');
+}
+
+async function testUnresolvedMavenIsNotQueryable() {
+  const records = guardian.parsePomDependencies('<project><dependencies><dependency><groupId>g</groupId><artifactId>a</artifactId></dependency></dependencies></project>', '/pom.xml');
+  assert(records.length === 1, 'record should exist');
+  assert(records[0].version === 'unresolved', 'version should be unresolved');
+  assert(records[0].queryable === false, 'unresolved Maven record should have queryable: false');
+}
+
 async function run() {
   const tests = [
     ['publicExportsSurface', testPublicExportsSurface],
@@ -543,7 +635,13 @@ async function run() {
     ['summaryCountsUniquePackages', testSummaryCountsUniquePackages],
     ['ecosystemKeyNamespacing', testEcosystemKeyNamespacing],
     ['buildFixCommandEcosystems', testBuildFixCommandEcosystems],
-    ['integrationSmokeMultiEcosystem', testIntegrationSmokeMultiEcosystem]
+    ['integrationSmokeMultiEcosystem', testIntegrationSmokeMultiEcosystem],
+    ['parseRequirementsTxt', testParseRequirementsTxt],
+    ['parsePipfileLock', testParsePipfileLock],
+    ['parsePoetryLock', testParsePoetryLock],
+    ['parseGoMod', testParseGoMod],
+    ['generateRemediationHintPythonGo', testGenerateRemediationHintPythonGo],
+    ['unresolvedMavenIsNotQueryable', testUnresolvedMavenIsNotQueryable]
   ];
 
   let passed = 0;

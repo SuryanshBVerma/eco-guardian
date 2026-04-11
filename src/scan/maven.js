@@ -75,6 +75,7 @@ function parsePomDependencies(xmlText, filePath) {
         name,
         version: 'unresolved',
         unresolved: true,
+        queryable: false,
         osvEcosystem: 'Maven',
         paths: [],
         occurrences: [

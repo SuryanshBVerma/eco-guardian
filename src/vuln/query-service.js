@@ -10,13 +10,14 @@ const { normalizeNpmAdvisory, dedupeAdvisories, advisoryPasses } = require('./no
 async function queryVulnerabilities(packageMap, options) {
   const started = nowMs();
   const packages = Array.from(packageMap.values());
-  const keys = packages.map((pkg) => pkg.key);
+  const queryablePackages = packages.filter((pkg) => pkg.queryable !== false && pkg.version && pkg.version !== 'unresolved');
+  const keys = queryablePackages.map((pkg) => pkg.key);
   const cache = await loadCache(options);
   const results = {};
 
   const cachedKeys = [];
   const uncachedPackages = [];
-  for (const pkg of packages) {
+  for (const pkg of queryablePackages) {
     if (cache.results[pkg.key]) cachedKeys.push(pkg.key);
     else uncachedPackages.push(pkg);
   }

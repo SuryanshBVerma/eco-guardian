@@ -67,6 +67,22 @@ function generateRemediationHint({ ecosystem, packageName, fixedVersion, foundIn
     return `Review ${packageName} usage${scopeStr}. No known patch available.`;
   }
 
+  if (ecosystem === 'python') {
+    const manifestList = Array.from(manifests);
+    const scopeStr = manifestList.length > 0 ? ` in ${manifestList.join(', ')}` : '';
+    if (fixedVersion) {
+      return `Pin or update ${packageName} to version ${fixedVersion}${scopeStr}, then refresh your Python lockfile/environment.`;
+    }
+    return `Review ${packageName} usage${scopeStr}. No known patch available.`;
+  }
+
+  if (ecosystem === 'Go') {
+    if (fixedVersion) {
+      return `Update ${packageName} to version ${fixedVersion} in go.mod, then run 'go mod tidy'.`;
+    }
+    return `Review ${packageName} usage in go.mod. No known patch available.`;
+  }
+
   if (ecosystem === 'VSCode') {
     if (fixedVersion) return `Upgrade extension to version ${fixedVersion}.`;
     return 'Extension vulnerability. Check for updates in VSCode Marketplace.';
