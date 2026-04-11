@@ -1,11 +1,11 @@
 'use strict';
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const PLATFORM = process.platform;
 const SEVERITY_ORDER = { low: 1, moderate: 2, high: 3, critical: 4 };
 
-const SUPPORTED_ECOSYSTEMS = ['npm', 'maven', 'nuget'];
-const OSV_ECOSYSTEM_MAP = { npm: 'npm', maven: 'Maven', nuget: 'NuGet' };
+const SUPPORTED_ECOSYSTEMS = ['npm', 'maven', 'nuget', 'vscode'];
+const OSV_ECOSYSTEM_MAP = { npm: 'npm', maven: 'Maven', nuget: 'NuGet', vscode: 'VSCode' };
 
 const MAVEN_MANIFEST_NAMES = new Set(['pom.xml']);
 const NUGET_MANIFEST_NAMES = new Set([

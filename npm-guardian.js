@@ -13,6 +13,7 @@ const { main } = require('./src/app/main');
 const { parsePomDependencies } = require('./src/scan/maven');
 const { parsePackagesConfig, parseProjectPackageReferences, parseDirectoryPackagesProps } = require('./src/scan/nuget');
 const { parseEcosystemList } = require('./src/cli/args');
+const { collectVSCodeExtensions } = require('./src/scan/vscode');
 
 if (require.main === module) main();
 
@@ -32,5 +33,6 @@ module.exports = {
   parsePackagesConfig,
   parseProjectPackageReferences,
   parseDirectoryPackagesProps,
-  parseEcosystemList
+  parseEcosystemList,
+  collectVSCodeExtensions
 };

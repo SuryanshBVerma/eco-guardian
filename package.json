@@ -1,6 +1,6 @@
 {
   "name": "npm-guardian",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Zero-dependency CLI that scans your machine for vulnerable npm packages across all projects",
   "bin": {
     "npm-guardian": "./npm-guardian.js"

@@ -7,6 +7,7 @@ const { discoverScanRoots, discoverNodeModules, discoverManifestFiles } = requir
 const { harvestNpmPackages } = require('../scan/harvest');
 const { collectMavenPackages } = require('../scan/maven');
 const { collectNuGetPackages } = require('../scan/nuget');
+const { collectVSCodeExtensions } = require('../scan/vscode');
 const { queryVulnerabilities } = require('../vuln/query-service');
 const { buildFindings } = require('../findings/builder');
 const { printSummary, printFindingsHuman } = require('../report/console');
@@ -60,6 +61,9 @@ async function runScan(options, state = {}) {
   }
   if (options.ecosystems.includes('nuget')) {
     mergePackageMaps(packageMap, await collectNuGetPackages(rootsInfo.roots, options, state));
+  }
+  if (options.ecosystems.includes('vscode')) {
+    mergePackageMaps(packageMap, await collectVSCodeExtensions(rootsInfo.roots, options, state));
   }
   state.packageMap = packageMap;
   phaseTimes.harvest = Date.now() - harvestStart;
