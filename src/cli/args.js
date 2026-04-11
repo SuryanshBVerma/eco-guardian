@@ -25,6 +25,7 @@ function printUsage() {
   process.stdout.write('  --fix                Write fix script to current directory\n');
   process.stdout.write('  --export-txt <file>  Export findings to TXT report\n');
   process.stdout.write('  --export-html <file> Export findings to HTML report\n');
+  process.stdout.write('  --benchmark          Show real-time RAM/CPU usage during scan\n');
   process.stdout.write('  --help               Show this help\n');
   process.stdout.write('  --version            Show version\n');
   process.stdout.write('  --global             Include / root scan on Unix\n');
@@ -47,7 +48,8 @@ function parseArgs(argv) {
     version: false,
     global: false,
     allDrives: false,
-    verbose: false
+    verbose: false,
+    benchmark: false
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -97,6 +99,7 @@ function parseArgs(argv) {
     if (token === '--global') { args.global = true; continue; }
     if (token === '--all-drives') { args.allDrives = true; continue; }
     if (token === '--verbose') { args.verbose = true; continue; }
+    if (token === '--benchmark') { args.benchmark = true; continue; }
     throw new Error(`Unknown argument: ${token}`);
   }
 

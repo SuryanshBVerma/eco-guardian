@@ -4,7 +4,7 @@ const { SEVERITY_ORDER, COLORS } = require('../config/constants');
 const { colorize } = require('../cli/output');
 const { summarizeSeverities } = require('./common');
 
-function printSummary(totalPackages, findings, options) {
+function printSummary(totalPackages, findings, options, metrics = null) {
   if (options.json) return;
   const sev = summarizeSeverities(findings);
   const vulnerablePackages = new Set(findings.map((f) => `${f.ecosystem}|${f.package}|${f.version}`)).size;
@@ -16,6 +16,11 @@ function printSummary(totalPackages, findings, options) {
   process.stdout.write(`Findings:          ${findings.length} advisories found (${sev.critical} CRITICAL, ${sev.high} HIGH, ${sev.moderate} MODERATE)\n`);
   process.stdout.write(`Vulnerable pkgs:   ${vulnerablePackages}\n`);
   process.stdout.write(`Clean packages:    ${clean.toLocaleString()}\n`);
+  if (metrics) {
+    process.stdout.write(`Peak RAM:          ${metrics.peakRssMb} MB\n`);
+    process.stdout.write(`Avg CPU:           ${metrics.avgCpuPercent}%\n`);
+    process.stdout.write(`Scan Duration:     ${metrics.durationS}s\n`);
+  }
   process.stdout.write(`${line}\n`);
 }
 

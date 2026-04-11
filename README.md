@@ -23,6 +23,7 @@ No `npm install` required.
 | `--fix` | Generate fix script in current directory (npm only) |
 | `--export-txt <file>` | Export findings report to TXT |
 | `--export-html <file>` | Export findings report to HTML |
+| `--benchmark` | Show real-time RAM/CPU usage during scan |
 | `--help` | Show help |
 | `--version` | Show tool version |
 | `--global` | On Unix, include `/` root scan |
@@ -44,9 +45,13 @@ node npm-guardian.js --path "D:\\Projects\\my-app" --export-txt report.txt
 ```text
 =======================================================
 npm-guardian scan complete
-Packages scanned:  2,847 unique across selected ecosystems
-Vulnerabilities:   3 found (1 CRITICAL, 1 HIGH, 1 MODERATE)
-Clean packages:    2,844
+Packages scanned:  6,080 unique across selected ecosystems
+Vulnerabilities:   721 advisories found (12 CRITICAL, 37 HIGH, 661 MODERATE)
+Vulnerable pkgs:   252
+Clean packages:    5,828
+Peak RAM:          193.5 MB
+Avg CPU:           195.1%
+Scan Duration:     65.0s
 =======================================================
 ```
 

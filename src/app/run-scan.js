@@ -16,10 +16,13 @@ const { printSummary, printFindingsHuman } = require('../report/console');
 const { writeFixScript } = require('../report/fix-script');
 const { writeTxtReport } = require('../report/txt');
 const { writeHtmlReport } = require('../report/html');
+const { ResourceMonitor } = require('../shared/monitor');
 
 async function runScan(options, state = {}) {
   const phaseTimes = {};
   const counters = { found: 0, skippedPermissions: 0 };
+  const monitor = new ResourceMonitor(options);
+  if (options.benchmark) monitor.start();
 
   const rootsStart = nowMs();
   const rootsInfo = await discoverScanRoots(options, state);
@@ -88,11 +91,12 @@ async function runScan(options, state = {}) {
   const fixFile = await writeFixScript(findings, options);
   const txtFile = await writeTxtReport(findings, packageMap.size, options);
   const htmlFile = await writeHtmlReport(findings, packageMap.size, options);
+  const metrics = options.benchmark ? monitor.stop() : null;
 
   if (options.json) {
     process.stdout.write(`${JSON.stringify(findings, null, 2)}\n`);
   } else {
-    printSummary(packageMap.size, findings, options);
+    printSummary(packageMap.size, findings, options, metrics);
     if (findings.length === 0) process.stdout.write(`[OK] All clear. No known vulnerabilities found in ${packageMap.size.toLocaleString()} packages.\n`);
     else printFindingsHuman(findings, options);
 

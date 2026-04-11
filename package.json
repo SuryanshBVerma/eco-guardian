@@ -10,7 +10,7 @@
     "type": "git",
     "url": "https://github.com/boredom1234/npm-guardian"
   },
-  "keywords": ["npm", "maven", "nuget", "vscode", "python", "go", "security", "vulnerability", "audit", "scanner", "cli"],
+  "keywords": ["npm", "maven", "nuget", "vscode", "python", "go", "security", "vulnerability", "audit", "scanner", "cli", "benchmark", "performance"],
   "scripts": {
     "start": "node npm-guardian.js",
     "test": "node test.js"
