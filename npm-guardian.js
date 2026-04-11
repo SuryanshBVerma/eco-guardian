@@ -14,6 +14,8 @@ const { parsePomDependencies } = require('./src/scan/maven');
 const { parsePackagesConfig, parseProjectPackageReferences, parseDirectoryPackagesProps, parsePackagesLockJson } = require('./src/scan/nuget');
 const { parseEcosystemList } = require('./src/cli/args');
 const { collectVSCodeExtensions } = require('./src/scan/vscode');
+const { parseRequirementsTxt, parsePipfileLock, parsePoetryLock } = require('./src/scan/python');
+const { parseGoMod } = require('./src/scan/go');
 
 if (require.main === module) main();
 
@@ -35,5 +37,9 @@ module.exports = {
   parseDirectoryPackagesProps,
   parsePackagesLockJson,
   parseEcosystemList,
-  collectVSCodeExtensions
+  collectVSCodeExtensions,
+  parseRequirementsTxt,
+  parsePipfileLock,
+  parsePoetryLock,
+  parseGoMod
 };

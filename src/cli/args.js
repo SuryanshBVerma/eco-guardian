@@ -18,7 +18,7 @@ function printUsage() {
   process.stdout.write('Flags:\n');
   process.stdout.write('  --path <dir>         Scan specific directory (default: home directory)\n');
   process.stdout.write('  --global-only        Only scan global npm installs\n');
-  process.stdout.write('  --ecosystems <list>  Comma-separated ecosystems: npm,maven,nuget,vscode (default: npm)\n');
+  process.stdout.write('  --ecosystems <list>  Comma-separated ecosystems: npm,maven,nuget,vscode,python,go (default: npm)\n');
   process.stdout.write('  --severity <level>   Minimum: low|moderate|high|critical (default: low)\n');
   process.stdout.write('  --json               Output only JSON findings to stdout\n');
   process.stdout.write('  --no-cache           Disable cache read/write\n');

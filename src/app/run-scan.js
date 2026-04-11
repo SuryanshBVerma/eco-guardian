@@ -8,6 +8,8 @@ const { harvestNpmPackages } = require('../scan/harvest');
 const { collectMavenPackages } = require('../scan/maven');
 const { collectNuGetPackages } = require('../scan/nuget');
 const { collectVSCodeExtensions } = require('../scan/vscode');
+const { collectPythonPackages } = require('../scan/python');
+const { collectGoPackages } = require('../scan/go');
 const { queryVulnerabilities } = require('../vuln/query-service');
 const { buildFindings } = require('../findings/builder');
 const { printSummary, printFindingsHuman } = require('../report/console');
@@ -65,6 +67,12 @@ async function runScan(options, state = {}) {
   }
   if (options.ecosystems.includes('vscode')) {
     mergePackageMaps(packageMap, await collectVSCodeExtensions(rootsInfo.roots, options, state));
+  }
+  if (options.ecosystems.includes('python')) {
+    mergePackageMaps(packageMap, await collectPythonPackages(rootsInfo.roots, options, state));
+  }
+  if (options.ecosystems.includes('go')) {
+    mergePackageMaps(packageMap, await collectGoPackages(rootsInfo.roots, options, state));
   }
   state.packageMap = packageMap;
   phaseTimes.harvest = Date.now() - harvestStart;

@@ -4,14 +4,23 @@ const VERSION = '1.1.0';
 const PLATFORM = process.platform;
 const SEVERITY_ORDER = { low: 1, moderate: 2, high: 3, critical: 4 };
 
-const SUPPORTED_ECOSYSTEMS = ['npm', 'maven', 'nuget', 'vscode'];
-const OSV_ECOSYSTEM_MAP = { npm: 'npm', maven: 'Maven', nuget: 'NuGet', vscode: 'VSCode' };
+const SUPPORTED_ECOSYSTEMS = ['npm', 'maven', 'nuget', 'vscode', 'python', 'go'];
+const OSV_ECOSYSTEM_MAP = {
+  npm: 'npm',
+  maven: 'Maven',
+  nuget: 'NuGet',
+  vscode: 'VSCode',
+  python: 'PyPI',
+  go: 'Go'
+};
 
 const MAVEN_MANIFEST_NAMES = new Set(['pom.xml']);
 const NUGET_MANIFEST_NAMES = new Set([
   'packages.config', 'Directory.Packages.props',
   '.csproj', '.vbproj', '.fsproj', 'packages.lock.json'
 ]);
+const PYTHON_MANIFEST_NAMES = new Set(['requirements.txt', 'Pipfile.lock', 'poetry.lock']);
+const GO_MANIFEST_NAMES = new Set(['go.mod']);
 
 const COLORS = {
   reset: '\x1b[0m',
@@ -59,5 +68,7 @@ module.exports = {
   SUPPORTED_ECOSYSTEMS,
   OSV_ECOSYSTEM_MAP,
   MAVEN_MANIFEST_NAMES,
-  NUGET_MANIFEST_NAMES
+  NUGET_MANIFEST_NAMES,
+  PYTHON_MANIFEST_NAMES,
+  GO_MANIFEST_NAMES
 };
