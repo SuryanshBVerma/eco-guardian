@@ -13,6 +13,7 @@ const { buildFindings } = require('../findings/builder');
 const { printSummary, printFindingsHuman } = require('../report/console');
 const { writeFixScript } = require('../report/fix-script');
 const { writeTxtReport } = require('../report/txt');
+const { writeHtmlReport } = require('../report/html');
 
 async function runScan(options, state = {}) {
   const phaseTimes = {};
@@ -78,6 +79,7 @@ async function runScan(options, state = {}) {
 
   const fixFile = await writeFixScript(findings, options);
   const txtFile = await writeTxtReport(findings, packageMap.size, options);
+  const htmlFile = await writeHtmlReport(findings, packageMap.size, options);
 
   if (options.json) {
     process.stdout.write(`${JSON.stringify(findings, null, 2)}\n`);
@@ -88,6 +90,7 @@ async function runScan(options, state = {}) {
 
     if (fixFile) log('success', `Fix script written to: ${fixFile}`, options);
     if (txtFile) log('success', `TXT report written to: ${txtFile}`, options);
+    if (htmlFile) log('success', `HTML report written to: ${htmlFile}`, options);
     if (counters.skippedPermissions > 0) log('info', `Skipped ${counters.skippedPermissions} unreadable directories due to permissions.`, options);
   }
 

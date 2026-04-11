@@ -43,8 +43,9 @@ function parseYarnLockForParent(text, packageName) {
     if (!block.includes('dependencies:')) continue;
     const depRegex = new RegExp(`\\n\\s+${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+`);
     if (!depRegex.test(block)) continue;
-    const first = (block.split(/\r?\n/)[0] || '').replace(/"/g, '').trim();
-    const name = first.split('@')[0].trim();
+    const lines = block.split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+    const first = lines[0] || '';
+    const name = first.split('@')[0].replace(/"/g, '').trim();
     if (name) return { name, version: null };
   }
   return null;

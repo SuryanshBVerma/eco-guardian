@@ -1,99 +1,231 @@
 'use strict';
 
 const fsp = require('fs/promises');
-const os = require('os');
 const path = require('path');
-const { PLATFORM } = require('../config/constants');
-const { summarizeSeverities, escapeHtml, severityClass } = require('./common');
+const { summarizeSeverities, escapeHtml } = require('./common');
 
 async function writeHtmlReport(findings, packageCount, options) {
   if (!options.exportHtml) return null;
   const outFile = path.resolve(process.cwd(), options.exportHtml);
   const severity = summarizeSeverities(findings);
-  const generatedAt = new Date();
-  const nowLocal = generatedAt.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
-  const hostName = os.hostname();
-  const userName = (() => {
-    if (PLATFORM === 'win32') {
-      const domain = process.env.USERDOMAIN || process.env.COMPUTERNAME || '';
-      const user = process.env.USERNAME || os.userInfo().username || '';
-      return domain ? `${domain}\\${user}` : user;
-    }
-    return process.env.USER || os.userInfo().username || '';
-  })();
+  const generatedAt = new Date().toLocaleString();
 
-  const rows = findings.map((finding) => {
-    const projectLines = (finding.found_in || []).map((entry) => {
-      const via = entry.parent && entry.parent.name ? ` via ${entry.parent.name}${entry.parent.version ? `@${entry.parent.version}` : ''}` : '';
-      return `${entry.project} (${entry.dependency_type}${via})`;
-    });
-    const fixLines = (Array.isArray(finding.fix_commands) && finding.fix_commands.length > 0)
-      ? finding.fix_commands
-      : [finding.fix_command || 'Manual review required'];
-    return `<tr>
-      <td><span class="sev ${severityClass(finding.severity)}">${escapeHtml(finding.severity)}</span></td>
-      <td>${escapeHtml(`${finding.package}@${finding.version}`)}</td>
-      <td>${escapeHtml(finding.advisory_id || 'N/A')}</td>
-      <td>${escapeHtml(finding.title || '')}</td>
-      <td>${projectLines.map((p) => escapeHtml(p)).join('<br>')}</td>
-      <td><code>${fixLines.map((cmd) => escapeHtml(cmd)).join('<br>')}</code></td>
-      <td>${finding.references && finding.references[0] ? `<a href="${escapeHtml(finding.references[0])}">link</a>` : 'N/A'}</td>
-    </tr>`;
-  }).join('\n');
-
-  const html = `<!doctype html>
+  const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>npm-guardian report</title>
-  <style>
-    body { font-family: Segoe UI, Arial, sans-serif; margin: 24px; color: #1f2937; }
-    h1 { margin: 0 0 8px; }
-    .meta { margin: 0 0 16px; color: #4b5563; }
-    .stats { margin: 0 0 20px; }
-    .sev { display: inline-block; padding: 2px 8px; border-radius: 999px; font-weight: 600; font-size: 12px; }
-    .sev-critical { background: #7f1d1d; color: #fee2e2; }
-    .sev-high { background: #9a3412; color: #ffedd5; }
-    .sev-moderate { background: #92400e; color: #fef3c7; }
-    .sev-low { background: #14532d; color: #dcfce7; }
-    .sev-unknown { background: #374151; color: #f3f4f6; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { border: 1px solid #d1d5db; padding: 8px; vertical-align: top; text-align: left; }
-    th { background: #f3f4f6; }
-    code { background: #f3f4f6; padding: 2px 4px; border-radius: 3px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>npm-guardian Security Report</title>
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --primary: #2563eb;
+            --critical: #ef4444;
+            --high: #f97316;
+            --moderate: #eab308;
+            --low: #3b82f6;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 800;
+            margin: 0 0 8px 0;
+            letter-spacing: -0.025em;
+        }
+
+        .meta {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid var(--border-color);
+        }
+
+        .card-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .card-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .severity-critical { color: var(--critical); }
+        .severity-high { color: var(--high); }
+        .severity-moderate { color: var(--moderate); }
+        .severity-low { color: var(--low); }
+
+        .table-container {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background: #f1f5f9;
+            padding: 12px 16px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 16px;
+            vertical-align: top;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.875rem;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-critical { background: #fee2e2; color: #991b1b; }
+        .badge-high { background: #ffedd5; color: #9a3412; }
+        .badge-moderate { background: #fef9c3; color: #854d0e; }
+        .badge-low { background: #dbeafe; color: #1e40af; }
+
+        .pkg-name { font-weight: 600; color: var(--primary); }
+        .advisory-id { font-family: monospace; color: var(--text-muted); }
+        
+        .locations {
+            margin-top: 8px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .remediation {
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        a { color: var(--primary); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
 </head>
 <body>
-  <h1>npm-guardian report</h1>
-  <p class="meta">Host: ${escapeHtml(hostName)}<br>User: ${escapeHtml(userName)}<br>Generated: ${escapeHtml(nowLocal)}</p>
-  <p class="stats">
-    Packages scanned: ${packageCount.toLocaleString()}<br>
-    Vulnerabilities: ${findings.length} (Critical: ${severity.critical}, High: ${severity.high}, Moderate: ${severity.moderate}, Low: ${severity.low})
-  </p>
-  <table>
-    <thead>
-      <tr>
-        <th>Severity</th>
-        <th>Package</th>
-        <th>Advisory</th>
-        <th>Title</th>
-        <th>Found In</th>
-        <th>Fix</th>
-        <th>Reference</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${rows}
-    </tbody>
-  </table>
+    <div class="container">
+        <header>
+            <h1>Security Report</h1>
+            <div class="meta">Generated by <strong>npm-guardian</strong> on ${escapeHtml(generatedAt)}</div>
+        </header>
+
+        <div class="summary-grid">
+            <div class="card">
+                <div class="card-label">Packages Scanned</div>
+                <div class="card-value">${packageCount.toLocaleString()}</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Total Vulnerabilities</div>
+                <div class="card-value">${findings.length}</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Critical</div>
+                <div class="card-value severity-critical">${severity.critical}</div>
+            </div>
+            <div class="card">
+                <div class="card-label">High</div>
+                <div class="card-value severity-high">${severity.high}</div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Severity</th>
+                        <th>Ecosystem</th>
+                        <th>Package</th>
+                        <th>Advisory / Title</th>
+                        <th>Remediation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${findings.map(f => {
+                      const sevClass = f.severity.toLowerCase();
+                      const ref = (f.references && f.references[0]) || `https://osv.dev/vulnerability/${f.advisory_id}`;
+                      let remediation = f.remediation_hint || (f.fixed_version ? `Upgrade to <strong>${escapeHtml(f.fixed_version)}</strong>` : 'Manual review required');
+                      // Simple markdown bolding replacement
+                      remediation = escapeHtml(remediation).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+                      return `
+                    <tr>
+                        <td><span class="badge badge-${sevClass}">${escapeHtml(f.severity)}</span></td>
+                        <td>${escapeHtml(f.ecosystem || 'npm')}</td>
+                        <td>
+                            <div class="pkg-name">${escapeHtml(f.package)}@${escapeHtml(f.version)}</div>
+                            <div class="locations">Found in ${(f.found_in || []).length} locations</div>
+                        </td>
+                        <td>
+                            <div class="advisory-id"><a href="${escapeHtml(ref)}" target="_blank">${escapeHtml(f.advisory_id || 'N/A')}</a></div>
+                            <div style="margin-top: 4px;">${escapeHtml(f.title || '')}</div>
+                        </td>
+                        <td>
+                            <div class="remediation">${remediation}</div>
+                        </td>
+                    </tr>`;
+                    }).join('')}
+                    ${findings.length === 0 ? '<tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--text-muted);">No vulnerabilities found.</td></tr>' : ''}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </body>
 </html>`;
 

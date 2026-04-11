@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const guardian = require('./npm-guardian');
 const { writeTxtReport } = require('./src/report/txt');
+const { writeHtmlReport } = require('./src/report/html');
 const { writeFixScript } = require('./src/report/fix-script');
 const { renderFindingsTable } = require('./src/report/console');
 
@@ -40,13 +41,14 @@ async function testParseArgs() {
   try { guardian.parseArgs(['--severity', 'bad']); } catch (_) { threw = true; }
   assert(threw, 'parseArgs should reject invalid severity');
 
+  const f = guardian.parseArgs(['--export-html', 'report.html']);
+  assert(f.exportHtml === 'report.html', 'parseArgs --export-html failed');
+
   threw = false;
   try { guardian.parseArgs(['--path']); } catch (_) { threw = true; }
   assert(threw, 'parseArgs should reject missing --path value');
 
-  threw = false;
-  try { guardian.parseArgs(['--export-html', 'report.html']); } catch (_) { threw = true; }
-  assert(threw, 'parseArgs should reject --export-html');
+  assert(threw, 'parseArgs should reject missing --path value');
 }
 
 async function testPublicExportsSurface() {
@@ -255,6 +257,30 @@ async function testHtmlReportEscaping() {
     assert(text.includes('<pkg>@1.0.0'), 'TXT report should include package');
     assert(text.includes('Dangerous <script>alert(1)</script>'), 'TXT report should preserve plain text content');
     assert(text.includes('Reference: https://example.com/?a=1&b=2'), 'TXT report should include reference');
+  });
+}
+
+async function testHtmlReportGeneration() {
+  await withTempDir(async (root) => {
+    const out = path.join(root, 'report.html');
+    const findings = [{
+      package: '<pkg>',
+      version: '1.0.0',
+      severity: 'HIGH',
+      advisory_id: 'ADV-1',
+      title: 'Dangerous <script>alert(1)</script>',
+      found_in: [{ project: 'proj&one', dependency_type: 'direct', parent: null }],
+      fix_commands: ['npm install "<pkg>"@latest'],
+      fix_command: 'npm install "<pkg>"@latest',
+      references: ['https://example.com/?a=1&b=2']
+    }];
+    const file = await writeHtmlReport(findings, 1, { exportHtml: out });
+    assert(file === path.resolve(process.cwd(), out), 'writeHtmlReport should return absolute output path');
+    const html = await fsp.readFile(out, 'utf8');
+    assert(html.includes('&lt;pkg&gt;@1.0.0'), 'HTML report should escape package name');
+    assert(html.includes('Dangerous &lt;script&gt;alert(1)&lt;/script&gt;'), 'HTML report should escape title');
+    assert(html.includes('href="https://example.com/?a=1&amp;b=2"'), 'HTML report should escape reference URL');
+    assert(html.includes('badge-high'), 'HTML report should include severity badge class');
   });
 }
 
@@ -472,6 +498,7 @@ async function run() {
     ['txtReportGeneration', testHtmlReportEscaping],
     ['tableNoTruncation', testTableNoTruncation],
     ['fixScriptGeneration', testFixScriptGeneration],
+    ['htmlReportGeneration', testHtmlReportGeneration],
     ['parseEcosystemList', testParseEcosystemList],
     ['parsePomDependencies', testParsePomDependencies],
     ['parsePackagesConfig', testParsePackagesConfig],

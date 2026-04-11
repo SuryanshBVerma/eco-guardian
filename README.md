@@ -22,7 +22,6 @@ No `npm install` required.
 | `--no-cache` | Disable 1-hour local cache |
 | `--fix` | Generate fix script in current directory (npm only) |
 | `--export-txt <file>` | Export findings report to TXT |
-| `--export <file>` | Alias of `--export-txt` |
 | `--help` | Show help |
 | `--version` | Show tool version |
 | `--global` | On Unix, include `/` root scan |

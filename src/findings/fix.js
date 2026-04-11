@@ -18,8 +18,14 @@ function detectProjectOS(projectPath) {
 function pickBestFixedVersion(advisories) {
   for (const advisory of advisories) {
     if (Array.isArray(advisory.fixed_versions) && advisory.fixed_versions.length > 0) {
-      const candidate = advisory.fixed_versions[0];
-      if (candidate && !candidate.includes('||') && !candidate.includes('<') && !candidate.includes('>')) return candidate;
+      // Try to find a concrete version first (no range symbols)
+      for (const version of advisory.fixed_versions) {
+        if (!version) continue;
+        // If it's a comma-separated list, take the first one
+        const parts = version.split(',').map(v => v.trim()).filter(Boolean);
+        const candidate = parts.find(v => !/[<>=|]/.test(v));
+        if (candidate) return candidate;
+      }
     }
   }
   return null;

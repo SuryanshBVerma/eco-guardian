@@ -24,7 +24,7 @@ function printUsage() {
   process.stdout.write('  --no-cache           Disable cache read/write\n');
   process.stdout.write('  --fix                Write fix script to current directory\n');
   process.stdout.write('  --export-txt <file>  Export findings to TXT report\n');
-  process.stdout.write('  --export <file>      Alias of --export-txt\n');
+  process.stdout.write('  --export-html <file> Export findings to HTML report\n');
   process.stdout.write('  --help               Show this help\n');
   process.stdout.write('  --version            Show version\n');
   process.stdout.write('  --global             Include / root scan on Unix\n');
@@ -42,6 +42,7 @@ function parseArgs(argv) {
     noCache: false,
     fix: false,
     exportTxt: null,
+    exportHtml: null,
     help: false,
     version: false,
     global: false,
@@ -77,7 +78,7 @@ function parseArgs(argv) {
     if (token === '--json') { args.json = true; continue; }
     if (token === '--no-cache') { args.noCache = true; continue; }
     if (token === '--fix') { args.fix = true; continue; }
-    if (token === '--export-txt' || token === '--export') {
+    if (token === '--export-txt') {
       const next = argv[i + 1];
       if (!next || next.startsWith('--')) throw new Error(`Missing value for ${token}`);
       args.exportTxt = next;
@@ -85,7 +86,11 @@ function parseArgs(argv) {
       continue;
     }
     if (token === '--export-html') {
-      throw new Error('Unsupported flag: --export-html. Use --export-txt or --export.');
+      const next = argv[i + 1];
+      if (!next || next.startsWith('--')) throw new Error('Missing value for --export-html');
+      args.exportHtml = next;
+      i += 1;
+      continue;
     }
     if (token === '--help') { args.help = true; continue; }
     if (token === '--version') { args.version = true; continue; }
