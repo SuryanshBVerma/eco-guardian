@@ -95,9 +95,9 @@ For instructions on how to automate scans weekly using Windows Task Scheduler or
 | **npm**    | Supported     | `npm ls --all --json`      |
 | **Maven**  | Supported     | `mvn dependency:tree`      |
 | **NuGet**  | Supported     | `dotnet list package`      |
-| **Go**     | Supported     | `go mod graph` + `go list`   |
-| **Python** | Partial       | `python -m pip inspect`      |
-| **VSCode** | N/A           | -                            |
+| **Go**     | Supported     | `go mod graph` + `go list` |
+| **Python** | Partial       | `python -m pip inspect`    |
+| **VSCode** | N/A           | -                          |
 
 When `--graph-resolution` is enabled, eco-guardian attempts to use the native tool to resolve the full transitive graph. If resolution is unsupported, the native tool is missing, or the command fails, eco-guardian falls back to the standard inventory collector for that ecosystem and reports that fallback in the scan output.
 
