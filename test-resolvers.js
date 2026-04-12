@@ -6,6 +6,7 @@ const { resolveMavenPackages } = require('./src/resolve/maven');
 const { resolveNuGetPackages } = require('./src/resolve/nuget');
 const { resolveGoPackages } = require('./src/resolve/go');
 const { resolvePythonPackages } = require('./src/resolve/python');
+const { resolveEcosystemPackages } = require('./src/resolve/index');
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -97,6 +98,24 @@ async function testPythonResolver() {
   assert(map.get('python|requests|2.31.0').resolution_mode === 'installed', 'python mode should be installed');
 }
 
+async function testResolveEcosystemFallback() {
+  // Test 1: unsupported ecosystem
+  const res1 = await resolveEcosystemPackages('vscode', ['/root'], { verbose: false }, {});
+  assert(res1.usedFallback === true, 'vscode should use fallback');
+  assert(res1.mode === 'not_applicable', 'vscode mode check');
+
+  // Test 2: resolver failure
+  require('./src/resolve/shared').execAsync = async () => { throw new Error('tool missing'); };
+  const res2 = await resolveEcosystemPackages('npm', ['/root'], { verbose: false }, {});
+  assert(res2.usedFallback === true, 'failure should signal fallback');
+  assert(res2.packageMap.size === 0, 'packageMap should be empty on failure');
+
+  // Test 3: empty results
+  require('./src/resolve/shared').execAsync = async () => JSON.stringify({ dependencies: {} });
+  const res3 = await resolveEcosystemPackages('npm', ['/root'], { verbose: false }, {});
+  assert(res3.usedFallback === true, 'empty map should signal fallback');
+}
+
 async function run() {
   try {
     process.stdout.write('Running resolver parser tests...\n');
@@ -110,6 +129,8 @@ async function run() {
     process.stdout.write('✓ go resolver\n');
     await testPythonResolver();
     process.stdout.write('✓ python resolver\n');
+    await testResolveEcosystemFallback();
+    process.stdout.write('✓ resolver fallback logic\n');
     process.stdout.write('\nAll resolver tests passed\n');
   } finally {
     shared.execAsync = originalExec;

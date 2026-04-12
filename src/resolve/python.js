@@ -37,7 +37,12 @@ async function resolvePythonPackages(roots, options, state) {
           const existing = packageMap.get(key);
           if (!existing) {
             pkg.paths.push(root);
-            pkg.occurrences.push({ project: path.basename(root), manifest_path: 'installed', dependency_type: 'unknown' });
+            pkg.occurrences.push({
+              project: path.basename(root),
+              manifest_path: 'installed-environment',
+              dependency_type: 'direct',
+              source_tool: 'pip inspect'
+            });
             packageMap.set(key, pkg);
           } else {
             existing.paths.push(root);

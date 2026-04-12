@@ -40,6 +40,12 @@ function generateRemediationHint({ ecosystem, packageName, fixedVersion, foundIn
   const manifestList = Array.from(manifests);
   const scopeStr = manifestList.length > 0 ? ` (in ${manifestList.join(', ')})` : '';
 
+  if (eco === 'python' && manifestList.includes('installed-environment')) {
+    return fixedVersion
+      ? `Upgrade ${packageName} to version ${fixedVersion} in the active Python environment, then refresh the lockfile if this project uses one.`
+      : 'Manual review required in the active Python environment.';
+  }
+
   if (isDirect) {
     if (eco === 'npm') return fixedVersion ? `Upgrade ${packageName} to version ${fixedVersion} in package.json.` : 'Review package alternatives.';
     if (eco === 'maven') return fixedVersion ? `Update ${packageName} to version ${fixedVersion} in pom.xml.` : 'Review dependency usage.';
@@ -58,6 +64,8 @@ function generateRemediationHint({ ecosystem, packageName, fixedVersion, foundIn
 
   return fixedVersion ? `Upgrade to version ${fixedVersion}${scopeStr}.` : `Manual review required${scopeStr}.`;
 }
+
+
 
 module.exports = {
   generateRemediationHint

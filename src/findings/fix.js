@@ -41,7 +41,7 @@ function buildFixCommand({ ecosystem, packageName, fixedVersion, dependencyType,
 
   if (eco === 'maven' || eco === 'pypi' || eco === 'python') {
     if (!fixedVersion) return null;
-    if (eco === 'maven') return `mvn versions:use-latest-releases -Dincludes=${packageName.includes(':') ? packageName : '*:' + packageName}`;
+    if (eco === 'maven') return `mvn versions:use-dep-version -Dincludes=${packageName.includes(':') ? packageName : '*:' + packageName} -DdepVersion=${fixedVersion} -DforceVersion=true`;
     return `pip install --upgrade ${packageName}==${fixedVersion}`;
   }
 

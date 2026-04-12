@@ -13,6 +13,6 @@
   "keywords": ["npm", "maven", "nuget", "vscode", "python", "go", "security", "vulnerability", "audit", "scanner", "cli", "benchmark", "performance"],
   "scripts": {
     "start": "node eco-guardian.js",
-    "test": "node test.js"
+    "test": "node test.js && node test-resolvers.js"
   }
 }

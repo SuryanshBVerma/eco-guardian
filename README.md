@@ -87,7 +87,7 @@ For instructions on how to automate scans weekly using Windows Task Scheduler or
 | **Python** | Partial | `pip inspect` |
 | **VSCode** | N/A | - |
 
-When `--graph-resolution` is enabled, eco-guardian attempts to use the native tool to resolve the full transitive graph. If the tool is missing or the command fails, it gracefully falls back to the standard inventory collector.
+When `--graph-resolution` is enabled, eco-guardian attempts to use the native tool to resolve the full transitive graph. If resolution is unsupported, the native tool is missing, or the command fails, eco-guardian falls back to the standard inventory collector for that ecosystem and reports that fallback in the scan output.
 
 ## How It Works
 

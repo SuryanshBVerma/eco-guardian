@@ -615,6 +615,25 @@ async function testUnresolvedMavenIsNotQueryable() {
   assert(records[0].queryable === false, 'unresolved Maven record should have queryable: false');
 }
 
+async function testMavenFixPinning() {
+  const maven = guardian.buildFixCommand({ ecosystem: 'maven', packageName: 'org.slf4j:slf4j-api', fixedVersion: '1.7.36' });
+  assert(maven.includes('use-dep-version'), 'Maven fix should use use-dep-version');
+  assert(maven.includes('depVersion=1.7.36'), 'Maven fix should include depVersion');
+  assert(maven.includes('forceVersion=true'), 'Maven fix should force version');
+}
+
+async function testPythonRemediationHint() {
+  const { generateRemediationHint } = require('./src/findings/remediation.js');
+  const python = generateRemediationHint({ 
+    ecosystem: 'python', 
+    packageName: 'requests', 
+    fixedVersion: '2.31.0',
+    foundIn: [{ manifest_path: 'installed-environment', dependency_type: 'direct' }]
+  });
+  assert(python.includes('active Python environment'), 'Python remediation should mention active environment');
+  assert(python.includes('refresh the lockfile'), 'Python remediation should mention lockfile refresh');
+}
+
 async function run() {
   const tests = [
     ['publicExportsSurface', testPublicExportsSurface],
@@ -646,7 +665,9 @@ async function run() {
     ['parsePoetryLock', testParsePoetryLock],
     ['parseGoMod', testParseGoMod],
     ['generateRemediationHintPythonGo', testGenerateRemediationHintPythonGo],
-    ['unresolvedMavenIsNotQueryable', testUnresolvedMavenIsNotQueryable]
+    ['unresolvedMavenIsNotQueryable', testUnresolvedMavenIsNotQueryable],
+    ['mavenFixPinning', testMavenFixPinning],
+    ['pythonRemediationHint', testPythonRemediationHint]
   ];
 
   let passed = 0;
