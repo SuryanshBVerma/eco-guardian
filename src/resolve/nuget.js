@@ -29,7 +29,7 @@ async function resolveNuGetPackages (roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await require('./shared').execAsync(
+        const stdout = await execAsync(
           'dotnet list package --include-transitive --format json',
           { cwd: root }
         )

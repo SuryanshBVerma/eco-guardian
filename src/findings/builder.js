@@ -7,7 +7,6 @@ const {
   fixStepsToDisplayCommands
 } = require('./fix')
 const { generateRemediationHint } = require('./remediation')
-const path = require('path')
 
 async function buildFindings (packageMap, vulnerabilityMap, state) {
   const findings = []

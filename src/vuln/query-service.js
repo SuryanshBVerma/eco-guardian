@@ -18,7 +18,6 @@ async function queryVulnerabilities (packageMap, options) {
     (pkg) =>
       pkg.queryable !== false && pkg.version && pkg.version !== 'unresolved'
   )
-  const keys = queryablePackages.map((pkg) => pkg.key)
   const cache = await loadCache(options)
   const results = {}
 

@@ -29,7 +29,7 @@ async function resolveMavenPackages (roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await require('./shared').execAsync(
+        const stdout = await execAsync(
           'mvn dependency:tree -DoutputType=text',
           { cwd: root }
         )

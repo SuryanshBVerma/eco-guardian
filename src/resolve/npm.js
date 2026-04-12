@@ -5,7 +5,7 @@ const path = require('path')
 
 async function resolveNpmPackages (roots, options, state) {
   const { RESOLUTION_CONCURRENCY } = require('../config/constants')
-  const { asyncPool, nowMs, hrSeconds } = require('../shared/async')
+  const { asyncPool } = require('../shared/async')
   const packageMap = new Map()
   const rootsArray = Array.isArray(roots) ? roots : [roots]
   const total = rootsArray.length
@@ -29,8 +29,7 @@ async function resolveNpmPackages (roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await require('./shared')
-          .execAsync('npm ls --all --json', { cwd: root })
+        const stdout = await execAsync('npm ls --all --json', { cwd: root })
           .catch((err) => {
             if (err.stdout && err.stdout.trim().startsWith('{')) { return err.stdout }
             throw err

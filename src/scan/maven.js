@@ -58,7 +58,6 @@ function parsePomDependencies (xmlText, filePath) {
   for (const dep of deps) {
     const g = extractTagText(dep, 'groupId')
     const a = extractTagText(dep, 'artifactId')
-    const scope = extractTagText(dep, 'scope') || 'compile'
 
     if (!g || !a) continue
 

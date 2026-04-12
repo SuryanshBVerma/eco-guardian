@@ -2,8 +2,6 @@
 
 const fsp = require('fs/promises')
 const path = require('path')
-const { PLATFORM } = require('../config/constants')
-const { detectProjectOS } = require('../findings/fix')
 
 function generatePowerShellStep (step) {
   if (step.project === '(global)') return step.command
@@ -42,8 +40,6 @@ async function writeFixScript (findings, options) {
   shLines.push('')
 
   for (const step of steps.values()) {
-    const targetOS = detectProjectOS(step.project)
-
     ps1Lines.push(`Write-Host "Fixing ${step.pkg} in ${step.project}..."`)
     ps1Lines.push(generatePowerShellStep(step))
     ps1Lines.push('')

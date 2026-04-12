@@ -1,7 +1,6 @@
 'use strict'
 
 const fs = require('fs')
-const path = require('path')
 const { PLATFORM } = require('../config/constants')
 
 function detectProjectOS (projectPath) {

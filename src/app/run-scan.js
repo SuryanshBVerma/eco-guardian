@@ -5,8 +5,7 @@ const { nowMs } = require('../shared/async')
 const { log } = require('../cli/output')
 const {
   discoverScanRoots,
-  discoverNodeModules,
-  discoverManifestFiles
+  discoverNodeModules
 } = require('../scan/discovery')
 const { harvestNpmPackages } = require('../scan/harvest')
 const { collectMavenPackages } = require('../scan/maven')
