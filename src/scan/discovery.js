@@ -18,9 +18,13 @@ const {
   toRootPathWindows,
 } = require("../shared/path-utils");
 
+let cachedRgAvailable = null;
+
 async function isRipgrepAvailable() {
+  if (cachedRgAvailable !== null) return cachedRgAvailable;
   const result = await runCommand("rg", ["--version"]);
-  return result.ok;
+  cachedRgAvailable = result.ok;
+  return cachedRgAvailable;
 }
 
 async function discoverViaRipgrep(roots, globs, options = {}) {
@@ -42,7 +46,7 @@ async function discoverViaRipgrep(roots, globs, options = {}) {
       results.push(...paths);
     }
   }
-  return results;
+  return Array.from(new Set(results));
 }
 const { log } = require("../cli/output");
 
