@@ -158,15 +158,15 @@ async function testPythonResolver() {
 }
 
 async function testResolveEcosystemFallback() {
-  // Test 1: unsupported ecosystem
+  // Test 1: unsupported ecosystem (n/a)
   const res1 = await resolveEcosystemPackages(
     "vscode",
     ["/root"],
     { verbose: false },
     {},
   );
-  assert(res1.usedFallback === true, "vscode should use fallback");
-  assert(res1.mode === "not_applicable", "vscode mode check");
+  assert(res1.usedFallback === false, "vscode n/a is not a fallback case");
+  assert(res1.mode === "n/a", "vscode mode should be n/a");
 
   // Test 2: resolver failure
   require("./src/resolve/shared").execAsync = async () => {
@@ -179,6 +179,10 @@ async function testResolveEcosystemFallback() {
     {},
   );
   assert(res2.usedFallback === true, "failure should signal fallback");
+  assert(
+    res2.mode === "inventory-fallback",
+    "mode should be inventory-fallback",
+  );
   assert(res2.packageMap.size === 0, "packageMap should be empty on failure");
 
   // Test 3: empty results
@@ -190,7 +194,11 @@ async function testResolveEcosystemFallback() {
     { verbose: false },
     {},
   );
-  assert(res3.usedFallback === true, "empty map should signal fallback");
+  assert(res3.usedFallback === true, "empty results should signal fallback");
+  assert(
+    res3.mode === "inventory-fallback",
+    "mode should be inventory-fallback",
+  );
 }
 
 async function run() {

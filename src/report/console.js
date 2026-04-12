@@ -4,7 +4,14 @@ const { SEVERITY_ORDER, COLORS } = require("../config/constants");
 const { colorize } = require("../cli/output");
 const { summarizeSeverities } = require("./common");
 
-function printSummary(totalPackages, findings, options, metrics = null) {
+function printSummary(
+  totalPackages,
+  findings,
+  options,
+  metrics = null,
+  resolutionSummary = [],
+  suppressedCount = 0,
+) {
   if (options.json) return;
   const sev = summarizeSeverities(findings);
   const vulnerablePackages = new Set(
@@ -22,8 +29,21 @@ function printSummary(totalPackages, findings, options, metrics = null) {
   );
   process.stdout.write(`Vulnerable pkgs:   ${vulnerablePackages}\n`);
   process.stdout.write(`Clean packages:    ${clean.toLocaleString()}\n`);
-  if (options.graphResolution)
+
+  if (options.graphResolution && resolutionSummary.length > 0) {
+    process.stdout.write("Graph resolution:\n");
+    for (const item of resolutionSummary) {
+      const reason = item.reason ? ` (fallback: ${item.reason})` : "";
+      process.stdout.write(`  - ${item.ecosystem}: ${item.mode}${reason}\n`);
+    }
+  } else if (options.graphResolution) {
     process.stdout.write("Graph resolution: enabled\n");
+  }
+
+  if (suppressedCount > 0) {
+    process.stdout.write(`Suppressed by baseline: ${suppressedCount}\n`);
+  }
+
   if (metrics) {
     process.stdout.write(`Peak RAM:          ${metrics.peakRssMb} MB\n`);
     process.stdout.write(`Avg CPU:           ${metrics.avgCpuPercent}%\n`);
@@ -177,5 +197,6 @@ function printFindingsHuman(findings, options) {
 module.exports = {
   printSummary,
   printFindingsHuman,
+  printFindingsDetailed,
   renderFindingsTable,
 };

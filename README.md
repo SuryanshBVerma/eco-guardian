@@ -18,23 +18,27 @@ node eco-guardian.js
 
 ## Flags
 
-| Flag                   | Description                                                                                                               |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `--path <dir>`         | Scan specific directory (default: home directory)                                                                         |
-| `--ecosystems <list>`  | Comma-separated list of ecosystems to scan. Supported: `npm`, `maven`, `nuget`, `vscode`, `python`, `go` (default: `npm`) |
-| `--global-only`        | Only scan global npm installs                                                                                             |
-| `--severity <level>`   | Minimum severity: `low`, `moderate`, `high`, `critical`                                                                   |
-| `--json`               | Print findings JSON only to stdout                                                                                        |
-| `--no-cache`           | Disable 1-hour local cache                                                                                                |
-| `--fix`                | Generate fix script in current directory (supports `npm`, `maven`, `nuget`, `python`, `go`)                               |
-| `--export-txt <file>`  | Export findings report to TXT                                                                                             |
-| `--export-html <file>` | Export findings report to HTML (includes dependency breadcrumbs)                                                          |
-| `--benchmark`          | Show real-time RAM/CPU usage during scan                                                                                  |
-| `--graph-resolution`   | Advanced mode: resolve dependency graphs using native tools                                                               |
-| `--help`               | Show help                                                                                                                 |
-| `--version`            | Show tool version                                                                                                         |
-| `--global`             | On Unix, include `/` root scan                                                                                            |
-| `--all-drives`         | Full machine scan mode                                                                                                    |
+| Flag                      | Description                                                                                                               |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `--path <dir>`            | Scan specific directory (default: home directory)                                                                         |
+| `--ecosystems <list>`     | Comma-separated list of ecosystems to scan. Supported: `npm`, `maven`, `nuget`, `vscode`, `python`, `go` (default: `npm`) |
+| `--global-only`           | Only scan global npm installs                                                                                             |
+| `--severity <level>`      | Minimum severity: `low`, `moderate`, `high`, `critical`                                                                   |
+| `--json`                  | Print findings JSON only to stdout                                                                                        |
+| `--no-cache`              | Disable 1-hour local cache                                                                                                |
+| `--fix`                   | Generate fix script in current directory (supports `npm`, `maven`, `nuget`, `python`, `go`)                               |
+| `--export-txt <file>`     | Export findings report to TXT                                                                                             |
+| `--export-html <file>`    | Export findings report to HTML (includes dependency breadcrumbs)                                                          |
+| `--export-sarif <file>`   | Export findings report to SARIF 2.1.0 (GitHub compatible)                                                                 |
+| `--baseline <file>`       | Apply baseline/ignore file (default: `.eco-guardian-baseline.json`)                                                       |
+| `--write-baseline <file>` | Write current findings to a baseline file                                                                                 |
+| `--why <package>`         | Explain why a package (or ecosystem) is present and how to fix it                                                         |
+| `--benchmark`             | Show real-time RAM/CPU usage during scan                                                                                  |
+| `--graph-resolution`      | Advanced mode: resolve dependency graphs using native tools                                                               |
+| `--help`                  | Show help                                                                                                                 |
+| `--version`               | Show tool version                                                                                                         |
+| `--global`                | On Unix, include `/` root scan                                                                                            |
+| `--all-drives`            | Full machine scan mode                                                                                                    |
 
 ## Examples
 
@@ -46,6 +50,9 @@ node eco-guardian.js --global-only --json
 node eco-guardian.js --fix
 node eco-guardian.js --path "D:\\Projects\\my-app" --export-txt report.txt
 node eco-guardian.js --graph-resolution --ecosystems maven,npm
+node eco-guardian.js --baseline .eco-guardian-baseline.json
+node eco-guardian.js --why lodash
+node eco-guardian.js --export-sarif results.sarif
 ```
 
 ## Example Output
@@ -54,9 +61,13 @@ node eco-guardian.js --graph-resolution --ecosystems maven,npm
 =======================================================
 eco-guardian scan complete
 Packages scanned:  6,080 unique across selected ecosystems
-Vulnerabilities:   721 advisories found (12 CRITICAL, 37 HIGH, 661 MODERATE)
+Findings:          721 advisories found (12 CRITICAL, 37 HIGH, 661 MODERATE)
 Vulnerable pkgs:   252
 Clean packages:    5,828
+Graph resolution:
+  - npm: graph
+  - maven: inventory-fallback (fallback: mvn not found)
+Suppressed by baseline: 5
 Peak RAM:          193.5 MB
 Avg CPU:           195.1%
 Scan Duration:     65.0s

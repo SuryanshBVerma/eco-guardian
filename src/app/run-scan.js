@@ -14,18 +14,25 @@ const { collectNuGetPackages } = require("../scan/nuget");
 const { collectVSCodeExtensions } = require("../scan/vscode");
 const { collectPythonPackages } = require("../scan/python");
 const { collectGoPackages } = require("../scan/go");
-const { resolveEcosystemPackages } = require("../resolve");
 const { queryVulnerabilities } = require("../vuln/query-service");
 const { buildFindings } = require("../findings/builder");
-const { printSummary, printFindingsHuman } = require("../report/console");
+const {
+  printSummary,
+  printFindingsHuman,
+  printFindingsDetailed,
+} = require("../report/console");
 const { writeFixScript } = require("../report/fix-script");
 const { writeTxtReport } = require("../report/txt");
 const { writeHtmlReport } = require("../report/html");
 const { ResourceMonitor } = require("../shared/monitor");
+const { loadBaseline, applyBaseline, writeBaseline } = require("../baseline");
+const { writeSarifReport } = require("../report/sarif");
+const { DEFAULT_BASELINE_FILE } = require("../config/constants");
 
 async function runScan(options, state = {}) {
   const phaseTimes = {};
   const counters = { found: 0, skippedPermissions: 0 };
+  const resolutionSummary = [];
   const monitor = new ResourceMonitor(options);
   if (options.benchmark) monitor.start();
 
@@ -85,6 +92,11 @@ async function runScan(options, state = {}) {
         options,
         state,
       );
+      resolutionSummary.push({
+        ecosystem: "npm",
+        mode: resolved.mode,
+        reason: resolved.reason,
+      });
       mergePackageMaps(
         packageMap,
         resolved.usedFallback
@@ -106,6 +118,11 @@ async function runScan(options, state = {}) {
         options,
         state,
       );
+      resolutionSummary.push({
+        ecosystem: "maven",
+        mode: resolved.mode,
+        reason: resolved.reason,
+      });
       mergePackageMaps(
         packageMap,
         resolved.usedFallback
@@ -127,6 +144,11 @@ async function runScan(options, state = {}) {
         options,
         state,
       );
+      resolutionSummary.push({
+        ecosystem: "nuget",
+        mode: resolved.mode,
+        reason: resolved.reason,
+      });
       mergePackageMaps(
         packageMap,
         resolved.usedFallback
@@ -154,6 +176,11 @@ async function runScan(options, state = {}) {
         options,
         state,
       );
+      resolutionSummary.push({
+        ecosystem: "python",
+        mode: resolved.mode,
+        reason: resolved.reason,
+      });
       mergePackageMaps(
         packageMap,
         resolved.usedFallback
@@ -175,6 +202,11 @@ async function runScan(options, state = {}) {
         options,
         state,
       );
+      resolutionSummary.push({
+        ecosystem: "go",
+        mode: resolved.mode,
+        reason: resolved.reason,
+      });
       mergePackageMaps(
         packageMap,
         resolved.usedFallback
@@ -200,24 +232,80 @@ async function runScan(options, state = {}) {
   phaseTimes.report = Date.now() - reportStart;
 
   const fixFile = await writeFixScript(findings, options);
-  const txtFile = await writeTxtReport(findings, packageMap.size, options);
-  const htmlFile = await writeHtmlReport(findings, packageMap.size, options);
+
+  const baselineFile = options.baseline || DEFAULT_BASELINE_FILE;
+  const baseline = await loadBaseline(baselineFile, options);
+  const { findings: visibleFindings, suppressedCount } = applyBaseline(
+    findings,
+    baseline,
+  );
+
+  if (options.writeBaseline) {
+    await writeBaseline(findings, options.writeBaseline);
+    log("success", `Baseline written to: ${options.writeBaseline}`, options);
+  }
+
+  const txtFile = await writeTxtReport(
+    visibleFindings,
+    packageMap.size,
+    options,
+    resolutionSummary,
+    suppressedCount,
+  );
+  const htmlFile = await writeHtmlReport(
+    visibleFindings,
+    packageMap.size,
+    options,
+    resolutionSummary,
+    suppressedCount,
+  );
+  const sarifFile = await writeSarifReport(
+    visibleFindings,
+    packageMap.size,
+    options,
+    resolutionSummary,
+    suppressedCount,
+  );
   const metrics = options.benchmark ? monitor.stop() : null;
 
+  const finalFindings = options.why
+    ? visibleFindings.filter(
+        (f) =>
+          f.package.toLowerCase().includes(options.why.toLowerCase()) ||
+          f.ecosystem.toLowerCase() === options.why.toLowerCase(),
+      )
+    : visibleFindings;
+
   if (options.json) {
-    process.stdout.write(`${JSON.stringify(findings, null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify(finalFindings, null, 2)}\n`);
   } else {
-    printSummary(packageMap.size, findings, options, metrics);
-    if (findings.length === 0)
+    printSummary(
+      packageMap.size,
+      finalFindings,
+      options,
+      metrics,
+      resolutionSummary,
+      suppressedCount,
+    );
+    if (finalFindings.length === 0 && !options.why)
       process.stdout.write(
         `[OK] All clear. No known vulnerabilities found in ${packageMap.size.toLocaleString()} packages.\n`,
       );
-    else printFindingsHuman(findings, options);
+    else {
+      if (options.why) {
+        process.stdout.write(`\nWhy report for "${options.why}"\n`);
+        printFindingsDetailed(finalFindings, options);
+      } else {
+        printFindingsHuman(finalFindings, options);
+      }
+    }
 
     if (fixFile) log("success", `Fix script written to: ${fixFile}`, options);
     if (txtFile) log("success", `TXT report written to: ${txtFile}`, options);
     if (htmlFile)
       log("success", `HTML report written to: ${htmlFile}`, options);
+    if (sarifFile)
+      log("success", `SARIF report written to: ${sarifFile}`, options);
     if (counters.skippedPermissions > 0)
       log(
         "info",

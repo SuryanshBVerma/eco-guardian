@@ -19,9 +19,11 @@ async function resolveEcosystemPackages(ecosystem, roots, options, state) {
 
   if (support === "not_applicable") {
     return {
+      ecosystem,
+      support,
+      mode: "n/a",
       packageMap: new Map(),
-      mode: "not_applicable",
-      usedFallback: true,
+      usedFallback: false,
     };
   }
 
@@ -56,7 +58,19 @@ async function resolveEcosystemPackages(ecosystem, roots, options, state) {
     }
 
     const usedFallback = !packageMap || packageMap.size === 0;
-    return { packageMap: packageMap || new Map(), mode: support, usedFallback };
+    const mode = usedFallback
+      ? "inventory-fallback"
+      : support === "partial"
+        ? "graph-partial"
+        : "graph";
+
+    return {
+      ecosystem,
+      support,
+      mode,
+      packageMap: packageMap || new Map(),
+      usedFallback,
+    };
   } catch (error) {
     if (options.verbose)
       log(
@@ -64,7 +78,14 @@ async function resolveEcosystemPackages(ecosystem, roots, options, state) {
         `Graph resolution failed for ${ecosystem}: ${error.message}`,
         options,
       );
-    return { packageMap: new Map(), mode: support, usedFallback: true, error };
+    return {
+      ecosystem,
+      support,
+      mode: "inventory-fallback",
+      packageMap: new Map(),
+      usedFallback: true,
+      reason: error.message,
+    };
   }
 }
 

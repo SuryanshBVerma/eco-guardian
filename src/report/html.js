@@ -6,11 +6,39 @@ const path = require("path");
 const { VERSION } = require("../config/constants");
 const { summarizeSeverities, escapeHtml } = require("./common");
 
-async function writeHtmlReport(findings, packageCount, options) {
+async function writeHtmlReport(
+  findings,
+  packageCount,
+  options,
+  resolutionSummary = [],
+  suppressedCount = 0,
+) {
   if (!options.exportHtml) return null;
   const outFile = path.resolve(process.cwd(), options.exportHtml);
   const severity = summarizeSeverities(findings);
   const generatedAt = new Date().toLocaleString();
+
+  const resolutionHtml =
+    options.graphResolution && resolutionSummary.length > 0
+      ? `
+        <div style="margin-bottom: 40px;">
+            <div class="card-label">Resolution Status</div>
+            <div class="summary-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 0;">
+                ${resolutionSummary
+                  .map(
+                    (item) => `
+                <div class="card" style="padding: 16px;">
+                    <div class="card-label" style="font-size: 0.65rem;">${escapeHtml(item.ecosystem)}</div>
+                    <div class="card-value" style="font-size: 1rem;">${escapeHtml(item.mode)}</div>
+                    ${item.reason ? `<div class="meta" style="font-size: 0.65rem; margin-top: 4px;">Fallback: ${escapeHtml(item.reason)}</div>` : ""}
+                </div>
+                `,
+                  )
+                  .join("")}
+            </div>
+        </div>
+    `
+      : "";
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -241,7 +269,19 @@ async function writeHtmlReport(findings, packageCount, options) {
                 <div class="card-label">High</div>
                 <div class="card-value severity-high">${severity.high}</div>
             </div>
+            ${
+              suppressedCount > 0
+                ? `
+            <div class="card">
+                <div class="card-label">Suppressed</div>
+                <div class="card-value" style="color: var(--text-muted);">${suppressedCount}</div>
+            </div>
+            `
+                : ""
+            }
         </div>
+
+        ${resolutionHtml}
 
         <div class="table-container">
             <table>

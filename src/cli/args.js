@@ -53,6 +53,16 @@ function printUsage() {
     "  --export-html <file> Export findings to HTML report\n",
   );
   process.stdout.write(
+    "  --export-sarif <file> Export findings to SARIF 2.1.0\n",
+  );
+  process.stdout.write("  --baseline <file>    Apply baseline / ignore file\n");
+  process.stdout.write(
+    "  --write-baseline <file> Write current findings to a baseline file\n",
+  );
+  process.stdout.write(
+    "  --why <package>      Explain why a package is present and how to fix it\n",
+  );
+  process.stdout.write(
     "  --benchmark          Show real-time RAM/CPU usage during scan\n",
   );
   process.stdout.write("  --help               Show this help\n");
@@ -76,6 +86,10 @@ function parseArgs(argv) {
     fix: false,
     exportTxt: null,
     exportHtml: null,
+    exportSarif: null,
+    baseline: null,
+    writeBaseline: null,
+    why: null,
     help: false,
     version: false,
     global: false,
@@ -143,6 +157,38 @@ function parseArgs(argv) {
       if (!next || next.startsWith("--"))
         throw new Error("Missing value for --export-html");
       args.exportHtml = next;
+      i += 1;
+      continue;
+    }
+    if (token === "--export-sarif") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--"))
+        throw new Error("Missing value for --export-sarif");
+      args.exportSarif = next;
+      i += 1;
+      continue;
+    }
+    if (token === "--baseline") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--"))
+        throw new Error("Missing value for --baseline");
+      args.baseline = next;
+      i += 1;
+      continue;
+    }
+    if (token === "--write-baseline") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--"))
+        throw new Error("Missing value for --write-baseline");
+      args.writeBaseline = next;
+      i += 1;
+      continue;
+    }
+    if (token === "--why") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--"))
+        throw new Error("Missing value for --why");
+      args.why = next;
       i += 1;
       continue;
     }

@@ -4,7 +4,13 @@ const fsp = require("fs/promises");
 const path = require("path");
 const { summarizeSeverities } = require("./common");
 
-async function writeTxtReport(findings, packageCount, options) {
+async function writeTxtReport(
+  findings,
+  packageCount,
+  options,
+  resolutionSummary = [],
+  suppressedCount = 0,
+) {
   if (!options.exportTxt) return null;
   const outFile = path.resolve(process.cwd(), options.exportTxt);
   const severity = summarizeSeverities(findings);
@@ -17,6 +23,19 @@ async function writeTxtReport(findings, packageCount, options) {
   lines.push(
     `Vulnerabilities: ${findings.length} (Critical: ${severity.critical}, High: ${severity.high}, Moderate: ${severity.moderate}, Low: ${severity.low})`,
   );
+  if (suppressedCount > 0) {
+    lines.push(`Suppressed by baseline: ${suppressedCount}`);
+  }
+
+  if (options.graphResolution && resolutionSummary.length > 0) {
+    lines.push("");
+    lines.push("Resolution Summary");
+    lines.push("------------------");
+    for (const item of resolutionSummary) {
+      const reason = item.reason ? ` (fallback: ${item.reason})` : "";
+      lines.push(`- ${item.ecosystem}: ${item.mode}${reason}`);
+    }
+  }
   lines.push("");
   lines.push("Findings");
   lines.push("--------");
