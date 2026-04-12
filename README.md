@@ -41,6 +41,16 @@ node eco-guardian.js
 | `--global`                | On Unix, include `/` root scan                                                                                            |
 | `--all-drives`            | Full machine scan mode                                                                                                    |
 
+## Discovery Modes
+
+eco-guardian automatically detects the best scanning engine for your system.
+
+| Mode | Engine | Performance | Requirement |
+| :--- | :--- | :--- | :--- |
+| **High-Performance** | `ripgrep` (`rg`) | Ultra | `rg` installed in PATH |
+| **Standard** | `mdfind` / `locate` / `dir` | Fast | None (Native tools) |
+| **Manual** | Node.js Walker | Standard | None (Fallback) |
+
 ## Examples
 
 ```bash
@@ -101,10 +111,17 @@ For instructions on how to automate scans weekly using Windows Task Scheduler or
 
 When `--graph-resolution` is enabled, eco-guardian attempts to use the native tool to resolve the full transitive graph. If resolution is unsupported, the native tool is missing, or the command fails, eco-guardian falls back to the standard inventory collector for that ecosystem and reports that fallback in the scan output.
 
+## Environment Variables
+
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `NPM_GUARDIAN_DISABLE_GLOBAL` | Set to `1` to skip scanning the global `npm` root. Useful for restricted CI/CD environments. | `undefined` |
+
 ## How It Works
 
-1. Discover scan roots (target path, global npm path, optional full-disk roots).
-2. Discover package sources depending on the target ecosystem.
+1. **Detection**: Detects available discovery engines (Ripgrep vs Native Fallbacks).
+2. **Discovery**: Discover scan roots (target path, global npm path, optional full-disk roots).
+3. **Identification**: Identify package sources depending on the target ecosystem.
    - npm: installed packages under discovered `node_modules`
    - Maven/NuGet: direct dependencies declared in supported manifests
    - Python: pinned dependencies from `requirements.txt`, `Pipfile.lock`, and `poetry.lock`
@@ -119,7 +136,7 @@ When `--graph-resolution` is enabled, eco-guardian attempts to use the native to
 
 - Python `requirements.txt` scanning currently reads exact `name==version` pins.
 - Go scanning currently reads `go.mod` `require` entries.
-- Automated fix scripts support `npm`, `maven`, `nuget`, `python`, and `go`.
+- Automated fix scripts support `npm`, `maven`, `nuget`, `python`, and `go` via generated `.sh` and `.ps1` files.
 
 ## Privacy
 
@@ -137,7 +154,7 @@ Eco-guardian has a comprehensive test suite that validates parsers, resolvers, a
 npm test
 ```
 
-This runs `test.js`, `test-resolvers.js`, and `test-coverage.js`.
+This runs `test.js`, `test-resolvers.js`, `test-coverage.js`, and `test-ripgrep.js`.
 
 ### Coverage
 
@@ -147,7 +164,7 @@ We use `c8` to ensure high branch coverage across the scanner logic.
 npm run coverage
 ```
 
-To enforce coverage thresholds (65% lines/functions, 55% branches):
+To enforce coverage thresholds (65% lines/functions/statements, 55% branches):
 
 ```bash
 npm run coverage:check
