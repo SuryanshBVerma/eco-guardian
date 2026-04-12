@@ -34,6 +34,7 @@ node eco-guardian.js
 | `--write-baseline <file>` | Write current findings to a baseline file                                                                                 |
 | `--why <package>`         | Explain why a package (or ecosystem) is present and how to fix it                                                         |
 | `--benchmark`             | Show real-time RAM/CPU usage during scan                                                                                  |
+| `--verbose`               | Show full advisory details for every finding on the console                                                               |
 | `--graph-resolution`      | Advanced mode: resolve dependency graphs using native tools                                                               |
 | `--help`                  | Show help                                                                                                                 |
 | `--version`               | Show tool version                                                                                                         |
@@ -94,9 +95,9 @@ For instructions on how to automate scans weekly using Windows Task Scheduler or
 | **npm**    | Supported     | `npm ls --all --json`      |
 | **Maven**  | Supported     | `mvn dependency:tree`      |
 | **NuGet**  | Supported     | `dotnet list package`      |
-| **Go**     | Supported     | `go mod graph` + `go list` |
-| **Python** | Partial       | `pip inspect`              |
-| **VSCode** | N/A           | -                          |
+| **Go**     | Supported     | `go mod graph` + `go list`   |
+| **Python** | Partial       | `python -m pip inspect`      |
+| **VSCode** | N/A           | -                            |
 
 When `--graph-resolution` is enabled, eco-guardian attempts to use the native tool to resolve the full transitive graph. If resolution is unsupported, the native tool is missing, or the command fails, eco-guardian falls back to the standard inventory collector for that ecosystem and reports that fallback in the scan output.
 
@@ -126,8 +127,38 @@ When `--graph-resolution` is enabled, eco-guardian attempts to use the native to
 - Never sent: file paths, source code, credentials, file contents.
 - File paths stay local and are used only for local reporting.
 
+## Development and Testing
+
+Eco-guardian has a comprehensive test suite that validates parsers, resolvers, and reporting logic.
+
+### Run Tests
+
+```bash
+npm test
+```
+
+This runs `test.js`, `test-resolvers.js`, and `test-coverage.js`.
+
+### Coverage
+
+We use `c8` to ensure high branch coverage across the scanner logic.
+
+```bash
+npm run coverage
+```
+
+To enforce coverage thresholds (65% lines/functions, 55% branches):
+
+```bash
+npm run coverage:check
+```
+
 ## Exit Codes
 
 - `0`: clean scan
 - `1`: vulnerabilities found
 - `2`: scan error (network/tooling/permissions preventing scan)
+
+## License
+
+MIT
