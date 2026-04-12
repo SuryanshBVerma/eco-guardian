@@ -46,7 +46,9 @@ async function main(argv = process.argv.slice(2)) {
       process.stdout.write("\nIn the shadow of the dependency tree,\n");
       process.stdout.write("A silent watcher waits for thee.\n");
       process.stdout.write("The roots are deep, the paths are wide,\n");
-      process.stdout.write("But where does the ancient vulnerability hide?\n\n");
+      process.stdout.write(
+        "But where does the ancient vulnerability hide?\n\n",
+      );
       process.exit(0);
     }
   }

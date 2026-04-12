@@ -52,7 +52,11 @@ function printSummary(
 
   if (findings.length === 0 && totalPackages > 500) {
     const { log } = require("../cli/output");
-    log("vigil", "Your forest is vast, yet strangely silent. I suspect a trap.", options);
+    log(
+      "vigil",
+      "Your forest is vast, yet strangely silent. I suspect a trap.",
+      options,
+    );
   }
 
   process.stdout.write(`${line}\n`);

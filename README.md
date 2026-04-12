@@ -45,11 +45,11 @@ node eco-guardian.js
 
 eco-guardian automatically detects the best scanning engine for your system.
 
-| Mode | Engine | Performance | Requirement |
-| :--- | :--- | :--- | :--- |
-| **High-Performance** | `ripgrep` (`rg`) | Ultra | `rg` installed in PATH |
-| **Standard** | `mdfind` / `locate` / `dir` | Fast | None (Native tools) |
-| **Manual** | Node.js Walker | Standard | None (Fallback) |
+| Mode                 | Engine                      | Performance | Requirement            |
+| :------------------- | :-------------------------- | :---------- | :--------------------- |
+| **High-Performance** | `ripgrep` (`rg`)            | Ultra       | `rg` installed in PATH |
+| **Standard**         | `mdfind` / `locate` / `dir` | Fast        | None (Native tools)    |
+| **Manual**           | Node.js Walker              | Standard    | None (Fallback)        |
 
 ## Examples
 
@@ -113,8 +113,8 @@ When `--graph-resolution` is enabled, eco-guardian attempts to use the native to
 
 ## Environment Variables
 
-| Variable | Description | Default |
-| :--- | :--- | :--- |
+| Variable                      | Description                                                                                  | Default     |
+| :---------------------------- | :------------------------------------------------------------------------------------------- | :---------- |
 | `NPM_GUARDIAN_DISABLE_GLOBAL` | Set to `1` to skip scanning the global `npm` root. Useful for restricted CI/CD environments. | `undefined` |
 
 ## How It Works
@@ -127,9 +127,9 @@ When `--graph-resolution` is enabled, eco-guardian attempts to use the native to
    - Python: pinned dependencies from `requirements.txt`, `Pipfile.lock`, and `poetry.lock`
    - Go: dependencies declared in `go.mod` `require` entries
    - VSCode: installed extensions from the VSCode extensions directory or the explicit `--path`
-3. Harvest unique packages and version pairs across the ecosystems.
-4. Query OSV and npm advisories (only package identifiers leave your machine).
-5. Build findings with local path/project mapping and remediation guidance.
+4. Harvest unique packages and version pairs across the ecosystems.
+5. Query OSV and npm advisories (only package identifiers leave your machine).
+6. Build findings with local path/project mapping and remediation guidance.
    Automated fix scripts are generated for all supported ecosystems except VSCode extensions.
 
 ## Current parser scope

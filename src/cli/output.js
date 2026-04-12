@@ -1,10 +1,7 @@
 "use strict";
 
 const { COLORS, LEVEL_META } = require("../config/constants");
-
-function colorize(color, text) {
-  return `${color}${text}${COLORS.reset}`;
-}
+const { colorize } = require("./output-utils");
 
 function printBanner(options) {
   if (options.json) return;
@@ -29,12 +26,20 @@ function printBanner(options) {
 
 function log(level, message, options) {
   if (options && options.json) return;
+  const musing = require("./musing");
+  if (musing.isActive) {
+    musing.clear();
+  }
   const meta = LEVEL_META[level] || LEVEL_META.info;
   process.stderr.write(`${colorize(meta.color, meta.icon)} ${message}\n`);
+  if (musing.isActive) {
+    musing.draw();
+  }
 }
 
 module.exports = {
   colorize,
   printBanner,
   log,
+  musing: require("./musing"),
 };

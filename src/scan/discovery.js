@@ -219,11 +219,14 @@ async function walkForNodeModules(roots, counters) {
 
 async function discoverNodeModules(roots, options, counters) {
   const started = nowMs();
-  const timer = setInterval(() => {
-    process.stderr.write(
-      `\r Searching for node_modules... ${counters.found} found`,
-    );
-  }, 120);
+  const musing = require("../cli/output").musing || { isActive: false };
+  const timer = !musing.isActive
+    ? setInterval(() => {
+        process.stderr.write(
+          `\r Searching for node_modules... ${counters.found} found`,
+        );
+      }, 120)
+    : null;
 
   try {
     if (await isRipgrepAvailable()) {
@@ -286,11 +289,14 @@ async function discoverManifestFiles(
 ) {
   const started = nowMs();
   const found = [];
-  const timer = setInterval(() => {
-    process.stderr.write(
-      `\r Searching for ${label}... ${counters.found} found`,
-    );
-  }, 120);
+  const musing = require("../cli/output").musing || { isActive: false };
+  const timer = !musing.isActive
+    ? setInterval(() => {
+        process.stderr.write(
+          `\r Searching for ${label}... ${counters.found} found`,
+        );
+      }, 120)
+    : null;
 
   const queue = roots.map((r) => path.resolve(r));
   let index = 0;

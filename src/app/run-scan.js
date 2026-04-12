@@ -29,6 +29,7 @@ const { loadBaseline, applyBaseline, writeBaseline } = require("../baseline");
 const { writeSarifReport } = require("../report/sarif");
 const { resolveEcosystemPackages } = require("../resolve");
 const { DEFAULT_BASELINE_FILE } = require("../config/constants");
+const musing = require("../cli/musing");
 
 async function runScan(options, state = {}) {
   const phaseTimes = {};
@@ -36,6 +37,7 @@ async function runScan(options, state = {}) {
   const resolutionSummary = [];
   const monitor = new ResourceMonitor(options);
   if (options.benchmark) monitor.start();
+  if (!options.json) musing.start();
 
   if (!options.json) {
     const rgActive = await isRipgrepAvailable();
@@ -75,7 +77,7 @@ async function runScan(options, state = {}) {
       path.resolve(root) === path.resolve(rootsInfo.globalRoot)
         ? " (global)"
         : "";
-    if (!options.json) process.stderr.write(`  -> ${root}${label}\n`);
+    if (!options.json) log("info", `  -> ${root}${label}`, options);
   }
   if (state.globalRootUnavailable) {
     log(
@@ -307,6 +309,7 @@ async function runScan(options, state = {}) {
   if (options.json) {
     process.stdout.write(`${JSON.stringify(finalFindings, null, 2)}\n`);
   } else {
+    musing.stop();
     printSummary(
       packageMap.size,
       finalFindings,
