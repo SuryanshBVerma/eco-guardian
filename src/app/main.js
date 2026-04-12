@@ -41,6 +41,22 @@ async function main(argv = process.argv.slice(2)) {
     return;
   }
 
+  if (options.seek) {
+    if (options.seek === "01001000") {
+      process.stdout.write("\nIn the shadow of the dependency tree,\n");
+      process.stdout.write("A silent watcher waits for thee.\n");
+      process.stdout.write("The roots are deep, the paths are wide,\n");
+      process.stdout.write("But where does the ancient vulnerability hide?\n\n");
+      process.exit(0);
+    }
+  }
+
+  if (options.echo) {
+    await new Promise((r) => setTimeout(r, 3000));
+    process.stdout.write(`...${options.echo}?\n`);
+    process.exit(0);
+  }
+
   printBanner(options);
 
   try {

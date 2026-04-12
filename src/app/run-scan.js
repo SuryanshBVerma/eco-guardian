@@ -44,6 +44,23 @@ async function runScan(options, state = {}) {
       `Discovery Mode: ${rgActive ? "Ripgrep (High Performance)" : "Standard (Native Fallback)"}`,
       options,
     );
+
+    if (
+      path.resolve(options.path) === path.resolve(__dirname, "../../") ||
+      path.resolve(options.path) === path.resolve(process.cwd())
+    ) {
+      if (
+        require("../../package.json").name === "@npm-guardian/eco-guardian" ||
+        require("../../package.json").name === "npm-guardian" ||
+        require("../../package.json").name === "eco-guardian"
+      ) {
+        log(
+          "info",
+          "I have gazed into my own soul. It is clean... for now.",
+          options,
+        );
+      }
+    }
   }
 
   const rootsStart = nowMs();

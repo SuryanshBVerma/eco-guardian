@@ -49,6 +49,12 @@ function printSummary(
     process.stdout.write(`Avg CPU:           ${metrics.avgCpuPercent}%\n`);
     process.stdout.write(`Scan Duration:     ${metrics.durationS}s\n`);
   }
+
+  if (findings.length === 0 && totalPackages > 500) {
+    const { log } = require("../cli/output");
+    log("vigil", "Your forest is vast, yet strangely silent. I suspect a trap.", options);
+  }
+
   process.stdout.write(`${line}\n`);
 }
 

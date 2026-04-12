@@ -97,6 +97,9 @@ function parseArgs(argv) {
     allDrives: false,
     verbose: false,
     benchmark: false,
+    seek: null,
+    echo: null,
+    graphResolution: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -229,6 +232,24 @@ function parseArgs(argv) {
     }
     if (token === "--graph-resolution") {
       args.graphResolution = true;
+      continue;
+    }
+    if (token === "--seek") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) {
+        throw new Error("Missing value for --seek");
+      }
+      args.seek = next;
+      i += 1;
+      continue;
+    }
+    if (token === "--echo") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) {
+        throw new Error("Missing value for --echo");
+      }
+      args.echo = next;
+      i += 1;
       continue;
     }
     throw new Error(`Unknown argument: ${token}`);

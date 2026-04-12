@@ -61,6 +61,7 @@ const LEVEL_META = {
   warn: { icon: "[WARN]", color: COLORS.yellow },
   error: { icon: "[ERR]", color: COLORS.red },
   info: { icon: "[INFO]", color: COLORS.gray },
+  vigil: { icon: "[VIGIL]", color: COLORS.cyan },
 };
 
 const DISCOVERY_CONCURRENCY = 50;
