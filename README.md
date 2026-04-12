@@ -26,9 +26,9 @@ node eco-guardian.js
 | `--severity <level>` | Minimum severity: `low`, `moderate`, `high`, `critical` |
 | `--json` | Print findings JSON only to stdout |
 | `--no-cache` | Disable 1-hour local cache |
-| `--fix` | Generate fix script in current directory (npm only) |
+| `--fix` | Generate fix script in current directory (supports `npm`, `maven`, `nuget`, `python`, `go`) |
 | `--export-txt <file>` | Export findings report to TXT |
-| `--export-html <file>` | Export findings report to HTML |
+| `--export-html <file>` | Export findings report to HTML (includes dependency breadcrumbs) |
 | `--benchmark` | Show real-time RAM/CPU usage during scan |
 | `--graph-resolution` | Advanced mode: resolve dependency graphs using native tools |
 | `--help` | Show help |
@@ -101,13 +101,13 @@ When `--graph-resolution` is enabled, eco-guardian attempts to use the native to
 3. Harvest unique packages and version pairs across the ecosystems.
 4. Query OSV and npm advisories (only package identifiers leave your machine).
 5. Build findings with local path/project mapping and remediation guidance.
-   Automated fix scripts are npm-only in the current version.
+   Automated fix scripts are generated for all supported ecosystems except VSCode extensions.
 
 ## Current parser scope
 
 - Python `requirements.txt` scanning currently reads exact `name==version` pins.
 - Go scanning currently reads `go.mod` `require` entries.
-- Automated fix scripts are npm-only in the current version.
+- Automated fix scripts support `npm`, `maven`, `nuget`, `python`, and `go`.
 
 ## Privacy
 

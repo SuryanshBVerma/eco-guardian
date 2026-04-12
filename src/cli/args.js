@@ -23,7 +23,7 @@ function printUsage() {
   process.stdout.write('  --severity <level>   Minimum: low|moderate|high|critical (default: low)\n');
   process.stdout.write('  --json               Output only JSON findings to stdout\n');
   process.stdout.write('  --no-cache           Disable cache read/write\n');
-  process.stdout.write('  --fix                Write fix script to current directory\n');
+  process.stdout.write('  --fix                Write fix script for npm, maven, nuget, python, and go\n');
   process.stdout.write('  --export-txt <file>  Export findings to TXT report\n');
   process.stdout.write('  --export-html <file> Export findings to HTML report\n');
   process.stdout.write('  --benchmark          Show real-time RAM/CPU usage during scan\n');
