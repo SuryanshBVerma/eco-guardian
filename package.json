@@ -46,6 +46,12 @@
       "html"
     ]
   },
+  "standard": {
+    "ignore": [
+      "test-*",
+      "**/test-*"
+    ]
+  },
   "devDependencies": {
     "c8": "^11.0.0"
   }
