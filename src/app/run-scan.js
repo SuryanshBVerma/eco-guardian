@@ -27,6 +27,7 @@ const { writeHtmlReport } = require("../report/html");
 const { ResourceMonitor } = require("../shared/monitor");
 const { loadBaseline, applyBaseline, writeBaseline } = require("../baseline");
 const { writeSarifReport } = require("../report/sarif");
+const { resolveEcosystemPackages } = require("../resolve");
 const { DEFAULT_BASELINE_FILE } = require("../config/constants");
 
 async function runScan(options, state = {}) {
