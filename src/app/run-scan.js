@@ -3,7 +3,11 @@
 const path = require("path");
 const { nowMs } = require("../shared/async");
 const { log } = require("../cli/output");
-const { discoverScanRoots, discoverNodeModules } = require("../scan/discovery");
+const {
+  discoverScanRoots,
+  discoverNodeModules,
+  isRipgrepAvailable,
+} = require("../scan/discovery");
 const { harvestNpmPackages } = require("../scan/harvest");
 const { collectMavenPackages } = require("../scan/maven");
 const { collectNuGetPackages } = require("../scan/nuget");
@@ -32,6 +36,15 @@ async function runScan(options, state = {}) {
   const resolutionSummary = [];
   const monitor = new ResourceMonitor(options);
   if (options.benchmark) monitor.start();
+
+  if (!options.json) {
+    const rgActive = await isRipgrepAvailable();
+    log(
+      "info",
+      `Discovery Mode: ${rgActive ? "Ripgrep (High Performance)" : "Standard (Native Fallback)"}`,
+      options,
+    );
+  }
 
   const rootsStart = nowMs();
   const rootsInfo = await discoverScanRoots(options, state);

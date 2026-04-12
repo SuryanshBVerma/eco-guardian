@@ -17,6 +17,33 @@ const {
   dedupePaths,
   toRootPathWindows,
 } = require("../shared/path-utils");
+
+async function isRipgrepAvailable() {
+  const result = await runCommand("rg", ["--version"]);
+  return result.ok;
+}
+
+async function discoverViaRipgrep(roots, globs, options = {}) {
+  const args = ["--files", "--null"];
+  for (const g of globs) args.push("-g", g);
+  if (options.noIgnore) args.push("--no-ignore");
+  if (options.hidden) args.push("--hidden");
+
+  const results = [];
+  for (const root of roots) {
+    const result = await runCommand("rg", [...args, root], {
+      timeoutMs: 60000,
+    });
+    if (result.ok && result.stdout) {
+      const paths = result.stdout
+        .split("\0")
+        .filter(Boolean)
+        .map((p) => (path.isAbsolute(p) ? p : path.join(root, p)));
+      results.push(...paths);
+    }
+  }
+  return results;
+}
 const { log } = require("../cli/output");
 
 async function discoverWindowsDrives() {
@@ -195,6 +222,28 @@ async function discoverNodeModules(roots, options, counters) {
   }, 120);
 
   try {
+    if (await isRipgrepAvailable()) {
+      const rgResults = await discoverViaRipgrep(
+        roots,
+        ["**/node_modules/package.json"],
+        { noIgnore: true, hidden: true },
+      );
+      if (rgResults.length > 0) {
+        const foundPaths = rgResults.map((p) => path.dirname(p));
+        const all = filterNestedNodeModules(foundPaths);
+        if (all.length > 0) {
+          counters.found = all.length;
+          process.stderr.write("\r");
+          log(
+            "success",
+            `Found ${all.length} node_modules directories via ripgrep in ${hrSeconds(started)}s`,
+            options,
+          );
+          return all;
+        }
+      }
+    }
+
     const nativePerRoot = await asyncPool(
       Math.min(API_CONCURRENCY, Math.max(1, roots.length)),
       roots,
@@ -243,6 +292,26 @@ async function discoverManifestFiles(
   let index = 0;
 
   try {
+    if (await isRipgrepAvailable()) {
+      const patterns = Array.from(filenameSet);
+      patterns.push("*.csproj", "*.vbproj", "*.fsproj");
+      const globs = patterns.map((p) => `**/${p}`);
+
+      const rgResults = await discoverViaRipgrep(roots, globs);
+      if (rgResults.length > 0) {
+        const foundDirs = rgResults.map((p) => path.dirname(p));
+        const deduped = Array.from(new Set(foundDirs));
+        counters.found = rgResults.length;
+        process.stderr.write("\r");
+        log(
+          "success",
+          `Found ${deduped.length} directories containing ${label} via ripgrep in ${hrSeconds(started)}s`,
+          options,
+        );
+        return deduped;
+      }
+    }
+
     async function worker() {
       while (true) {
         const current = queue[index];
@@ -310,6 +379,7 @@ async function discoverManifestFiles(
 }
 
 module.exports = {
+  isRipgrepAvailable,
   discoverScanRoots,
   discoverNodeModules,
   discoverManifestFiles,
