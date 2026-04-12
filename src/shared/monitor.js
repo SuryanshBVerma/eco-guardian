@@ -1,7 +1,7 @@
-'use strict';
+"use strict";
 
-const { colorize } = require('../cli/output');
-const { COLORS } = require('../config/constants');
+const { colorize } = require("../cli/output");
+const { COLORS } = require("../config/constants");
 
 class ResourceMonitor {
   constructor(options = {}) {
@@ -17,7 +17,7 @@ class ResourceMonitor {
 
   start() {
     if (this.options.json || !process.stderr.isTTY) return;
-    
+
     this.interval = setInterval(() => {
       this.sample();
     }, 500);
@@ -45,7 +45,9 @@ class ResourceMonitor {
     if (!this.options.json && process.stderr.isTTY) {
       const ramMb = (rss / 1024 / 1024).toFixed(1);
       const cpuFmt = cpuPercent.toFixed(1);
-      process.stderr.write(`\r${colorize(COLORS.gray, '[MONITOR]')} RAM: ${ramMb} MB | CPU: ${cpuFmt}%   `);
+      process.stderr.write(
+        `\r${colorize(COLORS.gray, "[MONITOR]")} RAM: ${ramMb} MB | CPU: ${cpuFmt}%   `,
+      );
     }
   }
 
@@ -55,14 +57,17 @@ class ResourceMonitor {
       this.interval = null;
       // Clear the monitor line
       if (!this.options.json && process.stderr.isTTY) {
-        process.stderr.write('\r' + ' '.repeat(50) + '\r');
+        process.stderr.write("\r" + " ".repeat(50) + "\r");
       }
     }
 
     return {
       peakRssMb: (this.peakRss / 1024 / 1024).toFixed(1),
-      avgCpuPercent: this.samples > 0 ? (this.totalCpuPercent / this.samples).toFixed(1) : '0.0',
-      durationS: ((Date.now() - this.startTime) / 1000).toFixed(1)
+      avgCpuPercent:
+        this.samples > 0
+          ? (this.totalCpuPercent / this.samples).toFixed(1)
+          : "0.0",
+      durationS: ((Date.now() - this.startTime) / 1000).toFixed(1),
     };
   }
 }

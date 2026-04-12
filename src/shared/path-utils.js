@@ -1,7 +1,7 @@
-'use strict';
+"use strict";
 
-const path = require('path');
-const { PLATFORM } = require('../config/constants');
+const path = require("path");
+const { PLATFORM } = require("../config/constants");
 
 function filterNestedNodeModules(paths) {
   const seen = new Set();
@@ -9,10 +9,14 @@ function filterNestedNodeModules(paths) {
   for (const p of paths) {
     if (!p) continue;
     const resolved = path.resolve(p);
-    const parts = resolved.replace(/\\+/g, '/').split('/').filter(Boolean).map((s) => s.toLowerCase());
-    if (parts[parts.length - 1] !== 'node_modules') continue;
-    if (parts.slice(0, -1).includes('node_modules')) continue;
-    const key = PLATFORM === 'win32' ? resolved.toLowerCase() : resolved;
+    const parts = resolved
+      .replace(/\\+/g, "/")
+      .split("/")
+      .filter(Boolean)
+      .map((s) => s.toLowerCase());
+    if (parts[parts.length - 1] !== "node_modules") continue;
+    if (parts.slice(0, -1).includes("node_modules")) continue;
+    const key = PLATFORM === "win32" ? resolved.toLowerCase() : resolved;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(resolved);
@@ -26,7 +30,7 @@ function dedupePaths(paths) {
   for (const p of paths) {
     if (!p) continue;
     const resolved = path.resolve(p);
-    const key = PLATFORM === 'win32' ? resolved.toLowerCase() : resolved;
+    const key = PLATFORM === "win32" ? resolved.toLowerCase() : resolved;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(resolved);
@@ -35,7 +39,7 @@ function dedupePaths(paths) {
 }
 
 function toRootPathWindows(drive) {
-  const d = (drive || '').trim();
+  const d = (drive || "").trim();
   if (!/^[A-Za-z]:$/.test(d)) return null;
   return `${d}\\`;
 }
@@ -43,5 +47,5 @@ function toRootPathWindows(drive) {
 module.exports = {
   filterNestedNodeModules,
   dedupePaths,
-  toRootPathWindows
+  toRootPathWindows,
 };

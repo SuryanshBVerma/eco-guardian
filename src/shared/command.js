@@ -1,7 +1,7 @@
-'use strict';
+"use strict";
 
-const { execFile } = require('child_process');
-const { promisify } = require('util');
+const { execFile } = require("child_process");
+const { promisify } = require("util");
 
 const execFileAsync = promisify(execFile);
 
@@ -11,14 +11,19 @@ async function runCommand(file, args, options = {}) {
       timeout: options.timeoutMs || 15000,
       maxBuffer: 10 * 1024 * 1024,
       cwd: options.cwd || process.cwd(),
-      windowsHide: true
+      windowsHide: true,
     });
-    return { ok: true, stdout: stdout || '', stderr: stderr || '' };
+    return { ok: true, stdout: stdout || "", stderr: stderr || "" };
   } catch (error) {
-    return { ok: false, stdout: error.stdout || '', stderr: error.stderr || '', error };
+    return {
+      ok: false,
+      stdout: error.stdout || "",
+      stderr: error.stderr || "",
+      error,
+    };
   }
 }
 
 module.exports = {
-  runCommand
+  runCommand,
 };

@@ -1,27 +1,27 @@
-'use strict';
+"use strict";
 
-const { SEVERITY_ORDER } = require('../config/constants');
+const { SEVERITY_ORDER } = require("../config/constants");
 
 function normalizeSeverity(input) {
-  if (!input) return 'MODERATE';
+  if (!input) return "MODERATE";
   const lower = String(input).toLowerCase();
-  if (lower.includes('critical')) return 'CRITICAL';
-  if (lower.includes('high')) return 'HIGH';
-  if (lower.includes('moderate') || lower.includes('medium')) return 'MODERATE';
-  if (lower.includes('low')) return 'LOW';
-  return 'MODERATE';
+  if (lower.includes("critical")) return "CRITICAL";
+  if (lower.includes("high")) return "HIGH";
+  if (lower.includes("moderate") || lower.includes("medium")) return "MODERATE";
+  if (lower.includes("low")) return "LOW";
+  return "MODERATE";
 }
 
 function severityAllowed(severity, threshold) {
-  const sev = String(severity || 'LOW').toLowerCase();
-  const limit = String(threshold || 'low').toLowerCase();
+  const sev = String(severity || "LOW").toLowerCase();
+  const limit = String(threshold || "low").toLowerCase();
   return (SEVERITY_ORDER[sev] || 1) >= (SEVERITY_ORDER[limit] || 1);
 }
 
 function findOsvCvss(raw) {
   if (!raw || !Array.isArray(raw.severity)) return null;
   for (const s of raw.severity) {
-    if (!s || typeof s.score !== 'string') continue;
+    if (!s || typeof s.score !== "string") continue;
     const match = s.score.match(/([0-9]+\.?[0-9]*)$/);
     if (match) return Number(match[1]);
   }
@@ -40,10 +40,10 @@ function eventsToRange(affected) {
         if (ev.introduced) clauses.push(`>=${ev.introduced}`);
         if (ev.fixed) clauses.push(`<${ev.fixed}`);
       }
-      if (clauses.length > 0) parts.push(clauses.join(', '));
+      if (clauses.length > 0) parts.push(clauses.join(", "));
     }
   }
-  return parts.length > 0 ? parts.join(' OR ') : null;
+  return parts.length > 0 ? parts.join(" OR ") : null;
 }
 
 function extractOsvFixed(affected) {
@@ -61,37 +61,49 @@ function extractOsvFixed(affected) {
 
 function normalizeOsvAdvisory(raw) {
   const aliases = Array.isArray(raw.aliases) ? raw.aliases.slice() : [];
-  const cve = aliases.find((a) => typeof a === 'string' && a.toUpperCase().startsWith('CVE-')) || null;
+  const cve =
+    aliases.find(
+      (a) => typeof a === "string" && a.toUpperCase().startsWith("CVE-"),
+    ) || null;
   return {
-    id: raw.id || cve || 'OSV-UNKNOWN',
+    id: raw.id || cve || "OSV-UNKNOWN",
     aliases,
-    severity: normalizeSeverity(raw.database_specific && raw.database_specific.severity ? raw.database_specific.severity : raw.severity && raw.severity[0] && raw.severity[0].type),
+    severity: normalizeSeverity(
+      raw.database_specific && raw.database_specific.severity
+        ? raw.database_specific.severity
+        : raw.severity && raw.severity[0] && raw.severity[0].type,
+    ),
     cvss_score: findOsvCvss(raw),
-    title: raw.summary || raw.id || 'Vulnerability advisory',
-    description: raw.details || raw.summary || '',
+    title: raw.summary || raw.id || "Vulnerability advisory",
+    description: raw.details || raw.summary || "",
     affected_versions: eventsToRange(raw.affected),
     fixed_versions: extractOsvFixed(raw.affected),
-    references: Array.isArray(raw.references) ? raw.references.map((r) => (r && r.url) || null).filter(Boolean) : [],
-    source: 'osv',
-    cve
+    references: Array.isArray(raw.references)
+      ? raw.references.map((r) => (r && r.url) || null).filter(Boolean)
+      : [],
+    source: "osv",
+    cve,
   };
 }
 
 function normalizeNpmAdvisory(raw) {
   const aliases = Array.isArray(raw.cves) ? raw.cves.slice() : [];
-  const cve = aliases.find((a) => typeof a === 'string' && a.toUpperCase().startsWith('CVE-')) || null;
+  const cve =
+    aliases.find(
+      (a) => typeof a === "string" && a.toUpperCase().startsWith("CVE-"),
+    ) || null;
   return {
-    id: raw.ghsaId || raw.id || cve || 'NPM-UNKNOWN',
+    id: raw.ghsaId || raw.id || cve || "NPM-UNKNOWN",
     aliases,
     severity: normalizeSeverity(raw.severity),
-    cvss_score: typeof raw.cvssScore === 'number' ? raw.cvssScore : null,
-    title: raw.title || raw.ghsaId || 'npm advisory',
-    description: raw.overview || raw.title || '',
+    cvss_score: typeof raw.cvssScore === "number" ? raw.cvssScore : null,
+    title: raw.title || raw.ghsaId || "npm advisory",
+    description: raw.overview || raw.title || "",
     affected_versions: raw.vulnerable_versions || null,
     fixed_versions: raw.patched_versions ? [raw.patched_versions] : [],
     references: raw.url ? [raw.url] : [],
-    source: 'npm',
-    cve
+    source: "npm",
+    cve,
   };
 }
 
@@ -108,12 +120,15 @@ function dedupeAdvisories(advisories) {
 }
 
 function advisoryPasses(advisory, threshold) {
-  return severityAllowed(String(advisory.severity || 'LOW').toLowerCase(), threshold);
+  return severityAllowed(
+    String(advisory.severity || "LOW").toLowerCase(),
+    threshold,
+  );
 }
 
 module.exports = {
   normalizeOsvAdvisory,
   normalizeNpmAdvisory,
   dedupeAdvisories,
-  advisoryPasses
+  advisoryPasses,
 };

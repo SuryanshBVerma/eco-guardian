@@ -7,6 +7,7 @@ This guide provides instructions on how to automate `eco-guardian` scans on Wind
 You can schedule a weekly scan using either the GUI or a single PowerShell command.
 
 ### Option 1: PowerShell (Quickest)
+
 Run PowerShell as Administrator and execute the following command:
 
 ```powershell
@@ -16,6 +17,7 @@ Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "EcoGuardianW
 ```
 
 ### Option 2: Task Scheduler GUI
+
 1. Open Task Scheduler.
 2. Click Create Basic Task in the right-hand panel.
 3. Name it Eco-Guardian Scan.
@@ -31,6 +33,7 @@ Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "EcoGuardianW
 On Unix-based systems, cron is the standard tool for scheduling background tasks.
 
 ### Setup Instructions
+
 1. Open your user terminal.
 2. Open the crontab editor:
    ```bash
@@ -42,13 +45,14 @@ On Unix-based systems, cron is the standard tool for scheduling background tasks
    ```
 
 ### Cron Breakdown:
-| Field | Value | Description |
-|---|---|---|
-| Minute | 0 | Top of the hour |
-| Hour | 21 | 9:00 PM (24-hour format) |
-| Day of Month | * | Every day |
-| Month | * | Every month |
-| Day of Week | 1 | Monday |
+
+| Field        | Value | Description              |
+| ------------ | ----- | ------------------------ |
+| Minute       | 0     | Top of the hour          |
+| Hour         | 21    | 9:00 PM (24-hour format) |
+| Day of Month | \*    | Every day                |
+| Month        | \*    | Every month              |
+| Day of Week  | 1     | Monday                   |
 
 > [!TIP]
 > **Use Absolute Paths**: In scheduled environments, your shell profile (like PATH) might not be fully loaded. Always use the absolute path to npx (run which npx to find it) and the absolute path for the output file.

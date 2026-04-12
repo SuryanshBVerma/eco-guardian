@@ -10,7 +10,21 @@
     "type": "git",
     "url": "https://github.com/boredom1234/eco-guardian"
   },
-  "keywords": ["npm", "maven", "nuget", "vscode", "python", "go", "security", "vulnerability", "audit", "scanner", "cli", "benchmark", "performance"],
+  "keywords": [
+    "npm",
+    "maven",
+    "nuget",
+    "vscode",
+    "python",
+    "go",
+    "security",
+    "vulnerability",
+    "audit",
+    "scanner",
+    "cli",
+    "benchmark",
+    "performance"
+  ],
   "scripts": {
     "start": "node eco-guardian.js",
     "test": "node test.js && node test-resolvers.js"

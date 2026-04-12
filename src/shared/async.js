@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 async function asyncPool(concurrency, items, fn) {
   if (!Array.isArray(items) || items.length === 0) return [];
@@ -15,23 +15,30 @@ async function asyncPool(concurrency, items, fn) {
     }
   }
 
-  await Promise.all(Array.from({ length: Math.min(safe, items.length) }, () => worker()));
+  await Promise.all(
+    Array.from({ length: Math.min(safe, items.length) }, () => worker()),
+  );
   return out;
 }
 
 function chunkArray(items, size) {
   if (!Array.isArray(items) || items.length === 0) return [];
   const out = [];
-  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  for (let i = 0; i < items.length; i += size)
+    out.push(items.slice(i, i + size));
   return out;
 }
 
-function nowMs() { return Date.now(); }
-function hrSeconds(ms) { return ((Date.now() - ms) / 1000).toFixed(1); }
+function nowMs() {
+  return Date.now();
+}
+function hrSeconds(ms) {
+  return ((Date.now() - ms) / 1000).toFixed(1);
+}
 
 module.exports = {
   asyncPool,
   chunkArray,
   nowMs,
-  hrSeconds
+  hrSeconds,
 };

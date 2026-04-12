@@ -1,21 +1,21 @@
-'use strict';
+"use strict";
 
-const fsp = require('fs/promises');
-const path = require('path');
-const os = require('os');
-const { PACKAGE_READ_CONCURRENCY } = require('../config/constants');
-const { asyncPool } = require('../shared/async');
-const { log } = require('../cli/output');
+const fsp = require("fs/promises");
+const path = require("path");
+const os = require("os");
+const { PACKAGE_READ_CONCURRENCY } = require("../config/constants");
+const { asyncPool } = require("../shared/async");
+const { log } = require("../cli/output");
 
 /**
  * Returns the default VSCode extensions directory for the current platform.
  */
 function getDefaultVSCodeExtensionsDir() {
   const home = os.homedir();
-  if (process.platform === 'win32') {
-    return path.join(home, '.vscode', 'extensions');
+  if (process.platform === "win32") {
+    return path.join(home, ".vscode", "extensions");
   }
-  return path.join(home, '.vscode', 'extensions');
+  return path.join(home, ".vscode", "extensions");
 }
 
 /**
@@ -32,7 +32,7 @@ async function collectVSCodeExtensions(roots, options, state) {
   const packageMap = new Map();
   const extensionsDirs = [];
 
-  // If path was explicitly provided, we look there. 
+  // If path was explicitly provided, we look there.
   // Otherwise we look in the default VSCode extensions directory.
   if (options.pathExplicit) {
     extensionsDirs.push(path.resolve(options.path));
@@ -47,22 +47,32 @@ async function collectVSCodeExtensions(roots, options, state) {
     try {
       entries = await fsp.readdir(extensionsDir, { withFileTypes: true });
     } catch (error) {
-      if (options.verbose) log('info', `Could not read extensions directory: ${extensionsDir}`, options);
+      if (options.verbose)
+        log(
+          "info",
+          `Could not read extensions directory: ${extensionsDir}`,
+          options,
+        );
       continue;
     }
 
     const candidateDirs = entries
-      .filter(d => d.isDirectory())
-      .map(d => path.join(extensionsDir, d.name));
+      .filter((d) => d.isDirectory())
+      .map((d) => path.join(extensionsDir, d.name));
 
     await asyncPool(PACKAGE_READ_CONCURRENCY, candidateDirs, async (dir) => {
-      const pkgPath = path.join(dir, 'package.json');
+      const pkgPath = path.join(dir, "package.json");
       try {
-        const content = await fsp.readFile(pkgPath, 'utf8');
+        const content = await fsp.readFile(pkgPath, "utf8");
         const manifest = JSON.parse(content);
 
         // VSCode extensions must have name, version, and engines.vscode
-        if (manifest.name && manifest.version && manifest.engines && manifest.engines.vscode) {
+        if (
+          manifest.name &&
+          manifest.version &&
+          manifest.engines &&
+          manifest.engines.vscode
+        ) {
           const name = getOSVPackageName(manifest);
           const version = manifest.version;
           const key = `VSCode|${name}|${version}`;
@@ -70,19 +80,19 @@ async function collectVSCodeExtensions(roots, options, state) {
           if (!packageMap.has(key)) {
             packageMap.set(key, {
               key,
-              ecosystem: 'VSCode',
+              ecosystem: "VSCode",
               name,
               version,
-              osvEcosystem: 'VSCode',
+              osvEcosystem: "VSCode",
               paths: [dir],
               occurrences: [
                 {
                   project: extensionsDir,
                   manifest_path: pkgPath,
-                  dependency_type: 'direct',
-                  raw_source: 'package.json'
-                }
-              ]
+                  dependency_type: "direct",
+                  raw_source: "package.json",
+                },
+              ],
             });
             totalFound++;
           } else {
@@ -91,8 +101,8 @@ async function collectVSCodeExtensions(roots, options, state) {
             record.occurrences.push({
               project: extensionsDir,
               manifest_path: pkgPath,
-              dependency_type: 'direct',
-              raw_source: 'package.json'
+              dependency_type: "direct",
+              raw_source: "package.json",
             });
           }
         }
@@ -102,10 +112,14 @@ async function collectVSCodeExtensions(roots, options, state) {
     });
   }
 
-  log('info', `Harvested ${totalFound.toLocaleString()} VSCode extensions`, options);
+  log(
+    "info",
+    `Harvested ${totalFound.toLocaleString()} VSCode extensions`,
+    options,
+  );
   return packageMap;
 }
 
 module.exports = {
-  collectVSCodeExtensions
+  collectVSCodeExtensions,
 };

@@ -8,7 +8,9 @@ function colorize(color, text) {
 
 function printBanner(options) {
   if (options.json) return;
-  const lines = ["01000101 01100011 01101111 00100000 01000111 01110101 01100001 01110010 01100100 01101001 01100001 01101110"];
+  const lines = [
+    "01000101 01100011 01101111 00100000 01000111 01110101 01100001 01110010 01100100 01101001 01100001 01101110",
+  ];
   process.stderr.write(`${colorize(COLORS.cyan, lines.join("\n"))}\n`);
 }
 

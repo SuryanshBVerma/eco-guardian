@@ -18,23 +18,23 @@ node eco-guardian.js
 
 ## Flags
 
-| Flag | Description |
-|---|---|
-| `--path <dir>` | Scan specific directory (default: home directory) |
-| `--ecosystems <list>` | Comma-separated list of ecosystems to scan. Supported: `npm`, `maven`, `nuget`, `vscode`, `python`, `go` (default: `npm`) |
-| `--global-only` | Only scan global npm installs |
-| `--severity <level>` | Minimum severity: `low`, `moderate`, `high`, `critical` |
-| `--json` | Print findings JSON only to stdout |
-| `--no-cache` | Disable 1-hour local cache |
-| `--fix` | Generate fix script in current directory (supports `npm`, `maven`, `nuget`, `python`, `go`) |
-| `--export-txt <file>` | Export findings report to TXT |
-| `--export-html <file>` | Export findings report to HTML (includes dependency breadcrumbs) |
-| `--benchmark` | Show real-time RAM/CPU usage during scan |
-| `--graph-resolution` | Advanced mode: resolve dependency graphs using native tools |
-| `--help` | Show help |
-| `--version` | Show tool version |
-| `--global` | On Unix, include `/` root scan |
-| `--all-drives` | Full machine scan mode |
+| Flag                   | Description                                                                                                               |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `--path <dir>`         | Scan specific directory (default: home directory)                                                                         |
+| `--ecosystems <list>`  | Comma-separated list of ecosystems to scan. Supported: `npm`, `maven`, `nuget`, `vscode`, `python`, `go` (default: `npm`) |
+| `--global-only`        | Only scan global npm installs                                                                                             |
+| `--severity <level>`   | Minimum severity: `low`, `moderate`, `high`, `critical`                                                                   |
+| `--json`               | Print findings JSON only to stdout                                                                                        |
+| `--no-cache`           | Disable 1-hour local cache                                                                                                |
+| `--fix`                | Generate fix script in current directory (supports `npm`, `maven`, `nuget`, `python`, `go`)                               |
+| `--export-txt <file>`  | Export findings report to TXT                                                                                             |
+| `--export-html <file>` | Export findings report to HTML (includes dependency breadcrumbs)                                                          |
+| `--benchmark`          | Show real-time RAM/CPU usage during scan                                                                                  |
+| `--graph-resolution`   | Advanced mode: resolve dependency graphs using native tools                                                               |
+| `--help`               | Show help                                                                                                                 |
+| `--version`            | Show tool version                                                                                                         |
+| `--global`             | On Unix, include `/` root scan                                                                                            |
+| `--all-drives`         | Full machine scan mode                                                                                                    |
 
 ## Examples
 
@@ -78,14 +78,14 @@ For instructions on how to automate scans weekly using Windows Task Scheduler or
 
 ## Graph Resolution Support
 
-| Ecosystem | Support Level | Native Tool Trigger |
-|---|---|---|
-| **npm** | Supported | `npm ls --all --json` |
-| **Maven** | Supported | `mvn dependency:tree` |
-| **NuGet** | Supported | `dotnet list package` |
-| **Go** | Supported | `go mod graph` + `go list` |
-| **Python** | Partial | `pip inspect` |
-| **VSCode** | N/A | - |
+| Ecosystem  | Support Level | Native Tool Trigger        |
+| ---------- | ------------- | -------------------------- |
+| **npm**    | Supported     | `npm ls --all --json`      |
+| **Maven**  | Supported     | `mvn dependency:tree`      |
+| **NuGet**  | Supported     | `dotnet list package`      |
+| **Go**     | Supported     | `go mod graph` + `go list` |
+| **Python** | Partial       | `pip inspect`              |
+| **VSCode** | N/A           | -                          |
 
 When `--graph-resolution` is enabled, eco-guardian attempts to use the native tool to resolve the full transitive graph. If resolution is unsupported, the native tool is missing, or the command fails, eco-guardian falls back to the standard inventory collector for that ecosystem and reports that fallback in the scan output.
 
