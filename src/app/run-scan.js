@@ -10,6 +10,7 @@ const { collectNuGetPackages } = require('../scan/nuget');
 const { collectVSCodeExtensions } = require('../scan/vscode');
 const { collectPythonPackages } = require('../scan/python');
 const { collectGoPackages } = require('../scan/go');
+const { resolveEcosystemPackages } = require('../resolve');
 const { queryVulnerabilities } = require('../vuln/query-service');
 const { buildFindings } = require('../findings/builder');
 const { printSummary, printFindingsHuman } = require('../report/console');
@@ -60,22 +61,32 @@ async function runScan(options, state = {}) {
   const harvestStart = nowMs();
   const packageMap = new Map();
   if (options.ecosystems.includes('npm')) {
-    mergePackageMaps(packageMap, await harvestNpmPackages(nodeModulesDirs, options, state));
+    mergePackageMaps(packageMap, options.graphResolution
+      ? await resolveEcosystemPackages('npm', nodeModulesDirs.length > 0 ? nodeModulesDirs.map(d => path.dirname(d)) : rootsInfo.roots, options, state)
+      : await harvestNpmPackages(nodeModulesDirs, options, state));
   }
   if (options.ecosystems.includes('maven')) {
-    mergePackageMaps(packageMap, await collectMavenPackages(rootsInfo.roots, options, state));
+    mergePackageMaps(packageMap, options.graphResolution
+      ? await resolveEcosystemPackages('maven', rootsInfo.roots, options, state)
+      : await collectMavenPackages(rootsInfo.roots, options, state));
   }
   if (options.ecosystems.includes('nuget')) {
-    mergePackageMaps(packageMap, await collectNuGetPackages(rootsInfo.roots, options, state));
+    mergePackageMaps(packageMap, options.graphResolution
+      ? await resolveEcosystemPackages('nuget', rootsInfo.roots, options, state)
+      : await collectNuGetPackages(rootsInfo.roots, options, state));
   }
   if (options.ecosystems.includes('vscode')) {
     mergePackageMaps(packageMap, await collectVSCodeExtensions(rootsInfo.roots, options, state));
   }
   if (options.ecosystems.includes('python')) {
-    mergePackageMaps(packageMap, await collectPythonPackages(rootsInfo.roots, options, state));
+    mergePackageMaps(packageMap, options.graphResolution
+      ? await resolveEcosystemPackages('python', rootsInfo.roots, options, state)
+      : await collectPythonPackages(rootsInfo.roots, options, state));
   }
   if (options.ecosystems.includes('go')) {
-    mergePackageMaps(packageMap, await collectGoPackages(rootsInfo.roots, options, state));
+    mergePackageMaps(packageMap, options.graphResolution
+      ? await resolveEcosystemPackages('go', rootsInfo.roots, options, state)
+      : await collectGoPackages(rootsInfo.roots, options, state));
   }
   state.packageMap = packageMap;
   phaseTimes.harvest = Date.now() - harvestStart;

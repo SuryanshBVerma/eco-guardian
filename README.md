@@ -30,6 +30,7 @@ node eco-guardian.js
 | `--export-txt <file>` | Export findings report to TXT |
 | `--export-html <file>` | Export findings report to HTML |
 | `--benchmark` | Show real-time RAM/CPU usage during scan |
+| `--graph-resolution` | Advanced mode: resolve dependency graphs using native tools |
 | `--help` | Show help |
 | `--version` | Show tool version |
 | `--global` | On Unix, include `/` root scan |
@@ -44,6 +45,7 @@ node eco-guardian.js --ecosystems npm,maven,nuget,vscode,python,go
 node eco-guardian.js --global-only --json
 node eco-guardian.js --fix
 node eco-guardian.js --path "D:\\Projects\\my-app" --export-txt report.txt
+node eco-guardian.js --graph-resolution --ecosystems maven,npm
 ```
 
 ## Example Output
@@ -73,6 +75,19 @@ echo $?   # 0 clean, 1 vulnerabilities found, 2 scan error
 ## Automation and Scheduling
 
 For instructions on how to automate scans weekly using Windows Task Scheduler or cron (macOS/Linux), see the [Scheduler Guide](SCHEDULER_GUIDE.md).
+
+## Graph Resolution Support
+
+| Ecosystem | Support Level | Native Tool Trigger |
+|---|---|---|
+| **npm** | Supported | `npm ls --all --json` |
+| **Maven** | Supported | `mvn dependency:tree` |
+| **NuGet** | Supported | `dotnet list package` |
+| **Go** | Supported | `go mod graph` + `go list` |
+| **Python** | Partial | `pip inspect` |
+| **VSCode** | N/A | - |
+
+When `--graph-resolution` is enabled, eco-guardian attempts to use the native tool to resolve the full transitive graph. If the tool is missing or the command fails, it gracefully falls back to the standard inventory collector.
 
 ## How It Works
 

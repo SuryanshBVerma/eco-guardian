@@ -26,6 +26,8 @@ async function writeTxtReport(findings, packageCount, options) {
     for (const entry of finding.found_in || []) {
       lines.push(`      -> ${entry.manifest_path || entry.project} (${entry.dependency_type || 'dependency'})`);
     }
+    if (finding.resolved_path) lines.push(`   Path: ${finding.resolved_path.join(' -> ')}`);
+    if (finding.resolution_mode && finding.resolution_mode !== 'inventory') lines.push(`   Resolution: ${finding.resolution_mode}`);
     if (finding.fixed_version) lines.push(`   Fixed version: ${finding.fixed_version}`);
     if (Array.isArray(finding.fix_commands) && finding.fix_commands.length > 0) {
       lines.push('   Fix commands:');

@@ -16,6 +16,7 @@ function printSummary(totalPackages, findings, options, metrics = null) {
   process.stdout.write(`Findings:          ${findings.length} advisories found (${sev.critical} CRITICAL, ${sev.high} HIGH, ${sev.moderate} MODERATE)\n`);
   process.stdout.write(`Vulnerable pkgs:   ${vulnerablePackages}\n`);
   process.stdout.write(`Clean packages:    ${clean.toLocaleString()}\n`);
+  if (options.graphResolution) process.stdout.write('Graph resolution: enabled\n');
   if (metrics) {
     process.stdout.write(`Peak RAM:          ${metrics.peakRssMb} MB\n`);
     process.stdout.write(`Avg CPU:           ${metrics.avgCpuPercent}%\n`);
@@ -121,6 +122,8 @@ function printFindingsDetailed(findings, options) {
       const via = entry.parent && entry.parent.name ? ` via ${entry.parent.name}${entry.parent.version ? `@${entry.parent.version}` : ''}` : '';
       process.stdout.write(`|   -> ${entry.manifest_path || entry.project} (${entry.dependency_type} dependency${via})\n`);
     }
+    if (finding.resolved_path) process.stdout.write(`|- Path: ${finding.resolved_path.join(' -> ')}\n`);
+    if (finding.resolution_mode && finding.resolution_mode !== 'inventory') process.stdout.write(`|- Resolution: ${finding.resolution_mode}\n`);
     if (Array.isArray(finding.fix_commands) && finding.fix_commands.length > 0) {
       process.stdout.write('|- Fix commands:\n');
       for (const cmd of finding.fix_commands) process.stdout.write(`|   -> ${cmd}\n`);

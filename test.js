@@ -272,7 +272,12 @@ async function testHtmlReportGeneration() {
       fix_command: 'npm install "<pkg>"@latest',
       references: ['https://example.com/?a=1&b=2']
     }];
-    const file = await writeHtmlReport(findings, 1, { exportHtml: out });
+    const file = await writeHtmlReport(findings, 1, { 
+      exportHtml: out,
+      path: root,
+      ecosystems: ['npm'],
+      severity: 'low'
+    });
     assert(file === path.resolve(process.cwd(), out), 'writeHtmlReport should return absolute output path');
     const html = await fsp.readFile(out, 'utf8');
     assert(html.includes('&lt;pkg&gt;@1.0.0'), 'HTML report should escape package name');
@@ -471,8 +476,8 @@ async function testBuildFixCommandEcosystems() {
   const vscode = guardian.buildFixCommand({ ecosystem: 'VSCode', packageName: 'test', fixedVersion: '1' });
   const npm = guardian.buildFixCommand({ ecosystem: 'npm', packageName: 'test', fixedVersion: '1', dependencyType: 'direct' });
   
-  assert(maven === null, 'Maven fix command should be null');
-  assert(nuget === null, 'NuGet fix command should be null');
+  assert(maven !== null, 'Maven fix command should be generated');
+  assert(nuget !== null, 'NuGet fix command should be generated');
   assert(vscode === null, 'VSCode fix command should be null');
   assert(npm !== null, 'npm fix command should be generated');
 }
@@ -590,17 +595,17 @@ async function testGenerateRemediationHintPythonGo() {
     ecosystem: 'python', 
     packageName: 'requests', 
     fixedVersion: '2.31.0',
-    foundIn: [{ manifest_path: '/requirements.txt' }]
+    foundIn: [{ manifest_path: '/requirements.txt', dependency_type: 'direct' }]
   });
-  assert(python.includes('Pin or update requests to version 2.31.0 in requirements.txt'), 'python hint failed');
+  assert(python.includes('Update requests to version 2.31.0'), 'python hint failed');
 
   const go = generateRemediationHint({ 
     ecosystem: 'Go', 
     packageName: 'github.com/gin-gonic/gin', 
     fixedVersion: 'v1.9.1',
-    foundIn: [{ manifest_path: '/go.mod' }]
+    foundIn: [{ manifest_path: '/go.mod', dependency_type: 'transitive', parent: { name: 'top' } }]
   });
-  assert(go.includes("Update github.com/gin-gonic/gin to version v1.9.1 in go.mod, then run 'go mod tidy'"), 'go hint failed');
+  assert(go.includes("Transitive dependency via **top**"), 'go hint failed');
 }
 
 async function testUnresolvedMavenIsNotQueryable() {

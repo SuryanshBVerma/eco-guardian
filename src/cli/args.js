@@ -19,6 +19,7 @@ function printUsage() {
   process.stdout.write('  --path <dir>         Scan specific directory (default: home directory)\n');
   process.stdout.write('  --global-only        Only scan global npm installs\n');
   process.stdout.write('  --ecosystems <list>  Comma-separated ecosystems: npm,maven,nuget,vscode,python,go (default: npm)\n');
+  process.stdout.write('  --graph-resolution   Resolve dependency graphs using ecosystem-specific native tools\n');
   process.stdout.write('  --severity <level>   Minimum: low|moderate|high|critical (default: low)\n');
   process.stdout.write('  --json               Output only JSON findings to stdout\n');
   process.stdout.write('  --no-cache           Disable cache read/write\n');
@@ -38,6 +39,7 @@ function parseArgs(argv) {
     pathExplicit: false,
     globalOnly: false,
     ecosystems: ['npm'],
+    graphResolution: false,
     severity: 'low',
     json: false,
     noCache: false,
@@ -100,6 +102,7 @@ function parseArgs(argv) {
     if (token === '--all-drives') { args.allDrives = true; continue; }
     if (token === '--verbose') { args.verbose = true; continue; }
     if (token === '--benchmark') { args.benchmark = true; continue; }
+    if (token === '--graph-resolution') { args.graphResolution = true; continue; }
     throw new Error(`Unknown argument: ${token}`);
   }
 

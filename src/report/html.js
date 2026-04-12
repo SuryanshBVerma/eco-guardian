@@ -42,7 +42,7 @@ async function writeHtmlReport(findings, packageCount, options) {
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 95%;
             margin: 0 auto;
         }
 
@@ -155,6 +155,57 @@ async function writeHtmlReport(findings, packageCount, options) {
         .remediation {
             margin-top: 4px;
             font-style: italic;
+            color: var(--text-main);
+        }
+
+        .fix-commands-header {
+            margin-top: 16px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+
+        .code-block {
+            background: #1e293b;
+            color: #f1f5f9;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.8rem;
+            margin-top: 8px;
+            white-space: pre-wrap;
+            border: 1px solid #334155;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .path-breadcrumb {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
+            margin-top: 6px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .path-step {
+            background: #f1f5f9;
+            padding: 1px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .path-sep {
+            color: #94a3b8;
+            font-weight: 700;
+        }
+
+        .path-vulnerable {
+            background: #fee2e2;
+            color: #991b1b;
+            border-color: #fecaca;
         }
 
         a { color: var(--primary); text-decoration: none; }
@@ -196,20 +247,28 @@ async function writeHtmlReport(findings, packageCount, options) {
             <table>
                 <thead>
                     <tr>
-                        <th>Severity</th>
-                        <th>Ecosystem</th>
-                        <th>Package</th>
-                        <th>Advisory / Title</th>
-                        <th>Remediation</th>
+                        <th style="width: 100px;">Severity</th>
+                        <th style="width: 100px;">Ecosystem</th>
+                        <th style="width: 250px;">Package</th>
+                        <th>Advisory / Details</th>
+                        <th style="width: 450px;">Resolution</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${findings.map(f => {
                       const sevClass = f.severity.toLowerCase();
                       const ref = (f.references && f.references[0]) || `https://osv.dev/vulnerability/${f.advisory_id}`;
-                      let remediation = f.remediation_hint || (f.fixed_version ? `Upgrade to <strong>${escapeHtml(f.fixed_version)}</strong>` : 'Manual review required');
-                      // Simple markdown bolding replacement
+                      let remediation = f.remediation_hint || (f.fixed_version ? `Upgrade to **${f.fixed_version}**` : 'Manual review required');
                       remediation = escapeHtml(remediation).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+                      const pathBreadcrumb = f.resolved_path && f.resolved_path.length > 0
+                        ? `<div class="path-breadcrumb">
+                            ${f.resolved_path.map((p, i) => `
+                                <span class="path-step ${i === f.resolved_path.length - 1 ? 'path-vulnerable' : ''}">${escapeHtml(p)}</span>
+                                ${i < f.resolved_path.length - 1 ? '<span class="path-sep">/</span>' : ''}
+                            `).join('')}
+                          </div>`
+                        : '';
 
                       return `
                     <tr>
@@ -218,13 +277,18 @@ async function writeHtmlReport(findings, packageCount, options) {
                         <td>
                             <div class="pkg-name">${escapeHtml(f.package)}@${escapeHtml(f.version)}</div>
                             <div class="locations">Found in ${(f.found_in || []).length} locations</div>
+                            ${pathBreadcrumb}
+                            ${f.resolution_mode && f.resolution_mode !== 'inventory' ? `<div class="locations" style="font-size: 0.65rem; opacity: 0.8;">Resolution: ${escapeHtml(f.resolution_mode)}</div>` : ''}
                         </td>
                         <td>
                             <div class="advisory-id"><a href="${escapeHtml(ref)}" target="_blank">${escapeHtml(f.advisory_id || 'N/A')}</a></div>
-                            <div style="margin-top: 4px;">${escapeHtml(f.title || '')}</div>
+                            <div style="margin-top: 4px; font-weight: 500;">${escapeHtml(f.title || '')}</div>
+                            <div class="remediation" style="font-size: 0.8rem; margin-top: 8px;">${remediation}</div>
                         </td>
                         <td>
-                            <div class="remediation">${remediation}</div>
+                            ${f.fix_commands && f.fix_commands.length > 0 ? `
+                                ${f.fix_commands.map(cmd => `<div class="code-block">${escapeHtml(cmd)}</div>`).join('')}
+                            ` : `<div class="remediation" style="font-style: normal; color: var(--text-muted);">Manual resolution required</div>`}
                         </td>
                     </tr>`;
                     }).join('')}

@@ -1,6 +1,6 @@
 'use strict';
 
-const VERSION = '1.1.0';
+const VERSION = '1.6.0';
 const PLATFORM = process.platform;
 const SEVERITY_ORDER = { low: 1, moderate: 2, high: 3, critical: 4 };
 
@@ -12,6 +12,15 @@ const OSV_ECOSYSTEM_MAP = {
   vscode: 'VSCode',
   python: 'PyPI',
   go: 'Go'
+};
+
+const GRAPH_RESOLUTION_SUPPORT = {
+  npm: 'supported',
+  maven: 'supported',
+  nuget: 'supported',
+  go: 'supported',
+  python: 'partial',
+  vscode: 'not_applicable'
 };
 
 const MAVEN_MANIFEST_NAMES = new Set(['pom.xml']);
@@ -40,7 +49,8 @@ const LEVEL_META = {
 
 const DISCOVERY_CONCURRENCY = 50;
 const PACKAGE_READ_CONCURRENCY = 100;
-const API_CONCURRENCY = 5;
+const API_CONCURRENCY = 2; // Lowered to prevent resource exhaustion during heavy graph commands
+const RESOLUTION_CONCURRENCY = 4; // Max parallel native tool calls
 const OSV_BATCH_SIZE = 1000;
 const CACHE_TTL_MS = 60 * 60 * 1000;
 
@@ -62,6 +72,7 @@ module.exports = {
   DISCOVERY_CONCURRENCY,
   PACKAGE_READ_CONCURRENCY,
   API_CONCURRENCY,
+  RESOLUTION_CONCURRENCY,
   OSV_BATCH_SIZE,
   CACHE_TTL_MS,
   WALK_SKIP_NAMES,
@@ -70,5 +81,6 @@ module.exports = {
   MAVEN_MANIFEST_NAMES,
   NUGET_MANIFEST_NAMES,
   PYTHON_MANIFEST_NAMES,
-  GO_MANIFEST_NAMES
+  GO_MANIFEST_NAMES,
+  GRAPH_RESOLUTION_SUPPORT
 };

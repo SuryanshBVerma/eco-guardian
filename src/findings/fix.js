@@ -18,13 +18,12 @@ function detectProjectOS(projectPath) {
 function pickBestFixedVersion(advisories) {
   for (const advisory of advisories) {
     if (Array.isArray(advisory.fixed_versions) && advisory.fixed_versions.length > 0) {
-      // Try to find a concrete version first (no range symbols)
       for (const version of advisory.fixed_versions) {
         if (!version) continue;
-        // If it's a comma-separated list, take the first one
-        const parts = version.split(',').map(v => v.trim()).filter(Boolean);
-        const candidate = parts.find(v => !/[<>=|]/.test(v));
-        if (candidate) return candidate;
+        // Strip ranges like '>=', '<' and take the first part if it's a list
+        const cleaned = version.replace(/^[<>=|\s]+/, '').split(',')[0].trim();
+        // If it still looks like a range (contains symbols), skip it
+        if (cleaned && !/[<>=|]/.test(cleaned)) return cleaned;
       }
     }
   }
@@ -32,10 +31,28 @@ function pickBestFixedVersion(advisories) {
 }
 
 function buildFixCommand({ ecosystem, packageName, fixedVersion, dependencyType, isGlobal, parentPackage }) {
-  if (ecosystem !== 'npm') return null;
-  if (isGlobal) return fixedVersion ? `npm install -g ${packageName}@${fixedVersion}` : `npm uninstall -g ${packageName}`;
-  if (dependencyType === 'direct') return fixedVersion ? `npm install ${packageName}@${fixedVersion}` : `npm uninstall ${packageName}`;
-  if (dependencyType === 'transitive') return parentPackage && parentPackage.name ? `npm install ${parentPackage.name}@latest` : null;
+  const eco = String(ecosystem || '').toLowerCase();
+  
+  if (eco === 'npm') {
+    if (isGlobal) return fixedVersion ? `npm install -g ${packageName}@${fixedVersion}` : `npm uninstall -g ${packageName}`;
+    if (dependencyType === 'direct') return fixedVersion ? `npm install ${packageName}@${fixedVersion}` : `npm uninstall ${packageName}`;
+    if (dependencyType === 'transitive') return parentPackage && parentPackage.name ? `npm install ${parentPackage.name}@latest` : null;
+  }
+
+  if (eco === 'maven' || eco === 'pypi' || eco === 'python') {
+    if (!fixedVersion) return null;
+    if (eco === 'maven') return `mvn versions:use-latest-releases -Dincludes=${packageName.includes(':') ? packageName : '*:' + packageName}`;
+    return `pip install --upgrade ${packageName}==${fixedVersion}`;
+  }
+
+  if (eco === 'nuget') {
+    return fixedVersion ? `dotnet add package ${packageName} --version ${fixedVersion}` : null;
+  }
+
+  if (eco === 'go') {
+    return fixedVersion ? `go get ${packageName}@v${fixedVersion.replace(/^v/, '')}` : null;
+  }
+
   return null;
 }
 

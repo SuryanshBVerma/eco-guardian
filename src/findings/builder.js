@@ -14,7 +14,7 @@ async function buildFindings(packageMap, vulnerabilityMap, state) {
     const pkg = packageMap.get(key);
     if (!pkg) continue;
 
-    const foundIn = pkg.ecosystem === 'npm'
+    const foundIn = (pkg.ecosystem === 'npm' && pkg.resolution_mode !== 'graph')
       ? await enrichNpmLocations(pkg.paths, pkg.name, globalRoot)
       : (pkg.occurrences || []);
 
@@ -42,6 +42,9 @@ async function buildFindings(packageMap, vulnerabilityMap, state) {
         ecosystem: pkg.ecosystem,
         package: pkg.name,
         version: pkg.version,
+        resolution_mode: pkg.resolution_mode || 'inventory',
+        resolved_path: pkg.resolved_path || null,
+        depth: typeof pkg.depth === 'number' ? pkg.depth : null,
         fixed_version: fixedVersion,
         remediation_hint: remediationHint,
         severity: advisory.severity,
