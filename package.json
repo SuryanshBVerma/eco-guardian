@@ -1,6 +1,6 @@
 {
   "name": "eco-guardian",
-  "version": "1.6.0",
+  "version": "1.9.0",
   "description": "Zero-dependency CLI that scans your machine for vulnerable packages across npm, Maven, NuGet, VSCode, Python, and Go",
   "bin": {
     "eco-guardian": "./eco-guardian.js"
