@@ -39,56 +39,56 @@ node eco-guardian.js --fail-on-severity high --max-critical 0 --max-high 5
 
 ## Options
 
-| Flag | Description |
-| --- | --- |
-| `--path <dir>` | Scan only this path. |
-| `--ecosystems <list>` | Comma-separated ecosystems: `npm,maven,nuget,vscode,python,go`. |
-| `--global-only` | Scan only global npm installs. |
-| `--severity <level>` | Minimum severity: `low`, `moderate`, `high`, `critical`. |
-| `--json` | Print findings JSON to stdout. |
-| `--no-cache` | Disable local vulnerability cache. |
-| `--fix` | Generate fix scripts (`eco-guardian-fixes.ps1` and `eco-guardian-fixes.sh`). |
-| `--export-txt <file>` | Write TXT report. |
-| `--export-html <file>` | Write HTML report. |
-| `--export-sarif <file>` | Write SARIF 2.1.0 report. |
-| `--export-json <file>` | Write JSON findings file. |
-| `--export-csv <file>` | Write CSV findings file. |
-| `--baseline <file>` | Apply suppression baseline (default file: `.eco-guardian-baseline.json`). |
-| `--write-baseline <file>` | Write current findings as a baseline file. |
-| `--strict-baseline` | Error when an explicit baseline file is missing or invalid JSON. |
-| `--fail-on-severity <level>` | Policy gate failure if any finding is at or above this level. |
-| `--max-critical <n>` | Policy gate failure if critical findings exceed `n`. |
-| `--max-high <n>` | Policy gate failure if high findings exceed `n`. |
-| `--why <package>` | Show dependency path and remediation context for one package/ecosystem. |
-| `--benchmark` | Show peak RAM, average CPU, and scan duration. |
-| `--verbose` | Print full advisory details in console mode. |
-| `--graph-resolution` | Resolve dependency graphs with native ecosystem tooling. |
-| `--global` | On Unix-like systems, include `/` root scan. |
-| `--all-drives` | Full-machine scan mode. |
-| `--help` | Print help. |
-| `--version` | Print version. |
+| Flag                         | Description                                                                  |
+| ---------------------------- | ---------------------------------------------------------------------------- |
+| `--path <dir>`               | Scan only this path.                                                         |
+| `--ecosystems <list>`        | Comma-separated ecosystems: `npm,maven,nuget,vscode,python,go`.              |
+| `--global-only`              | Scan only global npm installs.                                               |
+| `--severity <level>`         | Minimum severity: `low`, `moderate`, `high`, `critical`.                     |
+| `--json`                     | Print findings JSON to stdout.                                               |
+| `--no-cache`                 | Disable local vulnerability cache.                                           |
+| `--fix`                      | Generate fix scripts (`eco-guardian-fixes.ps1` and `eco-guardian-fixes.sh`). |
+| `--export-txt <file>`        | Write TXT report.                                                            |
+| `--export-html <file>`       | Write HTML report.                                                           |
+| `--export-sarif <file>`      | Write SARIF 2.1.0 report.                                                    |
+| `--export-json <file>`       | Write JSON findings file.                                                    |
+| `--export-csv <file>`        | Write CSV findings file.                                                     |
+| `--baseline <file>`          | Apply suppression baseline (default file: `.eco-guardian-baseline.json`).    |
+| `--write-baseline <file>`    | Write current findings as a baseline file.                                   |
+| `--strict-baseline`          | Error when an explicit baseline file is missing or invalid JSON.             |
+| `--fail-on-severity <level>` | Policy gate failure if any finding is at or above this level.                |
+| `--max-critical <n>`         | Policy gate failure if critical findings exceed `n`.                         |
+| `--max-high <n>`             | Policy gate failure if high findings exceed `n`.                             |
+| `--why <package>`            | Show dependency path and remediation context for one package/ecosystem.      |
+| `--benchmark`                | Show peak RAM, average CPU, and scan duration.                               |
+| `--verbose`                  | Print full advisory details in console mode.                                 |
+| `--graph-resolution`         | Resolve dependency graphs with native ecosystem tooling.                     |
+| `--global`                   | On Unix-like systems, include `/` root scan.                                 |
+| `--all-drives`               | Full-machine scan mode.                                                      |
+| `--help`                     | Print help.                                                                  |
+| `--version`                  | Print version.                                                               |
 
 ## Discovery and Resolution Notes
 
 - Discovery engine priority:
-   1. `rg` (ripgrep) when available
-   2. Native tools (`mdfind` on macOS, `locate` on Linux, `dir` on Windows)
-   3. Recursive Node.js filesystem walker fallback
+  1.  `rg` (ripgrep) when available
+  2.  Native tools (`mdfind` on macOS, `locate` on Linux, `dir` on Windows)
+  3.  Recursive Node.js filesystem walker fallback
 - Default root behavior:
-   - If `--path` is provided, scan that path
-   - If `--global-only` is set, scan only npm global root
-   - Without `--path`, Windows discovers readable drives; Unix-like systems start from home (plus `/` when `--global` or `--all-drives` is set)
+  - If `--path` is provided, scan that path
+  - If `--global-only` is set, scan only npm global root
+  - Without `--path`, Windows discovers readable drives; Unix-like systems start from home (plus `/` when `--global` or `--all-drives` is set)
 
 Graph resolution support matrix:
 
-| Ecosystem | Support |
-| --- | --- |
-| npm | supported |
-| maven | supported |
-| nuget | supported |
-| go | supported |
-| python | partial |
-| vscode | not applicable |
+| Ecosystem | Support        |
+| --------- | -------------- |
+| npm       | supported      |
+| maven     | supported      |
+| nuget     | supported      |
+| go        | supported      |
+| python    | partial        |
+| vscode    | not applicable |
 
 When graph resolution is unavailable or fails for a given ecosystem, scanning falls back to inventory collection for that ecosystem.
 

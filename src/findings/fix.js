@@ -8,7 +8,7 @@ function escapeShellArg(value, targetOS) {
   if (targetOS === "win32") {
     return `'${text.replace(/'/g, "''")}'`;
   }
-  return `'${text.replace(/'/g, `'\\''`)}'`;
+  return `'${text.replace(/'/g, "'\\''")}'`;
 }
 
 function detectProjectOS(projectPath) {
@@ -112,7 +112,7 @@ function buildScopedProjectCommand(project, command) {
   if (!project || project === "(unknown project)") return null;
   const targetOS = detectProjectOS(project);
   const escapedPsPath = String(project).replace(/'/g, "''");
-  const escapedShPath = String(project).replace(/'/g, `'\\''`);
+  const escapedShPath = String(project).replace(/'/g, "'\\''");
   if (targetOS === "win32") {
     return `Set-Location -LiteralPath '${escapedPsPath}'; ${command}`;
   }

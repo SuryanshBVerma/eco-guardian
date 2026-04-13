@@ -59,9 +59,7 @@ function printUsage() {
   process.stdout.write(
     "  --export-json <file>  Export findings to JSON file\n",
   );
-  process.stdout.write(
-    "  --export-csv <file>   Export findings to CSV file\n",
-  );
+  process.stdout.write("  --export-csv <file>   Export findings to CSV file\n");
   process.stdout.write("  --baseline <file>    Apply baseline / ignore file\n");
   process.stdout.write(
     "  --write-baseline <file> Write current findings to a baseline file\n",

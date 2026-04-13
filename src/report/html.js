@@ -12,8 +12,8 @@ async function writeHtmlReport(
   options,
   resolutionSummary = [],
   suppressedCount = 0,
-    policy = null,
-    queryDiagnostics = null,
+  policy = null,
+  queryDiagnostics = null,
 ) {
   if (!options.exportHtml) return null;
   const outFile = path.resolve(process.cwd(), options.exportHtml);

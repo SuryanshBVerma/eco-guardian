@@ -29,14 +29,16 @@ async function resolveNpmPackages(roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await shared.execAsync("npm ls --all --json", {
-          cwd: root,
-        }).catch((err) => {
-          if (err.stdout && err.stdout.trim().startsWith("{")) {
-            return err.stdout;
-          }
-          throw err;
-        });
+        const stdout = await shared
+          .execAsync("npm ls --all --json", {
+            cwd: root,
+          })
+          .catch((err) => {
+            if (err.stdout && err.stdout.trim().startsWith("{")) {
+              return err.stdout;
+            }
+            throw err;
+          });
         let tree;
         try {
           tree = JSON.parse(stdout);

@@ -11,7 +11,7 @@ function generatePowerShellStep(step) {
 
 function generateBashStep(step) {
   if (step.project === "(global)") return step.command;
-  const escaped = String(step.project).replace(/'/g, `'\\''`);
+  const escaped = String(step.project).replace(/'/g, "'\\''");
   return `cd '${escaped}' && ${step.command}`;
 }
 

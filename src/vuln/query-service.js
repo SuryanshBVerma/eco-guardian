@@ -34,19 +34,26 @@ function cmpVersion(a, b) {
 function expandCaret(versionText) {
   const version = parseVersion(versionText);
   if (!version) return null;
-  const upper = version.major > 0
-    ? `${version.major + 1}.0.0`
-    : version.minor > 0
-      ? `0.${version.minor + 1}.0`
-      : `0.0.${version.patch + 1}`;
-  return [{ op: ">=", version }, { op: "<", version: parseVersion(upper) }];
+  const upper =
+    version.major > 0
+      ? `${version.major + 1}.0.0`
+      : version.minor > 0
+        ? `0.${version.minor + 1}.0`
+        : `0.0.${version.patch + 1}`;
+  return [
+    { op: ">=", version },
+    { op: "<", version: parseVersion(upper) },
+  ];
 }
 
 function expandTilde(versionText) {
   const version = parseVersion(versionText);
   if (!version) return null;
   const upper = `${version.major}.${version.minor + 1}.0`;
-  return [{ op: ">=", version }, { op: "<", version: parseVersion(upper) }];
+  return [
+    { op: ">=", version },
+    { op: "<", version: parseVersion(upper) },
+  ];
 }
 
 function matchesComparator(pkgVersion, comparator) {
@@ -73,7 +80,9 @@ function parseComparatorToken(token) {
   const tilde = trimmed.match(/^~v?(\d+(?:\.\d+){0,2})$/);
   if (tilde) return expandTilde(tilde[1]) || [];
 
-  const wildcard = trimmed.match(/^v?(\d+)(?:\.(\d+|x|X|\*))?(?:\.(\d+|x|X|\*))?$/);
+  const wildcard = trimmed.match(
+    /^v?(\d+)(?:\.(\d+|x|X|\*))?(?:\.(\d+|x|X|\*))?$/,
+  );
   if (wildcard && /x|X|\*/.test(trimmed)) {
     const major = Number(wildcard[1]);
     const minorWildcard = !wildcard[2] || /x|X|\*/.test(wildcard[2]);
@@ -139,7 +148,9 @@ function advisoryRangeMatchesVersion(rangeExpr, pkgVersion) {
     }
     if (comparators.length === 0) continue;
 
-    const allMatch = comparators.every((comp) => matchesComparator(pkgVersion, comp));
+    const allMatch = comparators.every((comp) =>
+      matchesComparator(pkgVersion, comp),
+    );
     if (allMatch) return true;
   }
   return false;

@@ -13,9 +13,7 @@ const { writeFixScript } = require("./src/report/fix-script");
 const { renderFindingsTable } = require("./src/report/console");
 const { loadBaseline } = require("./src/baseline");
 const { evaluatePolicy } = require("./src/policy/gates");
-const {
-  advisoryRangeMatchesVersion,
-} = require("./src/vuln/query-service");
+const { advisoryRangeMatchesVersion } = require("./src/vuln/query-service");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -100,10 +98,7 @@ async function testParseArgs() {
   assert(p.exportJson === "report.json", "parseArgs --export-json failed");
   assert(p.exportCsv === "report.csv", "parseArgs --export-csv failed");
   assert(p.strictBaseline === true, "parseArgs --strict-baseline failed");
-  assert(
-    p.failOnSeverity === "high",
-    "parseArgs --fail-on-severity failed",
-  );
+  assert(p.failOnSeverity === "high", "parseArgs --fail-on-severity failed");
   assert(p.maxCritical === 0, "parseArgs --max-critical failed");
   assert(p.maxHigh === 2, "parseArgs --max-high failed");
 }

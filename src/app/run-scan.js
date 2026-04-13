@@ -403,11 +403,12 @@ async function runScan(options, state = {}) {
     );
   }
 
-  const exitCode = policy.enabled && !policy.passed
-    ? POLICY_FAIL_EXIT_CODE
-    : visibleFindings.length > 0
-      ? 1
-      : 0;
+  const exitCode =
+    policy.enabled && !policy.passed
+      ? POLICY_FAIL_EXIT_CODE
+      : visibleFindings.length > 0
+        ? 1
+        : 0;
 
   return {
     findings: visibleFindings,
