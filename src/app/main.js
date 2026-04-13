@@ -63,7 +63,12 @@ async function main(argv = process.argv.slice(2)) {
 
   try {
     const result = await runScan(options, state);
-    process.exitCode = result.findings.length > 0 ? 1 : 0;
+    process.exitCode =
+      typeof result.exitCode === "number"
+        ? result.exitCode
+        : result.findings.length > 0
+          ? 1
+          : 0;
   } catch (error) {
     log("error", error.message || String(error), options || { json: false });
     process.exitCode = 2;

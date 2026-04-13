@@ -5,12 +5,14 @@ const path = require("path");
 
 function generatePowerShellStep(step) {
   if (step.project === "(global)") return step.command;
-  return `Set-Location -LiteralPath "${step.project}"; ${step.command}`;
+  const escaped = String(step.project).replace(/'/g, "''");
+  return `Set-Location -LiteralPath '${escaped}'; ${step.command}`;
 }
 
 function generateBashStep(step) {
   if (step.project === "(global)") return step.command;
-  return `cd "${step.project}" && ${step.command}`;
+  const escaped = String(step.project).replace(/'/g, `'\\''`);
+  return `cd '${escaped}' && ${step.command}`;
 }
 
 async function writeFixScript(findings, options) {
@@ -25,6 +27,13 @@ async function writeFixScript(findings, options) {
       steps.set(key, { project: step.project, command: step.command, pkg });
     }
   }
+  const orderedSteps = Array.from(steps.values()).sort((a, b) => {
+    const pkgCmp = String(a.pkg).localeCompare(String(b.pkg));
+    if (pkgCmp !== 0) return pkgCmp;
+    const projectCmp = String(a.project).localeCompare(String(b.project));
+    if (projectCmp !== 0) return projectCmp;
+    return String(a.command).localeCompare(String(b.command));
+  });
 
   const stamp = new Date().toISOString();
   const ps1Lines = [];
@@ -39,7 +48,7 @@ async function writeFixScript(findings, options) {
   shLines.push("# Review before running. This will modify your node_modules.");
   shLines.push("");
 
-  for (const step of steps.values()) {
+  for (const step of orderedSteps) {
     ps1Lines.push(`Write-Host "Fixing ${step.pkg} in ${step.project}..."`);
     ps1Lines.push(generatePowerShellStep(step));
     ps1Lines.push("");

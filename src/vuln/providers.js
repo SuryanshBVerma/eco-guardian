@@ -5,6 +5,9 @@ const {
   VERSION,
   OSV_BATCH_SIZE,
   API_CONCURRENCY,
+  HTTP_RETRY_MAX,
+  HTTP_RETRY_BASE_MS,
+  HTTP_RETRY_MAX_MS,
 } = require("../config/constants");
 const { chunkArray, asyncPool } = require("../shared/async");
 const { log } = require("../cli/output");
@@ -88,7 +91,48 @@ function httpsGet(url, timeoutMs = 10000) {
   });
 }
 
-async function queryOsvForPackages(packages, options) {
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientError(error) {
+  const text = String((error && error.message) || "").toLowerCase();
+  return (
+    text.includes("timeout") ||
+    text.includes("network error") ||
+    text.includes("http 429") ||
+    text.includes("http 500") ||
+    text.includes("http 502") ||
+    text.includes("http 503") ||
+    text.includes("http 504")
+  );
+}
+
+async function withRetry(fn, diagnostics, metricPrefix) {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (diagnostics) {
+        diagnostics[`${metricPrefix}Errors`] += 1;
+      }
+      if (attempt >= HTTP_RETRY_MAX || !isTransientError(error)) {
+        throw error;
+      }
+      attempt += 1;
+      if (diagnostics) diagnostics.retries += 1;
+      const backoff = Math.min(
+        HTTP_RETRY_MAX_MS,
+        HTTP_RETRY_BASE_MS * Math.pow(2, attempt - 1),
+      );
+      const jitter = Math.floor(Math.random() * 100);
+      await delay(backoff + jitter);
+    }
+  }
+}
+
+async function queryOsvForPackages(packages, options, diagnostics = null) {
   if (packages.length === 0) return {};
   const chunks = chunkArray(packages, OSV_BATCH_SIZE);
   log(
@@ -102,7 +146,11 @@ async function queryOsvForPackages(packages, options) {
       package: { name: pkg.name, ecosystem: pkg.osvEcosystem || pkg.ecosystem },
       version: pkg.version,
     }));
-    return httpsPost("https://api.osv.dev/v1/querybatch", { queries }, 10000);
+    return withRetry(
+      () => httpsPost("https://api.osv.dev/v1/querybatch", { queries }, 10000),
+      diagnostics,
+      "osv",
+    );
   });
 
   const uniqueVids = new Set();
@@ -124,7 +172,11 @@ async function queryOsvForPackages(packages, options) {
   if (uniqueVids.size > 0) {
     await asyncPool(API_CONCURRENCY, Array.from(uniqueVids), async (vid) => {
       try {
-        const details = await httpsGet(`https://api.osv.dev/v1/vulns/${vid}`);
+        const details = await withRetry(
+          () => httpsGet(`https://api.osv.dev/v1/vulns/${vid}`),
+          diagnostics,
+          "osv",
+        );
         fullRecords.set(vid, details);
       } catch (err) {
         log(
@@ -159,13 +211,18 @@ async function queryOsvForPackages(packages, options) {
   return out;
 }
 
-async function queryNpmBulk(body, options) {
+async function queryNpmBulk(body, options, diagnostics = null) {
   if (Object.keys(body).length === 0) return {};
   log("info", "Cross-checking npm advisories...", options);
-  const data = await httpsPost(
-    "https://registry.npmjs.org/-/npm/v1/security/advisories/bulk",
-    body,
-    10000,
+  const data = await withRetry(
+    () =>
+      httpsPost(
+        "https://registry.npmjs.org/-/npm/v1/security/advisories/bulk",
+        body,
+        10000,
+      ),
+    diagnostics,
+    "npm",
   );
   return data && typeof data === "object" ? data : {};
 }

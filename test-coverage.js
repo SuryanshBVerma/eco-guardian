@@ -245,7 +245,7 @@ async function testFindingsBuilderAndFix() {
       ecosystem: "npm",
       isGlobal: true,
       fixedVersion: null,
-    }) === "npm uninstall -g undefined",
+    }) === "npm uninstall -g ''",
     "npm global uninstall",
   );
   assert(
@@ -788,6 +788,88 @@ async function testVulnProviderDetails() {
   }
 }
 
+async function testPolicyExitCodeAndFileExports() {
+  const restore = silence();
+  try {
+    await withTempDir(async (root) => {
+      const nm = path.join(root, "node_modules", "dummy");
+      await fsp.mkdir(nm, { recursive: true });
+      await fsp.writeFile(
+        path.join(nm, "package.json"),
+        JSON.stringify({ name: "dummy", version: "1.0.0" }),
+      );
+
+      const queryServicePath = require.resolve("./src/vuln/query-service");
+      const runScanPath = require.resolve("./src/app/run-scan");
+      const originalQueryModule = require.cache[queryServicePath];
+      const originalRunScanModule = require.cache[runScanPath];
+      try {
+        require.cache[queryServicePath].exports = {
+          ...originalQueryModule.exports,
+          queryVulnerabilities: async (packageMap) => {
+            const result = {};
+            for (const [key, pkg] of packageMap.entries()) {
+              if (pkg.name === "dummy") {
+                result[key] = {
+                  vulnerable: true,
+                  advisories: [
+                    {
+                      id: "TEST-1",
+                      severity: "HIGH",
+                      title: "Test advisory",
+                      cvss_score: 7.5,
+                      fixed_versions: ["1.0.1"],
+                      references: [],
+                    },
+                  ],
+                };
+              }
+            }
+            Object.defineProperty(result, "__diagnostics", {
+              value: {
+                retries: 0,
+                osvErrors: 0,
+                npmErrors: 0,
+                partialProviderFailure: false,
+              },
+              enumerable: false,
+            });
+            return result;
+          },
+        };
+        delete require.cache[runScanPath];
+        const { runScan: mockedRunScan } = require("./src/app/run-scan");
+
+        const result = await mockedRunScan({
+          path: root,
+          pathExplicit: true,
+          ecosystems: ["npm"],
+          noCache: true,
+          json: true,
+          failOnSeverity: "high",
+          exportJson: path.join(root, "out.json"),
+          exportCsv: path.join(root, "out.csv"),
+        });
+
+        assert(result.exitCode === 3, "Policy failure should set exit code 3");
+        assert(
+          fs.existsSync(path.join(root, "out.json")),
+          "JSON export file should exist",
+        );
+        assert(
+          fs.existsSync(path.join(root, "out.csv")),
+          "CSV export file should exist",
+        );
+      } finally {
+        require.cache[queryServicePath] = originalQueryModule;
+        require.cache[runScanPath] = originalRunScanModule;
+      }
+    });
+  } finally {
+    restore();
+  }
+}
+
 async function runAll() {
   console.log("Running additional coverage tests...");
   try {
@@ -831,6 +913,8 @@ async function runAll() {
     console.log("✓ Run-scan orchestration details");
     await testVulnProviderDetails();
     console.log("✓ Vuln provider details");
+    await testPolicyExitCodeAndFileExports();
+    console.log("✓ Policy exit code and file exports");
     console.log("\nAll coverage tests passed");
   } catch (err) {
     console.error("✗ Coverage test failed:", err);

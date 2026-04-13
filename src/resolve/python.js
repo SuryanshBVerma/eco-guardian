@@ -1,6 +1,6 @@
 "use strict";
 
-const { execAsync, createGraphPackage } = require("./shared");
+const shared = require("./shared");
 const path = require("path");
 
 async function resolvePythonPackages(roots, options, state) {
@@ -29,7 +29,9 @@ async function resolvePythonPackages(roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await execAsync("python -m pip inspect", { cwd: root });
+        const stdout = await shared.execAsync("python -m pip inspect", {
+          cwd: root,
+        });
         const data = JSON.parse(stdout);
 
         if (!data.installed) return;
@@ -38,7 +40,7 @@ async function resolvePythonPackages(roots, options, state) {
           const version = dist.metadata.version;
           if (!name || !version) continue;
 
-          const pkg = createGraphPackage(
+          const pkg = shared.createGraphPackage(
             "python",
             name,
             version,

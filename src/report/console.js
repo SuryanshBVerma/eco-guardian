@@ -11,6 +11,8 @@ function printSummary(
   metrics = null,
   resolutionSummary = [],
   suppressedCount = 0,
+  policy = null,
+  queryDiagnostics = null,
 ) {
   if (options.json) return;
   const sev = summarizeSeverities(findings);
@@ -42,6 +44,21 @@ function printSummary(
 
   if (suppressedCount > 0) {
     process.stdout.write(`Suppressed by baseline: ${suppressedCount}\n`);
+  }
+
+  if (policy && policy.enabled) {
+    process.stdout.write(
+      `Policy:            ${policy.passed ? "PASS" : "FAIL"}${policy.violations.length > 0 ? ` (${policy.violations.join(", ")})` : ""}\n`,
+    );
+  }
+
+  if (queryDiagnostics) {
+    process.stdout.write(
+      `Provider retries:  ${queryDiagnostics.retries || 0}\n`,
+    );
+    if (queryDiagnostics.partialProviderFailure) {
+      process.stdout.write("Provider status:   partial failures detected\n");
+    }
   }
 
   if (metrics) {

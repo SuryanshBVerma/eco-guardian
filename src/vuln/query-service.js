@@ -11,6 +11,140 @@ const {
   advisoryPasses,
 } = require("./normalizers");
 
+function parseVersion(version) {
+  const cleaned = String(version || "")
+    .trim()
+    .replace(/^v/i, "")
+    .replace(/[-+].*$/, "");
+  const match = cleaned.match(/^(\d+)(?:\.(\d+))?(?:\.(\d+))?$/);
+  if (!match) return null;
+  return {
+    major: Number(match[1] || 0),
+    minor: Number(match[2] || 0),
+    patch: Number(match[3] || 0),
+  };
+}
+
+function cmpVersion(a, b) {
+  if (a.major !== b.major) return a.major - b.major;
+  if (a.minor !== b.minor) return a.minor - b.minor;
+  return a.patch - b.patch;
+}
+
+function expandCaret(versionText) {
+  const version = parseVersion(versionText);
+  if (!version) return null;
+  const upper = version.major > 0
+    ? `${version.major + 1}.0.0`
+    : version.minor > 0
+      ? `0.${version.minor + 1}.0`
+      : `0.0.${version.patch + 1}`;
+  return [{ op: ">=", version }, { op: "<", version: parseVersion(upper) }];
+}
+
+function expandTilde(versionText) {
+  const version = parseVersion(versionText);
+  if (!version) return null;
+  const upper = `${version.major}.${version.minor + 1}.0`;
+  return [{ op: ">=", version }, { op: "<", version: parseVersion(upper) }];
+}
+
+function matchesComparator(pkgVersion, comparator) {
+  const v = parseVersion(pkgVersion);
+  if (!v) return false;
+  const rhs = comparator.version;
+  if (!rhs) return false;
+  const c = cmpVersion(v, rhs);
+
+  if (comparator.op === "<") return c < 0;
+  if (comparator.op === "<=") return c <= 0;
+  if (comparator.op === ">") return c > 0;
+  if (comparator.op === ">=") return c >= 0;
+  return c === 0;
+}
+
+function parseComparatorToken(token) {
+  const trimmed = String(token || "").trim();
+  if (!trimmed) return [];
+
+  const caret = trimmed.match(/^\^v?(\d+(?:\.\d+){0,2})$/);
+  if (caret) return expandCaret(caret[1]) || [];
+
+  const tilde = trimmed.match(/^~v?(\d+(?:\.\d+){0,2})$/);
+  if (tilde) return expandTilde(tilde[1]) || [];
+
+  const wildcard = trimmed.match(/^v?(\d+)(?:\.(\d+|x|X|\*))?(?:\.(\d+|x|X|\*))?$/);
+  if (wildcard && /x|X|\*/.test(trimmed)) {
+    const major = Number(wildcard[1]);
+    const minorWildcard = !wildcard[2] || /x|X|\*/.test(wildcard[2]);
+    const patchWildcard = !wildcard[3] || /x|X|\*/.test(wildcard[3]);
+    if (minorWildcard) {
+      return [
+        { op: ">=", version: parseVersion(`${major}.0.0`) },
+        { op: "<", version: parseVersion(`${major + 1}.0.0`) },
+      ];
+    }
+    if (patchWildcard) {
+      const minor = Number(wildcard[2]);
+      return [
+        { op: ">=", version: parseVersion(`${major}.${minor}.0`) },
+        { op: "<", version: parseVersion(`${major}.${minor + 1}.0`) },
+      ];
+    }
+  }
+
+  const comparator = trimmed.match(/^(<=|>=|<|>|=)?\s*v?(\d+(?:\.\d+){0,2})$/);
+  if (comparator) {
+    return [{ op: comparator[1] || "=", version: parseVersion(comparator[2]) }];
+  }
+
+  return [];
+}
+
+function advisoryRangeMatchesVersion(rangeExpr, pkgVersion) {
+  const expr = String(rangeExpr || "").trim();
+  if (!expr) return true;
+  const groups = expr
+    .split(/\|\|/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (groups.length === 0) return true;
+
+  for (const group of groups) {
+    const hyphen = group.match(/^(.+?)\s+-\s+(.+)$/);
+    if (hyphen) {
+      const lower = parseVersion(hyphen[1].trim().replace(/^v/i, ""));
+      const upper = parseVersion(hyphen[2].trim().replace(/^v/i, ""));
+      if (lower && upper) {
+        if (
+          matchesComparator(pkgVersion, { op: ">=", version: lower }) &&
+          matchesComparator(pkgVersion, { op: "<=", version: upper })
+        ) {
+          return true;
+        }
+      }
+      continue;
+    }
+
+    const tokens = group
+      .replace(/,/g, " ")
+      .split(/\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (tokens.length === 0) continue;
+
+    const comparators = [];
+    for (const token of tokens) {
+      comparators.push(...parseComparatorToken(token));
+    }
+    if (comparators.length === 0) continue;
+
+    const allMatch = comparators.every((comp) => matchesComparator(pkgVersion, comp));
+    if (allMatch) return true;
+  }
+  return false;
+}
+
 async function queryVulnerabilities(packageMap, options) {
   const started = nowMs();
   const packages = Array.from(packageMap.values());
@@ -20,6 +154,12 @@ async function queryVulnerabilities(packageMap, options) {
   );
   const cache = await loadCache(options);
   const results = {};
+  const diagnostics = {
+    retries: 0,
+    osvErrors: 0,
+    npmErrors: 0,
+    partialProviderFailure: false,
+  };
 
   const cachedKeys = [];
   const uncachedPackages = [];
@@ -40,9 +180,14 @@ async function queryVulnerabilities(packageMap, options) {
   let osvFailed = false;
   if (uncachedPackages.length > 0) {
     try {
-      osvResults = await queryOsvForPackages(uncachedPackages, options);
+      osvResults = await queryOsvForPackages(
+        uncachedPackages,
+        options,
+        diagnostics,
+      );
     } catch (error) {
       osvFailed = true;
+      diagnostics.partialProviderFailure = true;
       log("warn", `OSV unavailable: ${error.message}`, options);
     }
   }
@@ -64,8 +209,9 @@ async function queryVulnerabilities(packageMap, options) {
       byName[name].push(version);
     }
     try {
-      npmCross = await queryNpmBulk(byName, options);
+      npmCross = await queryNpmBulk(byName, options, diagnostics);
     } catch (error) {
+      diagnostics.partialProviderFailure = true;
       log(
         "warn",
         `npm advisory cross-check unavailable: ${error.message}`,
@@ -100,7 +246,10 @@ async function queryVulnerabilities(packageMap, options) {
         const vulnerableVersions = raw.vulnerable_versions
           ? String(raw.vulnerable_versions)
           : "";
-        if (!vulnerableVersions || vulnerableVersions.includes(pkgVersion)) {
+        if (
+          !vulnerableVersions ||
+          advisoryRangeMatchesVersion(vulnerableVersions, pkgVersion)
+        ) {
           advisories.push(normalizeNpmAdvisory(raw));
         }
       }
@@ -122,9 +271,14 @@ async function queryVulnerabilities(packageMap, options) {
     `Vulnerability query complete in ${hrSeconds(started)}s`,
     options,
   );
+  Object.defineProperty(results, "__diagnostics", {
+    value: diagnostics,
+    enumerable: false,
+  });
   return results;
 }
 
 module.exports = {
   queryVulnerabilities,
+  advisoryRangeMatchesVersion,
 };

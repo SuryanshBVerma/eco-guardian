@@ -24,11 +24,17 @@ const {
 const { writeFixScript } = require("../report/fix-script");
 const { writeTxtReport } = require("../report/txt");
 const { writeHtmlReport } = require("../report/html");
+const { writeJsonReport } = require("../report/json");
+const { writeCsvReport } = require("../report/csv");
 const { ResourceMonitor } = require("../shared/monitor");
 const { loadBaseline, applyBaseline, writeBaseline } = require("../baseline");
 const { writeSarifReport } = require("../report/sarif");
 const { resolveEcosystemPackages } = require("../resolve");
-const { DEFAULT_BASELINE_FILE } = require("../config/constants");
+const {
+  DEFAULT_BASELINE_FILE,
+  POLICY_FAIL_EXIT_CODE,
+} = require("../config/constants");
+const { evaluatePolicy } = require("../policy/gates");
 const musing = require("../cli/musing");
 
 async function runScan(options, state = {}) {
@@ -255,6 +261,7 @@ async function runScan(options, state = {}) {
 
   const queryStart = nowMs();
   const vulnerabilityMap = await queryVulnerabilities(packageMap, options);
+  const queryDiagnostics = vulnerabilityMap.__diagnostics || null;
   phaseTimes.query = Date.now() - queryStart;
 
   const reportStart = nowMs();
@@ -269,11 +276,15 @@ async function runScan(options, state = {}) {
     findings,
     baseline,
   );
+  const policy = evaluatePolicy(visibleFindings, options);
 
   if (options.writeBaseline) {
     await writeBaseline(findings, options.writeBaseline);
     log("success", `Baseline written to: ${options.writeBaseline}`, options);
   }
+
+  const jsonFile = await writeJsonReport(visibleFindings, options);
+  const csvFile = await writeCsvReport(visibleFindings, options);
 
   const txtFile = await writeTxtReport(
     visibleFindings,
@@ -281,6 +292,8 @@ async function runScan(options, state = {}) {
     options,
     resolutionSummary,
     suppressedCount,
+    policy,
+    queryDiagnostics,
   );
   const htmlFile = await writeHtmlReport(
     visibleFindings,
@@ -288,6 +301,8 @@ async function runScan(options, state = {}) {
     options,
     resolutionSummary,
     suppressedCount,
+    policy,
+    queryDiagnostics,
   );
   const sarifFile = await writeSarifReport(
     visibleFindings,
@@ -295,6 +310,8 @@ async function runScan(options, state = {}) {
     options,
     resolutionSummary,
     suppressedCount,
+    policy,
+    queryDiagnostics,
   );
   const metrics = options.benchmark ? monitor.stop() : null;
 
@@ -317,6 +334,8 @@ async function runScan(options, state = {}) {
       metrics,
       resolutionSummary,
       suppressedCount,
+      policy,
+      queryDiagnostics,
     );
     if (finalFindings.length === 0 && !options.why) {
       process.stdout.write(
@@ -332,6 +351,12 @@ async function runScan(options, state = {}) {
     }
 
     if (fixFile) log("success", `Fix script written to: ${fixFile}`, options);
+    if (jsonFile) {
+      log("success", `JSON report written to: ${jsonFile}`, options);
+    }
+    if (csvFile) {
+      log("success", `CSV report written to: ${csvFile}`, options);
+    }
     if (txtFile) log("success", `TXT report written to: ${txtFile}`, options);
     if (htmlFile) {
       log("success", `HTML report written to: ${htmlFile}`, options);
@@ -345,6 +370,17 @@ async function runScan(options, state = {}) {
         `Skipped ${counters.skippedPermissions} unreadable directories due to permissions.`,
         options,
       );
+    }
+    if (policy.enabled) {
+      if (policy.passed) {
+        log("success", "Policy gate: PASSED", options);
+      } else {
+        log(
+          "warn",
+          `Policy gate: FAILED (${policy.violations.join(", ")})`,
+          options,
+        );
+      }
     }
   }
 
@@ -367,7 +403,19 @@ async function runScan(options, state = {}) {
     );
   }
 
-  return { findings, packageCount: packageMap.size };
+  const exitCode = policy.enabled && !policy.passed
+    ? POLICY_FAIL_EXIT_CODE
+    : visibleFindings.length > 0
+      ? 1
+      : 0;
+
+  return {
+    findings: visibleFindings,
+    packageCount: packageMap.size,
+    policy,
+    queryDiagnostics,
+    exitCode,
+  };
 }
 
 module.exports = {

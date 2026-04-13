@@ -1,6 +1,6 @@
 "use strict";
 
-const { execAsync, createGraphPackage } = require("./shared");
+const shared = require("./shared");
 const path = require("path");
 
 async function resolveGoPackages(roots, options, state) {
@@ -29,8 +29,10 @@ async function resolveGoPackages(roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const graphStdout = await execAsync("go mod graph", { cwd: root });
-        const listStdout = await execAsync("go list -m -json all", {
+        const graphStdout = await shared.execAsync("go mod graph", {
+          cwd: root,
+        });
+        const listStdout = await shared.execAsync("go list -m -json all", {
           cwd: root,
         });
 
@@ -70,7 +72,7 @@ async function resolveGoPackages(roots, options, state) {
         for (const mod of modules) {
           if (mod.Main || !mod.Version) continue;
           const resolvedPath = buildPath(mod.Path);
-          const pkg = createGraphPackage(
+          const pkg = shared.createGraphPackage(
             "go",
             mod.Path,
             mod.Version,

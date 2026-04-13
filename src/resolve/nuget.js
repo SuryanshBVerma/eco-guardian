@@ -1,6 +1,6 @@
 "use strict";
 
-const { execAsync, createGraphPackage } = require("./shared");
+const shared = require("./shared");
 const path = require("path");
 
 async function resolveNuGetPackages(roots, options, state) {
@@ -29,7 +29,7 @@ async function resolveNuGetPackages(roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await execAsync(
+        const stdout = await shared.execAsync(
           "dotnet list package --include-transitive --format json",
           { cwd: root },
         );
@@ -47,7 +47,7 @@ async function resolveNuGetPackages(roots, options, state) {
                 pkgInfo.resolvedVersion || pkgInfo.requestedVersion;
               if (!name || !version) return;
 
-              const pkg = createGraphPackage(
+              const pkg = shared.createGraphPackage(
                 "nuget",
                 name,
                 version,

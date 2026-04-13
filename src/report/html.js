@@ -12,6 +12,8 @@ async function writeHtmlReport(
   options,
   resolutionSummary = [],
   suppressedCount = 0,
+    policy = null,
+    queryDiagnostics = null,
 ) {
   if (!options.exportHtml) return null;
   const outFile = path.resolve(process.cwd(), options.exportHtml);
@@ -333,6 +335,28 @@ async function writeHtmlReport(
             `
                 : ""
             }
+            ${
+              policy && policy.enabled
+                ? `
+            <div class="card">
+                <div class="card-label">Policy</div>
+                <div class="card-value" style="font-size: 1.1rem; color: ${policy.passed ? "#16a34a" : "#dc2626"};">${policy.passed ? "PASS" : "FAIL"}</div>
+                ${policy.violations.length > 0 ? `<div class="meta">${escapeHtml(policy.violations.join(", "))}</div>` : ""}
+            </div>
+            `
+                : ""
+            }
+            ${
+              queryDiagnostics
+                ? `
+            <div class="card">
+                <div class="card-label">Provider Retries</div>
+                <div class="card-value">${Number(queryDiagnostics.retries || 0)}</div>
+                ${queryDiagnostics.partialProviderFailure ? '<div class="meta">Partial provider failure detected</div>' : ""}
+            </div>
+            `
+                : ""
+            }
         </div>
 
         ${resolutionHtml}
@@ -392,6 +416,7 @@ async function writeHtmlReport(
                         <td>
                             <div class="advisory-id"><a href="${escapeHtml(ref)}" target="_blank">${escapeHtml(f.advisory_id || "N/A")}</a></div>
                             <div style="margin-top: 4px; font-weight: 500;">${escapeHtml(f.title || "")}</div>
+                            <div class="meta" style="margin-top: 4px;">CVSS: ${f.cvss == null ? "N/A" : escapeHtml(f.cvss)}</div>
                             <div class="remediation" style="font-size: 0.8rem; margin-top: 8px;">${remediation}</div>
                         </td>
                         <td>

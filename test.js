@@ -7,8 +7,15 @@ const path = require("path");
 const guardian = require("./eco-guardian");
 const { writeTxtReport } = require("./src/report/txt");
 const { writeHtmlReport } = require("./src/report/html");
+const { writeJsonReport } = require("./src/report/json");
+const { writeCsvReport } = require("./src/report/csv");
 const { writeFixScript } = require("./src/report/fix-script");
 const { renderFindingsTable } = require("./src/report/console");
+const { loadBaseline } = require("./src/baseline");
+const { evaluatePolicy } = require("./src/policy/gates");
+const {
+  advisoryRangeMatchesVersion,
+} = require("./src/vuln/query-service");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -76,6 +83,29 @@ async function testParseArgs() {
   assert(threw, "parseArgs should reject missing --path value");
 
   assert(threw, "parseArgs should reject missing --path value");
+
+  const p = guardian.parseArgs([
+    "--export-json",
+    "report.json",
+    "--export-csv",
+    "report.csv",
+    "--strict-baseline",
+    "--fail-on-severity",
+    "high",
+    "--max-critical",
+    "0",
+    "--max-high",
+    "2",
+  ]);
+  assert(p.exportJson === "report.json", "parseArgs --export-json failed");
+  assert(p.exportCsv === "report.csv", "parseArgs --export-csv failed");
+  assert(p.strictBaseline === true, "parseArgs --strict-baseline failed");
+  assert(
+    p.failOnSeverity === "high",
+    "parseArgs --fail-on-severity failed",
+  );
+  assert(p.maxCritical === 0, "parseArgs --max-critical failed");
+  assert(p.maxHigh === 2, "parseArgs --max-high failed");
 }
 
 async function testPublicExportsSurface() {
@@ -175,7 +205,7 @@ async function testBuildFixCommand() {
     parentPackage: null,
   });
   assert(
-    direct === "npm install axios@1.2.3",
+    direct === "npm install 'axios@1.2.3'",
     "buildFixCommand direct fix failed",
   );
 
@@ -188,7 +218,7 @@ async function testBuildFixCommand() {
     parentPackage: null,
   });
   assert(
-    noFixDirect === "npm uninstall left-pad",
+    noFixDirect === "npm uninstall 'left-pad'",
     "buildFixCommand direct no-fix failed",
   );
 
@@ -201,7 +231,7 @@ async function testBuildFixCommand() {
     parentPackage: null,
   });
   assert(
-    globalFix === "npm install -g npm@10.0.0",
+    globalFix === "npm install -g 'npm@10.0.0'",
     "buildFixCommand global fix failed",
   );
 
@@ -214,8 +244,21 @@ async function testBuildFixCommand() {
     parentPackage: { name: "webpack" },
   });
   assert(
-    transitive === "npm install webpack@latest",
+    transitive === "npm install 'webpack@latest'",
     "buildFixCommand transitive failed",
+  );
+
+  const escapedNpm = guardian.buildFixCommand({
+    ecosystem: "npm",
+    packageName: "bad;name",
+    fixedVersion: "1.0.0",
+    dependencyType: "direct",
+    isGlobal: false,
+    parentPackage: null,
+  });
+  assert(
+    escapedNpm.includes("'bad;name@1.0.0'"),
+    "buildFixCommand should quote npm package/version",
   );
 }
 
@@ -475,6 +518,114 @@ async function testHtmlReportGeneration() {
   });
 }
 
+async function testJsonCsvReportGeneration() {
+  await withTempDir(async (root) => {
+    const jsonOut = path.join(root, "report.json");
+    const csvOut = path.join(root, "report.csv");
+    const findings = [
+      {
+        severity: "HIGH",
+        ecosystem: "npm",
+        package: "left-pad",
+        version: "1.0.0",
+        advisory_id: "ADV-1",
+        cve: "CVE-2026-0001",
+        cvss: 8.1,
+        fixed_version: "1.1.0",
+        found_in: [{}],
+        resolution_mode: "inventory",
+        fix_command: "npm install left-pad@1.1.0",
+      },
+    ];
+
+    const jsonFile = await writeJsonReport(findings, { exportJson: jsonOut });
+    const csvFile = await writeCsvReport(findings, { exportCsv: csvOut });
+    assert(fs.existsSync(jsonFile), "JSON report should exist");
+    assert(fs.existsSync(csvFile), "CSV report should exist");
+
+    const csvText = await fsp.readFile(csvOut, "utf8");
+    assert(csvText.includes("severity,ecosystem,package"), "CSV header");
+    assert(csvText.includes("left-pad"), "CSV row package");
+  });
+}
+
+async function testPolicyEvaluation() {
+  const findings = [
+    { severity: "critical" },
+    { severity: "high" },
+    { severity: "moderate" },
+  ];
+
+  const pass = evaluatePolicy(findings, { maxCritical: 1, maxHigh: 1 });
+  assert(pass.enabled === true, "policy should be enabled");
+  assert(pass.passed === true, "policy should pass");
+
+  const fail = evaluatePolicy(findings, {
+    failOnSeverity: "high",
+    maxCritical: 0,
+  });
+  assert(fail.passed === false, "policy should fail");
+  assert(fail.violations.length >= 1, "policy should collect violations");
+}
+
+async function testAdvisoryRangeMatching() {
+  assert(
+    advisoryRangeMatchesVersion(">=1.0.0, <2.0.0", "1.5.0") === true,
+    "range should match",
+  );
+  assert(
+    advisoryRangeMatchesVersion(">=1.0.0, <2.0.0", "2.1.0") === false,
+    "range should not match",
+  );
+  assert(
+    advisoryRangeMatchesVersion("<1.0.1 || >=2.0.0", "2.1.0") === true,
+    "or-expression should match",
+  );
+}
+
+async function testStrictBaselineMissingFile() {
+  await withTempDir(async (root) => {
+    const prev = process.cwd();
+    process.chdir(root);
+    try {
+      let threw = false;
+      try {
+        await loadBaseline("missing-baseline.json", {
+          strictBaseline: true,
+          baselineExplicit: true,
+        });
+      } catch (_) {
+        threw = true;
+      }
+      assert(threw, "strict baseline should throw on missing explicit file");
+    } finally {
+      process.chdir(prev);
+    }
+  });
+}
+
+async function testStrictBaselineInvalidJson() {
+  await withTempDir(async (root) => {
+    const prev = process.cwd();
+    process.chdir(root);
+    try {
+      await fsp.writeFile("bad-baseline.json", "{not json", "utf8");
+      let threw = false;
+      try {
+        await loadBaseline("bad-baseline.json", {
+          strictBaseline: true,
+          baselineExplicit: true,
+        });
+      } catch (_) {
+        threw = true;
+      }
+      assert(threw, "strict baseline should throw on invalid JSON");
+    } finally {
+      process.chdir(prev);
+    }
+  });
+}
+
 async function testTableNoTruncation() {
   const table = renderFindingsTable([
     {
@@ -527,7 +678,7 @@ async function testFixScriptGeneration() {
         "sh should include header",
       );
       assert(ps1Text.includes("Set-Location"), "ps1 should use Set-Location");
-      assert(shText.includes('cd "/tmp/project-a"'), "sh should use cd");
+      assert(shText.includes("cd '/tmp/project-a'"), "sh should use cd");
       assert(
         ps1Text.includes("npm install -g lodash@latest"),
         "ps1 should include global command",
@@ -973,7 +1124,7 @@ async function testMavenFixPinning() {
     "Maven fix should use use-dep-version",
   );
   assert(
-    maven.includes("depVersion=1.7.36"),
+    maven.includes("depVersion='1.7.36'"),
     "Maven fix should include depVersion",
   );
   assert(maven.includes("forceVersion=true"), "Maven fix should force version");
@@ -1015,6 +1166,11 @@ async function run() {
     ["tableNoTruncation", testTableNoTruncation],
     ["fixScriptGeneration", testFixScriptGeneration],
     ["htmlReportGeneration", testHtmlReportGeneration],
+    ["jsonCsvReportGeneration", testJsonCsvReportGeneration],
+    ["policyEvaluation", testPolicyEvaluation],
+    ["advisoryRangeMatching", testAdvisoryRangeMatching],
+    ["strictBaselineMissingFile", testStrictBaselineMissingFile],
+    ["strictBaselineInvalidJson", testStrictBaselineInvalidJson],
     ["parseEcosystemList", testParseEcosystemList],
     ["parsePomDependencies", testParsePomDependencies],
     ["parsePackagesConfig", testParsePackagesConfig],

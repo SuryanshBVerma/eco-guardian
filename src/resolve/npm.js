@@ -1,6 +1,6 @@
 "use strict";
 
-const { execAsync, createGraphPackage } = require("./shared");
+const shared = require("./shared");
 const path = require("path");
 
 async function resolveNpmPackages(roots, options, state) {
@@ -29,7 +29,7 @@ async function resolveNpmPackages(roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await execAsync("npm ls --all --json", {
+        const stdout = await shared.execAsync("npm ls --all --json", {
           cwd: root,
         }).catch((err) => {
           if (err.stdout && err.stdout.trim().startsWith("{")) {
@@ -57,7 +57,7 @@ async function resolveNpmPackages(roots, options, state) {
             if (!version) continue;
 
             const currentPath = [...parentPath, `${name}@${version}`];
-            const pkg = createGraphPackage(
+            const pkg = shared.createGraphPackage(
               "npm",
               name,
               version,

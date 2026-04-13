@@ -20,6 +20,7 @@
 3. Merge advisories with de-duplication.
 4. Respect `--severity` filtering.
 5. Add test coverage in `test.js` for parsing and normalization edge cases.
+6. If adding policy/report/export behavior, add integration coverage in `test-coverage.js`.
 
 ## Test Locally
 

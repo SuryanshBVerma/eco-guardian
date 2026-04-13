@@ -70,6 +70,10 @@ const API_CONCURRENCY = 2; // Lowered to prevent resource exhaustion during heav
 const RESOLUTION_CONCURRENCY = 4; // Max parallel native tool calls
 const OSV_BATCH_SIZE = 1000;
 const CACHE_TTL_MS = 60 * 60 * 1000;
+const HTTP_RETRY_MAX = 2;
+const HTTP_RETRY_BASE_MS = 250;
+const HTTP_RETRY_MAX_MS = 2000;
+const POLICY_FAIL_EXIT_CODE = 3;
 
 const WALK_SKIP_NAMES = new Set([
   ".git",
@@ -117,6 +121,10 @@ module.exports = {
   DEFAULT_BASELINE_FILE,
   OSV_BATCH_SIZE,
   CACHE_TTL_MS,
+  HTTP_RETRY_MAX,
+  HTTP_RETRY_BASE_MS,
+  HTTP_RETRY_MAX_MS,
+  POLICY_FAIL_EXIT_CODE,
   WALK_SKIP_NAMES,
   SUPPORTED_ECOSYSTEMS,
   OSV_ECOSYSTEM_MAP,

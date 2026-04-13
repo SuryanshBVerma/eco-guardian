@@ -10,10 +10,15 @@ async function loadBaseline(filePath, options = {}) {
   const absPath = path.resolve(process.cwd(), filePath);
   try {
     const content = await fsp.readFile(absPath, "utf8");
-    try {
-      const baseline = JSON.parse(content);
-      return Array.isArray(baseline) ? baseline : [];
-    } catch (parseError) {
+    const baseline = JSON.parse(content);
+    return Array.isArray(baseline) ? baseline : [];
+  } catch (readError) {
+    if (readError instanceof SyntaxError) {
+      if (options.strictBaseline && options.baselineExplicit) {
+        throw new Error(
+          `Baseline file "${filePath}" contains invalid JSON and strict mode is enabled.`,
+        );
+      }
       log(
         "warn",
         `Baseline file "${filePath}" exists but contains invalid JSON. Suppression disabled.`,
@@ -21,9 +26,23 @@ async function loadBaseline(filePath, options = {}) {
       );
       return [];
     }
-  } catch (readError) {
+
     // Missing file is silent unless it was an explicit --baseline flag
+    if (
+      readError.code === "ENOENT" &&
+      options.strictBaseline &&
+      options.baselineExplicit
+    ) {
+      throw new Error(
+        `Baseline file "${filePath}" was explicitly provided but not found (strict baseline mode).`,
+      );
+    }
     if (readError.code !== "ENOENT") {
+      if (options.strictBaseline && options.baselineExplicit) {
+        throw new Error(
+          `Failed to read baseline file "${filePath}" in strict mode: ${readError.message}`,
+        );
+      }
       log(
         "warn",
         `Failed to read baseline file "${filePath}": ${readError.message}`,
@@ -45,6 +64,7 @@ function applyBaseline(findings, baseline) {
 
   for (const finding of findings) {
     const match = baseline.find((b) => {
+      if (b.status === "disabled") return false;
       // Basic match
       if (b.ecosystem !== finding.ecosystem) return false;
       if (b.package !== finding.package) return false;
@@ -91,6 +111,11 @@ async function writeBaseline(findings, filePath) {
     version: f.version,
     advisory_id: f.advisory_id,
     reason: "Auto-generated from current findings",
+    owner: null,
+    ticket: null,
+    approved_by: null,
+    approved_at: null,
+    status: "active",
     expires_on: null,
   }));
 

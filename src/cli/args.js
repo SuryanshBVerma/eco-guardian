@@ -56,9 +56,27 @@ function printUsage() {
   process.stdout.write(
     "  --export-sarif <file> Export findings to SARIF 2.1.0\n",
   );
+  process.stdout.write(
+    "  --export-json <file>  Export findings to JSON file\n",
+  );
+  process.stdout.write(
+    "  --export-csv <file>   Export findings to CSV file\n",
+  );
   process.stdout.write("  --baseline <file>    Apply baseline / ignore file\n");
   process.stdout.write(
     "  --write-baseline <file> Write current findings to a baseline file\n",
+  );
+  process.stdout.write(
+    "  --strict-baseline    Fail when explicit baseline file is missing/invalid\n",
+  );
+  process.stdout.write(
+    "  --fail-on-severity <level>  Fail policy when any finding is >= level\n",
+  );
+  process.stdout.write(
+    "  --max-critical <n>   Fail policy when critical findings exceed n\n",
+  );
+  process.stdout.write(
+    "  --max-high <n>       Fail policy when high findings exceed n\n",
   );
   process.stdout.write(
     "  --why <package>      Explain why a package is present and how to fix it\n",
@@ -88,8 +106,15 @@ function parseArgs(argv) {
     exportTxt: null,
     exportHtml: null,
     exportSarif: null,
+    exportJson: null,
+    exportCsv: null,
     baseline: null,
+    baselineExplicit: false,
     writeBaseline: null,
+    strictBaseline: false,
+    failOnSeverity: null,
+    maxCritical: null,
+    maxHigh: null,
     why: null,
     help: false,
     version: false,
@@ -179,12 +204,31 @@ function parseArgs(argv) {
       i += 1;
       continue;
     }
+    if (token === "--export-json") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) {
+        throw new Error("Missing value for --export-json");
+      }
+      args.exportJson = next;
+      i += 1;
+      continue;
+    }
+    if (token === "--export-csv") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) {
+        throw new Error("Missing value for --export-csv");
+      }
+      args.exportCsv = next;
+      i += 1;
+      continue;
+    }
     if (token === "--baseline") {
       const next = argv[i + 1];
       if (!next || next.startsWith("--")) {
         throw new Error("Missing value for --baseline");
       }
       args.baseline = next;
+      args.baselineExplicit = true;
       i += 1;
       continue;
     }
@@ -194,6 +238,51 @@ function parseArgs(argv) {
         throw new Error("Missing value for --write-baseline");
       }
       args.writeBaseline = next;
+      i += 1;
+      continue;
+    }
+    if (token === "--strict-baseline") {
+      args.strictBaseline = true;
+      continue;
+    }
+    if (token === "--fail-on-severity") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) {
+        throw new Error("Missing value for --fail-on-severity");
+      }
+      const normalized = String(next).toLowerCase();
+      if (!Object.prototype.hasOwnProperty.call(SEVERITY_ORDER, normalized)) {
+        throw new Error(
+          "Invalid --fail-on-severity. Use: low, moderate, high, critical",
+        );
+      }
+      args.failOnSeverity = normalized;
+      i += 1;
+      continue;
+    }
+    if (token === "--max-critical") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) {
+        throw new Error("Missing value for --max-critical");
+      }
+      const parsed = Number(next);
+      if (!Number.isInteger(parsed) || parsed < 0) {
+        throw new Error("--max-critical must be a non-negative integer");
+      }
+      args.maxCritical = parsed;
+      i += 1;
+      continue;
+    }
+    if (token === "--max-high") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) {
+        throw new Error("Missing value for --max-high");
+      }
+      const parsed = Number(next);
+      if (!Number.isInteger(parsed) || parsed < 0) {
+        throw new Error("--max-high must be a non-negative integer");
+      }
+      args.maxHigh = parsed;
       i += 1;
       continue;
     }

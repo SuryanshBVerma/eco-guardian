@@ -3,6 +3,14 @@
 const fs = require("fs");
 const { PLATFORM } = require("../config/constants");
 
+function escapeShellArg(value, targetOS) {
+  const text = String(value == null ? "" : value);
+  if (targetOS === "win32") {
+    return `'${text.replace(/'/g, "''")}'`;
+  }
+  return `'${text.replace(/'/g, `'\\''`)}'`;
+}
+
 function detectProjectOS(projectPath) {
   if (
     !projectPath ||
@@ -56,21 +64,23 @@ function buildFixCommand({
   parentPackage,
 }) {
   const eco = String(ecosystem || "").toLowerCase();
+  const isWindows = PLATFORM === "win32";
+  const quote = (value) => escapeShellArg(value, isWindows ? "win32" : "linux");
 
   if (eco === "npm") {
     if (isGlobal) {
       return fixedVersion
-        ? `npm install -g ${packageName}@${fixedVersion}`
-        : `npm uninstall -g ${packageName}`;
+        ? `npm install -g ${quote(`${packageName}@${fixedVersion}`)}`
+        : `npm uninstall -g ${quote(packageName)}`;
     }
     if (dependencyType === "direct") {
       return fixedVersion
-        ? `npm install ${packageName}@${fixedVersion}`
-        : `npm uninstall ${packageName}`;
+        ? `npm install ${quote(`${packageName}@${fixedVersion}`)}`
+        : `npm uninstall ${quote(packageName)}`;
     }
     if (dependencyType === "transitive") {
       return parentPackage && parentPackage.name
-        ? `npm install ${parentPackage.name}@latest`
+        ? `npm install ${quote(`${parentPackage.name}@latest`)}`
         : null;
     }
   }
@@ -78,20 +88,20 @@ function buildFixCommand({
   if (eco === "maven" || eco === "pypi" || eco === "python") {
     if (!fixedVersion) return null;
     if (eco === "maven") {
-      return `mvn versions:use-dep-version -Dincludes=${packageName.includes(":") ? packageName : "*:" + packageName} -DdepVersion=${fixedVersion} -DforceVersion=true`;
+      return `mvn versions:use-dep-version -Dincludes=${quote(packageName.includes(":") ? packageName : "*:" + packageName)} -DdepVersion=${quote(fixedVersion)} -DforceVersion=true`;
     }
-    return `pip install --upgrade ${packageName}==${fixedVersion}`;
+    return `pip install --upgrade ${quote(`${packageName}==${fixedVersion}`)}`;
   }
 
   if (eco === "nuget") {
     return fixedVersion
-      ? `dotnet add package ${packageName} --version ${fixedVersion}`
+      ? `dotnet add package ${quote(packageName)} --version ${quote(fixedVersion)}`
       : null;
   }
 
   if (eco === "go") {
     return fixedVersion
-      ? `go get ${packageName}@v${fixedVersion.replace(/^v/, "")}`
+      ? `go get ${quote(`${packageName}@v${fixedVersion.replace(/^v/, "")}`)}`
       : null;
   }
 
@@ -101,10 +111,12 @@ function buildFixCommand({
 function buildScopedProjectCommand(project, command) {
   if (!project || project === "(unknown project)") return null;
   const targetOS = detectProjectOS(project);
+  const escapedPsPath = String(project).replace(/'/g, "''");
+  const escapedShPath = String(project).replace(/'/g, `'\\''`);
   if (targetOS === "win32") {
-    return `Set-Location -LiteralPath "${project}"; ${command}`;
+    return `Set-Location -LiteralPath '${escapedPsPath}'; ${command}`;
   }
-  return `cd "${project}" && ${command}`;
+  return `cd '${escapedShPath}' && ${command}`;
 }
 
 function buildFixSteps({ ecosystem, foundIn, packageName, fixedVersion }) {

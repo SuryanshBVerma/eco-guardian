@@ -1,6 +1,6 @@
 "use strict";
 
-const { execAsync, createGraphPackage } = require("./shared");
+const shared = require("./shared");
 const path = require("path");
 
 async function resolveMavenPackages(roots, options, state) {
@@ -29,7 +29,7 @@ async function resolveMavenPackages(roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await execAsync(
+        const stdout = await shared.execAsync(
           "mvn dependency:tree -DoutputType=text",
           { cwd: root },
         );
@@ -58,7 +58,7 @@ async function resolveMavenPackages(roots, options, state) {
           ];
           stack.push({ name, version });
 
-          const pkg = createGraphPackage(
+          const pkg = shared.createGraphPackage(
             "maven",
             name,
             version,

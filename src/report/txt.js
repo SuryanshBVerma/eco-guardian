@@ -10,6 +10,8 @@ async function writeTxtReport(
   options,
   resolutionSummary = [],
   suppressedCount = 0,
+  policy = null,
+  queryDiagnostics = null,
 ) {
   if (!options.exportTxt) return null;
   const outFile = path.resolve(process.cwd(), options.exportTxt);
@@ -25,6 +27,17 @@ async function writeTxtReport(
   );
   if (suppressedCount > 0) {
     lines.push(`Suppressed by baseline: ${suppressedCount}`);
+  }
+  if (policy && policy.enabled) {
+    lines.push(
+      `Policy: ${policy.passed ? "PASS" : "FAIL"}${policy.violations.length > 0 ? ` (${policy.violations.join(", ")})` : ""}`,
+    );
+  }
+  if (queryDiagnostics) {
+    lines.push(`Provider retries: ${queryDiagnostics.retries || 0}`);
+    if (queryDiagnostics.partialProviderFailure) {
+      lines.push("Provider status: partial failures detected");
+    }
   }
 
   if (options.graphResolution && resolutionSummary.length > 0) {

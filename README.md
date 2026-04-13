@@ -1,180 +1,139 @@
 # eco-guardian
 
-Unlike `npm audit` which only checks your current project, eco-guardian scans your entire machine for vulnerable packages across multiple ecosystems (`npm`, `Maven`, `NuGet`, `VSCode`, `Python`, and `Go`).
+eco-guardian is a Node.js CLI that scans local machines for vulnerable packages across npm, Maven, NuGet, VSCode extensions, Python, and Go.
 
-## Quick Start
+It discovers dependencies locally, queries OSV (and npm advisories for npm packages), then reports findings in console/JSON and export formats.
 
-Run instantly without installation:
+## Setup
+
+### Run without cloning
 
 ```bash
 npx github:boredom1234/eco-guardian
 ```
 
-Or run locally:
+### Run from source
 
 ```bash
+npm install
 node eco-guardian.js
 ```
 
-## Flags
-
-| Flag                      | Description                                                                                                               |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `--path <dir>`            | Scan specific directory (default: home directory)                                                                         |
-| `--ecosystems <list>`     | Comma-separated list of ecosystems to scan. Supported: `npm`, `maven`, `nuget`, `vscode`, `python`, `go` (default: `npm`) |
-| `--global-only`           | Only scan global npm installs                                                                                             |
-| `--severity <level>`      | Minimum severity: `low`, `moderate`, `high`, `critical`                                                                   |
-| `--json`                  | Print findings JSON only to stdout                                                                                        |
-| `--no-cache`              | Disable 1-hour local cache                                                                                                |
-| `--fix`                   | Generate fix script in current directory (supports `npm`, `maven`, `nuget`, `python`, `go`)                               |
-| `--export-txt <file>`     | Export findings report to TXT                                                                                             |
-| `--export-html <file>`    | Export findings report to HTML (includes dependency breadcrumbs)                                                          |
-| `--export-sarif <file>`   | Export findings report to SARIF 2.1.0 (GitHub compatible)                                                                 |
-| `--baseline <file>`       | Apply baseline/ignore file (default: `.eco-guardian-baseline.json`)                                                       |
-| `--write-baseline <file>` | Write current findings to a baseline file                                                                                 |
-| `--why <package>`         | Explain why a package (or ecosystem) is present and how to fix it                                                         |
-| `--benchmark`             | Show real-time RAM/CPU usage during scan                                                                                  |
-| `--verbose`               | Show full advisory details for every finding on the console                                                               |
-| `--graph-resolution`      | Advanced mode: resolve dependency graphs using native tools                                                               |
-| `--help`                  | Show help                                                                                                                 |
-| `--version`               | Show tool version                                                                                                         |
-| `--global`                | On Unix, include `/` root scan                                                                                            |
-| `--all-drives`            | Full machine scan mode                                                                                                    |
-
-## Discovery Modes
-
-eco-guardian automatically detects the best scanning engine for your system.
-
-| Mode                 | Engine                      | Performance | Requirement            |
-| :------------------- | :-------------------------- | :---------- | :--------------------- |
-| **High-Performance** | `ripgrep` (`rg`)            | Ultra       | `rg` installed in PATH |
-| **Standard**         | `mdfind` / `locate` / `dir` | Fast        | None (Native tools)    |
-| **Manual**           | Node.js Walker              | Standard    | None (Fallback)        |
-
-## Examples
+## Usage
 
 ```bash
-node eco-guardian.js
+node eco-guardian.js [options]
+```
+
+Common examples:
+
+```bash
 node eco-guardian.js --path ~/projects --severity high
 node eco-guardian.js --ecosystems npm,maven,nuget,vscode,python,go
-node eco-guardian.js --global-only --json
-node eco-guardian.js --fix
-node eco-guardian.js --path "D:\\Projects\\my-app" --export-txt report.txt
-node eco-guardian.js --graph-resolution --ecosystems maven,npm
-node eco-guardian.js --baseline .eco-guardian-baseline.json
-node eco-guardian.js --why lodash
+node eco-guardian.js --graph-resolution --ecosystems npm,maven
 node eco-guardian.js --export-sarif results.sarif
+node eco-guardian.js --export-json results.json --export-csv results.csv
+node eco-guardian.js --baseline .eco-guardian-baseline.json --strict-baseline
+node eco-guardian.js --fail-on-severity high --max-critical 0 --max-high 5
 ```
 
-## Example Output
+## Options
 
-```text
-=======================================================
-eco-guardian scan complete
-Packages scanned:  6,080 unique across selected ecosystems
-Findings:          721 advisories found (12 CRITICAL, 37 HIGH, 661 MODERATE)
-Vulnerable pkgs:   252
-Clean packages:    5,828
-Graph resolution:
-  - npm: graph
-  - maven: inventory-fallback (fallback: mvn not found)
-Suppressed by baseline: 5
-Peak RAM:          193.5 MB
-Avg CPU:           195.1%
-Scan Duration:     65.0s
-=======================================================
-```
+| Flag | Description |
+| --- | --- |
+| `--path <dir>` | Scan only this path. |
+| `--ecosystems <list>` | Comma-separated ecosystems: `npm,maven,nuget,vscode,python,go`. |
+| `--global-only` | Scan only global npm installs. |
+| `--severity <level>` | Minimum severity: `low`, `moderate`, `high`, `critical`. |
+| `--json` | Print findings JSON to stdout. |
+| `--no-cache` | Disable local vulnerability cache. |
+| `--fix` | Generate fix scripts (`eco-guardian-fixes.ps1` and `eco-guardian-fixes.sh`). |
+| `--export-txt <file>` | Write TXT report. |
+| `--export-html <file>` | Write HTML report. |
+| `--export-sarif <file>` | Write SARIF 2.1.0 report. |
+| `--export-json <file>` | Write JSON findings file. |
+| `--export-csv <file>` | Write CSV findings file. |
+| `--baseline <file>` | Apply suppression baseline (default file: `.eco-guardian-baseline.json`). |
+| `--write-baseline <file>` | Write current findings as a baseline file. |
+| `--strict-baseline` | Error when an explicit baseline file is missing or invalid JSON. |
+| `--fail-on-severity <level>` | Policy gate failure if any finding is at or above this level. |
+| `--max-critical <n>` | Policy gate failure if critical findings exceed `n`. |
+| `--max-high <n>` | Policy gate failure if high findings exceed `n`. |
+| `--why <package>` | Show dependency path and remediation context for one package/ecosystem. |
+| `--benchmark` | Show peak RAM, average CPU, and scan duration. |
+| `--verbose` | Print full advisory details in console mode. |
+| `--graph-resolution` | Resolve dependency graphs with native ecosystem tooling. |
+| `--global` | On Unix-like systems, include `/` root scan. |
+| `--all-drives` | Full-machine scan mode. |
+| `--help` | Print help. |
+| `--version` | Print version. |
 
-## CI/CD Usage
+## Discovery and Resolution Notes
 
-`--json` is designed for pipelines.
+- Discovery engine priority:
+   1. `rg` (ripgrep) when available
+   2. Native tools (`mdfind` on macOS, `locate` on Linux, `dir` on Windows)
+   3. Recursive Node.js filesystem walker fallback
+- Default root behavior:
+   - If `--path` is provided, scan that path
+   - If `--global-only` is set, scan only npm global root
+   - Without `--path`, Windows discovers readable drives; Unix-like systems start from home (plus `/` when `--global` or `--all-drives` is set)
+
+Graph resolution support matrix:
+
+| Ecosystem | Support |
+| --- | --- |
+| npm | supported |
+| maven | supported |
+| nuget | supported |
+| go | supported |
+| python | partial |
+| vscode | not applicable |
+
+When graph resolution is unavailable or fails for a given ecosystem, scanning falls back to inventory collection for that ecosystem.
+
+## Outputs and Exit Codes
+
+- Console summary includes counts, resolution mode details, baseline suppression count, and (when configured) policy status.
+- TXT/HTML/SARIF exports are available.
+- JSON/CSV exports are available via `--export-json` and `--export-csv`.
+- Policy-gated runs can return a dedicated exit code.
+
+Exit codes:
+
+- `0`: no visible findings
+- `1`: findings present
+- `2`: scan/runtime error
+- `3`: policy gate failed (`--fail-on-severity`, `--max-critical`, `--max-high`)
+
+## Scripts
 
 ```bash
-node eco-guardian.js --json
-echo $?   # 0 clean, 1 vulnerabilities found, 2 scan error
-```
-
-## Automation and Scheduling
-
-For instructions on how to automate scans weekly using Windows Task Scheduler or cron (macOS/Linux), see the [Scheduler Guide](SCHEDULER_GUIDE.md).
-
-## Graph Resolution Support
-
-| Ecosystem  | Support Level | Native Tool Trigger        |
-| ---------- | ------------- | -------------------------- |
-| **npm**    | Supported     | `npm ls --all --json`      |
-| **Maven**  | Supported     | `mvn dependency:tree`      |
-| **NuGet**  | Supported     | `dotnet list package`      |
-| **Go**     | Supported     | `go mod graph` + `go list` |
-| **Python** | Partial       | `python -m pip inspect`    |
-| **VSCode** | N/A           | -                          |
-
-When `--graph-resolution` is enabled, eco-guardian attempts to use the native tool to resolve the full transitive graph. If resolution is unsupported, the native tool is missing, or the command fails, eco-guardian falls back to the standard inventory collector for that ecosystem and reports that fallback in the scan output.
-
-## Environment Variables
-
-| Variable                      | Description                                                                                  | Default     |
-| :---------------------------- | :------------------------------------------------------------------------------------------- | :---------- |
-| `NPM_GUARDIAN_DISABLE_GLOBAL` | Set to `1` to skip scanning the global `npm` root. Useful for restricted CI/CD environments. | `undefined` |
-
-## How It Works
-
-1. **Detection**: Detects available discovery engines (Ripgrep vs Native Fallbacks).
-2. **Discovery**: Discover scan roots (target path, global npm path, optional full-disk roots).
-3. **Identification**: Identify package sources depending on the target ecosystem.
-   - npm: installed packages under discovered `node_modules`
-   - Maven/NuGet: direct dependencies declared in supported manifests
-   - Python: pinned dependencies from `requirements.txt`, `Pipfile.lock`, and `poetry.lock`
-   - Go: dependencies declared in `go.mod` `require` entries
-   - VSCode: installed extensions from the VSCode extensions directory or the explicit `--path`
-4. Harvest unique packages and version pairs across the ecosystems.
-5. Query OSV and npm advisories (only package identifiers leave your machine).
-6. Build findings with local path/project mapping and remediation guidance.
-   Automated fix scripts are generated for all supported ecosystems except VSCode extensions.
-
-## Current parser scope
-
-- Python `requirements.txt` scanning currently reads exact `name==version` pins.
-- Go scanning currently reads `go.mod` `require` entries.
-- Automated fix scripts support `npm`, `maven`, `nuget`, `python`, and `go` via generated `.sh` and `.ps1` files.
-
-## Privacy
-
-- Sent externally: package `name` and `version`.
-- Never sent: file paths, source code, credentials, file contents.
-- File paths stay local and are used only for local reporting.
-
-## Development and Testing
-
-Eco-guardian has a comprehensive test suite that validates parsers, resolvers, and reporting logic.
-
-### Run Tests
-
-```bash
+npm start
 npm test
-```
-
-This runs `test.js`, `test-resolvers.js`, `test-coverage.js`, and `test-ripgrep.js`.
-
-### Coverage
-
-We use `c8` to ensure high branch coverage across the scanner logic.
-
-```bash
 npm run coverage
-```
-
-To enforce coverage thresholds (65% lines/functions/statements, 55% branches):
-
-```bash
 npm run coverage:check
 ```
 
-## Exit Codes
+`npm test` runs:
 
-- `0`: clean scan
-- `1`: vulnerabilities found
-- `2`: scan error (network/tooling/permissions preventing scan)
+- `node test.js`
+- `node test-resolvers.js`
+- `node test-coverage.js`
+
+`test-ripgrep.js` exists in the repo but is not part of the default `npm test` script.
+
+## Configuration
+
+Environment variable:
+
+- `NPM_GUARDIAN_DISABLE_GLOBAL=1`: skip adding npm global root to scan roots.
+
+## Notes
+
+- Only package identifiers (name/version/ecosystem) are sent to advisory providers; file paths and source contents remain local.
+- Automated fix commands are generated for npm, maven, nuget, python, and go findings (not VSCode extensions).
+- Scheduler examples for weekly automation are in [SCHEDULER_GUIDE.md](SCHEDULER_GUIDE.md).
 
 ## License
 

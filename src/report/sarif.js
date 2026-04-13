@@ -10,6 +10,8 @@ async function writeSarifReport(
   options,
   resolutionSummary,
   suppressedCount,
+  policy = null,
+  queryDiagnostics = null,
 ) {
   if (!options.exportSarif) return null;
   const outFile = path.resolve(process.cwd(), options.exportSarif);
@@ -54,6 +56,12 @@ async function writeSarifReport(
           ? "error"
           : "warning",
       locations,
+      properties: {
+        ecosystem: f.ecosystem,
+        package: f.package,
+        version: f.version,
+        fixed_version: f.fixed_version,
+      },
     };
   });
 
@@ -82,6 +90,8 @@ async function writeSarifReport(
               packageCount,
               suppressedCount,
               resolutionSummary,
+              policy,
+              queryDiagnostics,
             },
           },
         ],
