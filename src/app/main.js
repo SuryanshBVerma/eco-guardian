@@ -17,6 +17,23 @@ function attachSignalHandlers(context) {
   process.on("SIGTERM", handler);
 }
 
+async function withMutedStderr(enabled, fn) {
+  if (!enabled) return fn();
+
+  const originalWrite = process.stderr.write;
+  process.stderr.write = (chunk, encoding, callback) => {
+    if (typeof encoding === "function") encoding();
+    if (typeof callback === "function") callback();
+    return true;
+  };
+
+  try {
+    return await fn();
+  } finally {
+    process.stderr.write = originalWrite;
+  }
+}
+
 async function main(argv = process.argv.slice(2)) {
   const state = { interrupted: false };
   attachSignalHandlers(state);
@@ -59,10 +76,14 @@ async function main(argv = process.argv.slice(2)) {
     process.exit(0);
   }
 
-  printBanner(options);
+  if (options.banner !== "off") {
+    printBanner(options);
+  }
 
   try {
-    const result = await runScan(options, state);
+    const result = await withMutedStderr(options.banner === "off", () =>
+      runScan(options, state),
+    );
     process.exitCode =
       typeof result.exitCode === "number"
         ? result.exitCode

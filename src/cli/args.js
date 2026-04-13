@@ -43,6 +43,9 @@ function printUsage() {
   process.stdout.write(
     "  --json               Output only JSON findings to stdout\n",
   );
+  process.stdout.write(
+    "  --banner <on|off>    Control CLI chrome (default: on)\n",
+  );
   process.stdout.write("  --no-cache           Disable cache read/write\n");
   process.stdout.write(
     "  --fix                Write fix script for npm, maven, nuget, python, and go\n",
@@ -99,6 +102,7 @@ function parseArgs(argv) {
     graphResolution: false,
     severity: "low",
     json: false,
+    banner: "on",
     noCache: false,
     fix: false,
     exportTxt: null,
@@ -165,6 +169,19 @@ function parseArgs(argv) {
     }
     if (token === "--json") {
       args.json = true;
+      continue;
+    }
+    if (token === "--banner") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) {
+        throw new Error("Missing value for --banner");
+      }
+      const normalized = String(next).toLowerCase();
+      if (normalized !== "on" && normalized !== "off") {
+        throw new Error("Invalid --banner. Use: on, off");
+      }
+      args.banner = normalized;
+      i += 1;
       continue;
     }
     if (token === "--no-cache") {

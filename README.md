@@ -46,6 +46,7 @@ node eco-guardian.js --fail-on-severity high --max-critical 0 --max-high 5
 | `--global-only`              | Scan only global npm installs.                                               |
 | `--severity <level>`         | Minimum severity: `low`, `moderate`, `high`, `critical`.                     |
 | `--json`                     | Print findings JSON to stdout.                                               |
+| `--banner <on|off>`          | Toggle CLI chrome/progress output (`off` shows final result output only).    |
 | `--no-cache`                 | Disable local vulnerability cache.                                           |
 | `--fix`                      | Generate fix scripts (`eco-guardian-fixes.ps1` and `eco-guardian-fixes.sh`). |
 | `--export-txt <file>`        | Write TXT report.                                                            |

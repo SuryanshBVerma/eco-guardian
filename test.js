@@ -60,6 +60,13 @@ async function testParseArgs() {
     b.pathExplicit === false,
     "parseArgs pathExplicit default should be false",
   );
+  assert(b.banner === "on", "parseArgs --banner default should be on");
+
+  const bo = guardian.parseArgs(["--banner", "off"]);
+  assert(bo.banner === "off", "parseArgs --banner off failed");
+
+  const bn = guardian.parseArgs(["--banner", "on"]);
+  assert(bn.banner === "on", "parseArgs --banner on failed");
 
   let threw = false;
   try {
@@ -80,7 +87,21 @@ async function testParseArgs() {
   }
   assert(threw, "parseArgs should reject missing --path value");
 
-  assert(threw, "parseArgs should reject missing --path value");
+  threw = false;
+  try {
+    guardian.parseArgs(["--banner"]);
+  } catch (_) {
+    threw = true;
+  }
+  assert(threw, "parseArgs should reject missing --banner value");
+
+  threw = false;
+  try {
+    guardian.parseArgs(["--banner", "invalid"]);
+  } catch (_) {
+    threw = true;
+  }
+  assert(threw, "parseArgs should reject invalid --banner value");
 
   const p = guardian.parseArgs([
     "--export-json",
@@ -414,6 +435,10 @@ async function testCliHelpAndVersion() {
       out.includes("--export-txt <file>"),
       "help output should include TXT export flag",
     );
+    assert(
+      out.includes("--banner <on|off>"),
+      "help output should include banner flag",
+    );
 
     out = "";
     process.exitCode = undefined;
@@ -427,6 +452,60 @@ async function testCliHelpAndVersion() {
     process.stdout.write = originalWrite;
     process.exitCode = originalExitCode;
   }
+}
+
+async function testCliBannerOffResultOnly() {
+  await withTempDir(async (root) => {
+    const prevDisableGlobal = process.env.NPM_GUARDIAN_DISABLE_GLOBAL;
+    const originalStdoutWrite = process.stdout.write;
+    const originalStderrWrite = process.stderr.write;
+    const originalExitCode = process.exitCode;
+    let out = "";
+    let err = "";
+
+    process.env.NPM_GUARDIAN_DISABLE_GLOBAL = "1";
+
+    try {
+      process.stdout.write = (chunk) => {
+        out += String(chunk);
+        return true;
+      };
+      process.stderr.write = (chunk) => {
+        err += String(chunk);
+        return true;
+      };
+      process.exitCode = undefined;
+
+      await guardian.main([
+        "--path",
+        root,
+        "--ecosystems",
+        "npm",
+        "--banner",
+        "off",
+      ]);
+
+      assert(process.exitCode === 0, "banner off run should exit with status 0");
+      assert(
+        out.includes("eco-guardian scan complete"),
+        "banner off run should still print summary to stdout",
+      );
+      assert(
+        out.includes("[OK] All clear."),
+        "banner off run should print final result message",
+      );
+      assert(err.length === 0, "banner off run should suppress stderr output");
+    } finally {
+      process.stdout.write = originalStdoutWrite;
+      process.stderr.write = originalStderrWrite;
+      process.exitCode = originalExitCode;
+      if (prevDisableGlobal === undefined) {
+        delete process.env.NPM_GUARDIAN_DISABLE_GLOBAL;
+      } else {
+        process.env.NPM_GUARDIAN_DISABLE_GLOBAL = prevDisableGlobal;
+      }
+    }
+  });
 }
 
 async function testHtmlReportEscaping() {
@@ -1157,6 +1236,7 @@ async function run() {
     ["readPackageJson", testReadPackageJson],
     ["integrationSmoke", testIntegrationSmoke],
     ["cliHelpAndVersion", testCliHelpAndVersion],
+    ["cliBannerOffResultOnly", testCliBannerOffResultOnly],
     ["txtReportGeneration", testHtmlReportEscaping],
     ["tableNoTruncation", testTableNoTruncation],
     ["fixScriptGeneration", testFixScriptGeneration],
