@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "1.9.0";
+const VERSION = "2.0.0";
 const DEFAULT_BASELINE_FILE = ".eco-guardian-baseline.json";
 const PLATFORM = process.platform;
 const SEVERITY_ORDER = { low: 1, moderate: 2, high: 3, critical: 4 };
