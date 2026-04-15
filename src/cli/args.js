@@ -85,6 +85,27 @@ function printUsage() {
   process.stdout.write(
     "  --benchmark          Show real-time RAM/CPU usage during scan\n",
   );
+  process.stdout.write(
+    "  --watch              Run eco-guardian as a long-lived incremental monitor\n",
+  );
+  process.stdout.write(
+    "  --notify-on-severity <level> Notify on new findings at or above this severity (default: high)\n",
+  );
+  process.stdout.write(
+    "  --state-file <file>  Persistent watch-state snapshot file\n",
+  );
+  process.stdout.write(
+    "  --alerts-file <file> Append-only JSONL alert ledger (default: eco-guardian-alerts.jsonl)\n",
+  );
+  process.stdout.write(
+    "  --alerts-md <file>   Human-readable Markdown alert digest\n",
+  );
+  process.stdout.write(
+    "  --reconcile-interval <sec> Low-frequency safety sweep interval (default: 900)\n",
+  );
+  process.stdout.write(
+    "  --watch-debounce-ms <ms> Debounce interval before rescanning dirty projects\n",
+  );
   process.stdout.write("  --help               Show this help\n");
   process.stdout.write("  --version            Show version\n");
   process.stdout.write("  --global             Include / root scan on Unix\n");
@@ -94,6 +115,14 @@ function printUsage() {
 }
 
 function parseArgs(argv) {
+  const {
+    DEFAULT_WATCH_STATE_FILE,
+    DEFAULT_ALERTS_FILE,
+    DEFAULT_NOTIFY_SEVERITY,
+    DEFAULT_RECONCILE_INTERVAL_SEC,
+    DEFAULT_WATCH_DEBOUNCE_MS
+  } = require("../config/constants");
+
   const args = {
     path: os.homedir(),
     pathExplicit: false,
@@ -126,7 +155,13 @@ function parseArgs(argv) {
     benchmark: false,
     seek: null,
     echo: null,
-    graphResolution: false,
+    watch: false,
+    notifyOnSeverity: DEFAULT_NOTIFY_SEVERITY,
+    stateFile: null,
+    alertsFile: DEFAULT_ALERTS_FILE,
+    alertsMd: null,
+    reconcileInterval: DEFAULT_RECONCILE_INTERVAL_SEC,
+    watchDebounceMs: DEFAULT_WATCH_DEBOUNCE_MS,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -338,6 +373,52 @@ function parseArgs(argv) {
       args.graphResolution = true;
       continue;
     }
+    if (token === "--watch") {
+      args.watch = true;
+      continue;
+    }
+    if (token === "--notify-on-severity") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) throw new Error(`Missing value for ${token}`);
+      args.notifyOnSeverity = String(next).toLowerCase();
+      i += 1;
+      continue;
+    }
+    if (token === "--state-file") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) throw new Error(`Missing value for ${token}`);
+      args.stateFile = next;
+      i += 1;
+      continue;
+    }
+    if (token === "--alerts-file") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) throw new Error(`Missing value for ${token}`);
+      args.alertsFile = next;
+      i += 1;
+      continue;
+    }
+    if (token === "--alerts-md") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) throw new Error(`Missing value for ${token}`);
+      args.alertsMd = next;
+      i += 1;
+      continue;
+    }
+    if (token === "--reconcile-interval") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) throw new Error(`Missing value for ${token}`);
+      args.reconcileInterval = Number(next);
+      i += 1;
+      continue;
+    }
+    if (token === "--watch-debounce-ms") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) throw new Error(`Missing value for ${token}`);
+      args.watchDebounceMs = Number(next);
+      i += 1;
+      continue;
+    }
     if (token === "--seek") {
       const next = argv[i + 1];
       if (!next || next.startsWith("--")) {
@@ -357,6 +438,10 @@ function parseArgs(argv) {
       continue;
     }
     throw new Error(`Unknown argument: ${token}`);
+  }
+
+  if (args.watch && !args.stateFile) {
+    args.stateFile = DEFAULT_WATCH_STATE_FILE;
   }
 
   return args;

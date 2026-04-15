@@ -53,6 +53,7 @@ async function buildFindings(packageMap, vulnerabilityMap, state) {
 
     for (const advisory of record.advisories) {
       findings.push({
+        fingerprint: `${pkg.ecosystem}|${pkg.name}|${pkg.version}|${advisory.id}`,
         ecosystem: pkg.ecosystem,
         package: pkg.name,
         version: pkg.version,

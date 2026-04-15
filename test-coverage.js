@@ -870,6 +870,51 @@ async function testPolicyExitCodeAndFileExports() {
   }
 }
 
+async function testWatchModeLogic() {
+  const { quickFingerprint } = require("./src/watch/fingerprint");
+  const { selectNewNotifiableFindings } = require("./src/watch/alerts");
+  const { buildProjectIndex } = require("./src/watch/project-index");
+  const { buildFindings } = require("./src/findings/builder");
+  const { startEventQueue } = require("./src/watch/event-queue");
+
+  const restore = silence();
+  try {
+    // 1. Bug 4: Fingerprint stability
+    const pkg = { name: "p1", version: "1.0.0", ecosystem: "npm" };
+    const vulnMap = { "k": { vulnerable: true, advisories: [{ id: "A1", severity: "high" }] } };
+    const findings1 = await buildFindings(new Map([["k", pkg]]), vulnMap, {});
+    const findings2 = await buildFindings(new Map([["k", pkg]]), vulnMap, {});
+    assert(findings1[0].fingerprint === findings2[0].fingerprint, "Fingerprints must be deterministic");
+    assert(findings1[0].fingerprint === "npm|p1|1.0.0|A1", "Fingerprint format check");
+
+    // 2. Alert selection / Deduplication
+    const oldF = [ findings1[0] ];
+    const newF = [ findings1[0], { ...findings1[0], advisory_id: "A2", fingerprint: "F2" } ];
+    const { newToNotify } = selectNewNotifiableFindings(oldF, newF, { notifyOnSeverity: "high" });
+    assert(newToNotify.length === 1 && newToNotify[0].advisory_id === "A2", "Should only notify for NEW fingerprints");
+
+    // 3. Project Index & Separator (Bug 3)
+    const inputs = [{ path: "D:\\p\\package.json", projectRoot: "D:\\p", ecosystem: "npm" }];
+    const { index, projectToInputs } = buildProjectIndex(inputs);
+    assert(projectToInputs["D:\\p|npm"], "Project index must use pipe separator for Windows paths");
+
+    // 4. Event Queue Null Safety (Bug 1)
+    const queue = startEventQueue({ watchDebounceMs: 1 }, {}, () => {});
+    queue.markDirty(null); // Should not throw
+    queue.markDirty(undefined); // Should not throw
+    
+    // 5. Quick Fingerprint
+    const fp = await quickFingerprint("package.json");
+    assert(fp, "Fingerprint should exist");
+
+    // 6. Scoped Rescan guard (Regression check for machine-wide rescan bug)
+    // We can't easily test the full alerts.js loop here without deeper mocks,
+    // but we'll add a comment/placeholder to remind future maintainers.
+  } finally {
+    restore();
+  }
+}
+
 async function runAll() {
   console.log("Running additional coverage tests...");
   try {
@@ -915,6 +960,8 @@ async function runAll() {
     console.log("✓ Vuln provider details");
     await testPolicyExitCodeAndFileExports();
     console.log("✓ Policy exit code and file exports");
+    await testWatchModeLogic();
+    console.log("✓ Watch mode internal logic");
     console.log("\nAll coverage tests passed");
   } catch (err) {
     console.error("✗ Coverage test failed:", err);

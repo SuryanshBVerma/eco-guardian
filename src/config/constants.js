@@ -108,6 +108,13 @@ const WALK_SKIP_NAMES = new Set([
   "snap",
 ]);
 
+const DEFAULT_WATCH_STATE_FILE = "eco-guardian-state.json";
+const DEFAULT_ALERTS_FILE = "eco-guardian-alerts.jsonl";
+const DEFAULT_ALERTS_MD_FILE = "eco-guardian-alerts.md";
+const DEFAULT_NOTIFY_SEVERITY = "high";
+const DEFAULT_RECONCILE_INTERVAL_SEC = 900;
+const DEFAULT_WATCH_DEBOUNCE_MS = 1500;
+
 module.exports = {
   VERSION,
   PLATFORM,
@@ -133,6 +140,12 @@ module.exports = {
   PYTHON_MANIFEST_NAMES,
   GO_MANIFEST_NAMES,
   GRAPH_RESOLUTION_SUPPORT,
+  DEFAULT_WATCH_STATE_FILE,
+  DEFAULT_ALERTS_FILE,
+  DEFAULT_ALERTS_MD_FILE,
+  DEFAULT_NOTIFY_SEVERITY,
+  DEFAULT_RECONCILE_INTERVAL_SEC,
+  DEFAULT_WATCH_DEBOUNCE_MS,
   THOUGHT_WORDS: [
     "Accomplishing",
     "Elucidating",

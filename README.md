@@ -62,12 +62,37 @@ node eco-guardian.js --fail-on-severity high --max-critical 0 --max-high 5
 | `--max-high <n>`             | Policy gate failure if high findings exceed `n`.                             |
 | `--why <package>`            | Show dependency path and remediation context for one package/ecosystem.      |
 | `--benchmark`                | Show peak RAM, average CPU, and scan duration.                               |
+| `--watch`                    | Run eco-guardian as a long-lived incremental monitor.                       |
+| `--notify-on-severity <level>`| Alert only on new findings at or above this severity (default: `high`).     |
+| `--state-file <file>`         | Persistent watch snapshot file.                                              |
+| `--alerts-file <file>`        | Append-only JSONL alert ledger (default: `eco-guardian-alerts.jsonl`).       |
+| `--alerts-md <file>`          | Human-readable Markdown alert digest.                                        |
+| `--reconcile-interval <sec>`  | Low-frequency safety sweep interval (default: `900`).                        |
+| `--watch-debounce-ms <ms>`    | Debounce dirty-project rescans (default: `1500`).                            |
 | `--verbose`                  | Print full advisory details in console mode.                                 |
 | `--graph-resolution`         | Resolve dependency graphs with native ecosystem tooling.                     |
 | `--global`                   | On Unix-like systems, include `/` root scan.                                 |
 | `--all-drives`               | Full-machine scan mode.                                                      |
 | `--help`                     | Print help.                                                                  |
 | `--version`                  | Print version.                                                               |
+
+## Continuous Watch Mode
+
+`eco-guardian --watch` performs one bootstrap scan, builds a dependency-input index, and then watches only relevant package manifests and sentinel directories (like `node_modules`).
+
+When an input changes:
+1.  eco-guardian rescans **only** the affected project/ecosystem.
+2.  The vulnerability cache is reused where possible to minimize latency.
+3.  New findings are compared against the bootstrap snapshot.
+4.  Notifications are dispatched only for newly introduced findings that pass the `--notify-on-severity` threshold and are not in the baseline.
+
+Note: Because `fs.watch()` behavior varies by platform, a background reconciliation pass periodically sweeps the index to ensure no events were missed.
+
+### Alert History
+
+- **JSONL Ledger**: All alerts and resolutions are logged to `--alerts-file` (default: `eco-guardian-alerts.jsonl`). This file serves as the authoritative history for deduplication.
+- **Markdown Digest**: An optional, human-readable table can be maintained via `--alerts-md`.
+- **State Snapshot**: The watcher's current view of the world is persisted in `--state-file` to allow for incremental resumes (planned).
 
 ## Discovery and Resolution Notes
 

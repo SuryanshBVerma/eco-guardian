@@ -37,61 +37,15 @@ const {
 const { evaluatePolicy } = require("../policy/gates");
 const musing = require("../cli/musing");
 
-async function runScan(options, state = {}) {
-  const phaseTimes = {};
+async function collectPackageMap(options, state = {}) {
+  const phaseTimes = { discovery: 0, harvest: 0, roots: 0 };
   const counters = { found: 0, skippedPermissions: 0 };
   const resolutionSummary = [];
-  const monitor = new ResourceMonitor(options);
-  if (options.benchmark) monitor.start();
-  if (!options.json) musing.start();
-
-  if (!options.json) {
-    const rgActive = await isRipgrepAvailable();
-    log(
-      "info",
-      `Discovery Mode: ${rgActive ? "Ripgrep (High Performance)" : "Standard (Native Fallback)"}`,
-      options,
-    );
-
-    if (
-      path.resolve(options.path) === path.resolve(__dirname, "../../") ||
-      path.resolve(options.path) === path.resolve(process.cwd())
-    ) {
-      if (
-        require("../../package.json").name === "@npm-guardian/eco-guardian" ||
-        require("../../package.json").name === "npm-guardian" ||
-        require("../../package.json").name === "eco-guardian"
-      ) {
-        log(
-          "info",
-          "I have gazed into my own soul. It is clean... for now.",
-          options,
-        );
-      }
-    }
-  }
 
   const rootsStart = nowMs();
   const rootsInfo = await discoverScanRoots(options, state);
   phaseTimes.roots = Date.now() - rootsStart;
   state.globalRoot = rootsInfo.globalRoot;
-
-  log("info", "Scanning roots:", options);
-  for (const root of rootsInfo.roots) {
-    const label =
-      rootsInfo.globalRoot &&
-      path.resolve(root) === path.resolve(rootsInfo.globalRoot)
-        ? " (global)"
-        : "";
-    if (!options.json) log("info", `  -> ${root}${label}`, options);
-  }
-  if (state.globalRootUnavailable) {
-    log(
-      "warn",
-      "npm not found on PATH. Global packages were not scanned.",
-      options,
-    );
-  }
 
   function mergePackageMaps(target, source) {
     for (const [key, record] of source.entries()) {
@@ -256,8 +210,19 @@ async function runScan(options, state = {}) {
       );
     }
   }
-  state.packageMap = packageMap;
   phaseTimes.harvest = Date.now() - harvestStart;
+
+  return {
+    packageMap,
+    resolutionSummary,
+    phaseTimes,
+    counters,
+    rootsInfo,
+  };
+}
+
+async function analyzePackageMap(packageMap, options, state = {}, metadata = {}) {
+  const { phaseTimes = {}, resolutionSummary = [], counters = {} } = metadata;
 
   const queryStart = nowMs();
   const vulnerabilityMap = await queryVulnerabilities(packageMap, options);
@@ -313,7 +278,6 @@ async function runScan(options, state = {}) {
     policy,
     queryDiagnostics,
   );
-  const metrics = options.benchmark ? monitor.stop() : null;
 
   const finalFindings = options.why
     ? visibleFindings.filter(
@@ -322,6 +286,8 @@ async function runScan(options, state = {}) {
           f.ecosystem.toLowerCase() === options.why.toLowerCase(),
       )
     : visibleFindings;
+
+  const metrics = metadata.metrics || null;
 
   if (options.json) {
     process.stdout.write(`${JSON.stringify(finalFindings, null, 2)}\n`);
@@ -351,19 +317,12 @@ async function runScan(options, state = {}) {
     }
 
     if (fixFile) log("success", `Fix script written to: ${fixFile}`, options);
-    if (jsonFile) {
-      log("success", `JSON report written to: ${jsonFile}`, options);
-    }
-    if (csvFile) {
-      log("success", `CSV report written to: ${csvFile}`, options);
-    }
+    if (jsonFile) log("success", `JSON report written to: ${jsonFile}`, options);
+    if (csvFile) log("success", `CSV report written to: ${csvFile}`, options);
     if (txtFile) log("success", `TXT report written to: ${txtFile}`, options);
-    if (htmlFile) {
-      log("success", `HTML report written to: ${htmlFile}`, options);
-    }
-    if (sarifFile) {
-      log("success", `SARIF report written to: ${sarifFile}`, options);
-    }
+    if (htmlFile) log("success", `HTML report written to: ${htmlFile}`, options);
+    if (sarifFile) log("success", `SARIF report written to: ${sarifFile}`, options);
+
     if (counters.skippedPermissions > 0) {
       log(
         "info",
@@ -386,21 +345,11 @@ async function runScan(options, state = {}) {
 
   if (options.verbose && !options.json) {
     const total = Object.values(phaseTimes).reduce((a, b) => a + b, 0);
-    process.stderr.write(
-      `Phase 1 (discovery):  ${(phaseTimes.discovery / 1000).toFixed(1)}s\n`,
-    );
-    process.stderr.write(
-      `Phase 2 (harvesting): ${(phaseTimes.harvest / 1000).toFixed(1)}s\n`,
-    );
-    process.stderr.write(
-      `Phase 3 (API query):  ${(phaseTimes.query / 1000).toFixed(1)}s\n`,
-    );
-    process.stderr.write(
-      `Phase 4 (reporting):  ${(phaseTimes.report / 1000).toFixed(1)}s\n`,
-    );
-    process.stderr.write(
-      `Total:                ${(total / 1000).toFixed(1)}s\n`,
-    );
+    process.stderr.write(`Phase 1 (discovery):  ${(phaseTimes.discovery / 1000).toFixed(1)}s\n`);
+    process.stderr.write(`Phase 2 (harvesting): ${(phaseTimes.harvest / 1000).toFixed(1)}s\n`);
+    process.stderr.write(`Phase 3 (API query):  ${(phaseTimes.query / 1000).toFixed(1)}s\n`);
+    process.stderr.write(`Phase 4 (reporting):  ${(phaseTimes.report / 1000).toFixed(1)}s\n`);
+    process.stderr.write(`Total:                ${(total / 1000).toFixed(1)}s\n`);
   }
 
   const exitCode =
@@ -419,6 +368,37 @@ async function runScan(options, state = {}) {
   };
 }
 
+async function runScan(options, state = {}) {
+  const monitor = new ResourceMonitor(options);
+  if (options.benchmark) monitor.start();
+  if (!options.json) musing.start();
+
+  if (!options.json) {
+    const rgActive = await isRipgrepAvailable();
+    log("info", `Discovery Mode: ${rgActive ? "Ripgrep (High Performance)" : "Standard (Native Fallback)"}`, options);
+
+    if (
+      path.resolve(options.path) === path.resolve(__dirname, "../../") ||
+      path.resolve(options.path) === path.resolve(process.cwd())
+    ) {
+      const pkgName = require("../../package.json").name;
+      if (["@npm-guardian/eco-guardian", "npm-guardian", "eco-guardian"].includes(pkgName)) {
+        log("info", "I have gazed into my own soul. It is clean... for now.", options);
+      }
+    }
+  }
+
+  const collection = await collectPackageMap(options, state);
+  const metrics = options.benchmark ? monitor.stop() : null;
+
+  return analyzePackageMap(collection.packageMap, options, state, {
+    ...collection,
+    metrics,
+  });
+}
+
 module.exports = {
+  collectPackageMap,
+  analyzePackageMap,
   runScan,
 };

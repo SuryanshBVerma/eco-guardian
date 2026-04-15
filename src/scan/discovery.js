@@ -388,9 +388,96 @@ async function discoverManifestFiles(
   }
 }
 
+async function discoverDependencyInputs(roots, options) {
+  const inputs = [];
+  const counters = { found: 0, skippedPermissions: 0 };
+
+  if (options.ecosystems.includes("npm")) {
+    const nodeModules = await discoverNodeModules(roots, options, counters);
+    for (const nm of nodeModules) {
+      const projectRoot = path.dirname(nm);
+      inputs.push({ ecosystem: "npm", path: nm, projectRoot, isDir: true });
+      const pkgJson = path.join(projectRoot, "package.json");
+      const lockJson = path.join(projectRoot, "package-lock.json");
+      const shrinkwrap = path.join(projectRoot, "npm-shrinkwrap.json");
+      if (fs.existsSync(pkgJson)) inputs.push({ ecosystem: "npm", path: pkgJson, projectRoot, isDir: false });
+      if (fs.existsSync(lockJson)) inputs.push({ ecosystem: "npm", path: lockJson, projectRoot, isDir: false });
+      if (fs.existsSync(shrinkwrap)) inputs.push({ ecosystem: "npm", path: shrinkwrap, projectRoot, isDir: false });
+    }
+  }
+
+  const {
+    MAVEN_MANIFEST_NAMES,
+    NUGET_MANIFEST_NAMES,
+    PYTHON_MANIFEST_NAMES,
+    GO_MANIFEST_NAMES,
+  } = require("../config/constants");
+
+  if (options.ecosystems.includes("maven")) {
+    const dirs = await discoverManifestFiles(roots, MAVEN_MANIFEST_NAMES, options, counters, "Maven projects");
+    for (const dir of dirs) {
+      for (const name of MAVEN_MANIFEST_NAMES) {
+        const p = path.join(dir, name);
+        if (fs.existsSync(p)) inputs.push({ ecosystem: "maven", path: p, projectRoot: dir, isDir: false });
+      }
+    }
+  }
+
+  if (options.ecosystems.includes("nuget")) {
+    const dirs = await discoverManifestFiles(roots, NUGET_MANIFEST_NAMES, options, counters, "NuGet projects");
+    for (const dir of dirs) {
+      // Find all matching manifests in the directory
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        if (NUGET_MANIFEST_NAMES.has(file) || file.endsWith(".csproj") || file.endsWith(".vbproj") || file.endsWith(".fsproj")) {
+          inputs.push({ ecosystem: "nuget", path: path.join(dir, file), projectRoot: dir, isDir: false });
+        }
+      }
+    }
+  }
+
+  if (options.ecosystems.includes("python")) {
+    const dirs = await discoverManifestFiles(roots, PYTHON_MANIFEST_NAMES, options, counters, "Python projects");
+    for (const dir of dirs) {
+      for (const name of PYTHON_MANIFEST_NAMES) {
+        const p = path.join(dir, name);
+        if (fs.existsSync(p)) inputs.push({ ecosystem: "python", path: p, projectRoot: dir, isDir: false });
+      }
+    }
+  }
+
+  if (options.ecosystems.includes("go")) {
+    const dirs = await discoverManifestFiles(roots, GO_MANIFEST_NAMES, options, counters, "Go projects");
+    for (const dir of dirs) {
+      for (const name of GO_MANIFEST_NAMES) {
+        const p = path.join(dir, name);
+        if (fs.existsSync(p)) inputs.push({ ecosystem: "go", path: p, projectRoot: dir, isDir: false });
+      }
+      const sum = path.join(dir, "go.sum");
+      if (fs.existsSync(sum)) inputs.push({ ecosystem: "go", path: sum, projectRoot: dir, isDir: false });
+    }
+  }
+
+  if (options.ecosystems.includes("vscode")) {
+    // VSCode extensions are just directories with package.json
+    // Reuse discoverManifestFiles with package.json
+    const dirs = await discoverManifestFiles(roots, new Set(["package.json"]), options, counters, "VSCode extensions");
+    for (const dir of dirs) {
+      const p = path.join(dir, "package.json");
+      if (fs.existsSync(p)) {
+        // Only treat as VSCode if it's not already handled as npm (though they overlap)
+        inputs.push({ ecosystem: "vscode", path: p, projectRoot: dir, isDir: false });
+      }
+    }
+  }
+
+  return inputs;
+}
+
 module.exports = {
   isRipgrepAvailable,
   discoverScanRoots,
   discoverNodeModules,
   discoverManifestFiles,
+  discoverDependencyInputs,
 };

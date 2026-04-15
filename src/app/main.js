@@ -82,12 +82,14 @@ async function main(argv = process.argv.slice(2)) {
 
   try {
     const result = await withMutedStderr(options.banner === "off", () =>
-      runScan(options, state),
+      options.watch
+        ? require("../watch").startWatchService(options, state)
+        : runScan(options, state),
     );
     process.exitCode =
       typeof result.exitCode === "number"
         ? result.exitCode
-        : result.findings.length > 0
+        : result.findings && result.findings.length > 0
           ? 1
           : 0;
   } catch (error) {
