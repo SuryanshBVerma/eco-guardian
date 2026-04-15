@@ -1,7 +1,8 @@
 'use strict';
 
-const { collectPackageMap, analyzePackageMap } = require('../app/run-scan');
+const runScan = require('../app/run-scan');
 const { appendAlert, alreadyAlerted, markResolved, loadAlertLedger } = require('./ledger');
+const { saveWatchState } = require('./state-store');
 const { log } = require('../cli/output');
 const { SEVERITY_ORDER } = require('../config/constants');
 const fs = require('fs');
@@ -45,10 +46,13 @@ async function processDirtyProjects(snapshot, dirtyProjectKeys, options) {
     log('info', `Rescanning project: ${projectRoot} (${ecosystem})`, options);
     
     const scopeOptions = { ...options, path: projectRoot, pathExplicit: true, ecosystems: [ecosystem] };
-    const collection = await collectPackageMap(scopeOptions, {});
-    const analysis = await analyzePackageMap(collection.packageMap, scopeOptions, {}, collection);
+    const collection = await runScan.collectPackageMap(scopeOptions, {});
+    const analysis = await runScan.analyzePackageMap(collection.packageMap, scopeOptions, {}, collection);
 
-    const { newToNotify, resolved } = selectNewNotifiableFindings(snapshot.findings, analysis.findings, options);
+    const scopedOldFindings = snapshot.findings.filter(
+      f => path.resolve(f.project || '') === path.resolve(projectRoot) && f.ecosystem === ecosystem
+    );
+    const { newToNotify, resolved } = selectNewNotifiableFindings(scopedOldFindings, analysis.findings, options);
 
     for (const f of newToNotify) {
       if (!alreadyAlerted(ledger, f.fingerprint)) {
@@ -93,6 +97,10 @@ async function processDirtyProjects(snapshot, dirtyProjectKeys, options) {
       project: projectRoot
     }));
     snapshot.findings.push(...newFindings);
+  }
+
+  if (options.stateFile) {
+    await saveWatchState(options.stateFile, snapshot);
   }
 }
 

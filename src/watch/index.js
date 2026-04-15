@@ -1,7 +1,7 @@
 'use strict';
 
 const fs = require('fs');
-const { bootstrapState } = require('./state-store');
+const { loadWatchState, bootstrapState, saveWatchState } = require('./state-store');
 const { buildProjectIndex } = require('./project-index');
 const { startEventQueue } = require('./event-queue');
 const { reconcileLoop } = require('./reconcile');
@@ -10,8 +10,16 @@ const { quickFingerprint } = require('./fingerprint');
 const { log } = require('../cli/output');
 
 async function startWatchService(options, runtimeState = {}) {
-  log('info', 'Bootstrapping watch state...', options);
-  const snapshot = await bootstrapState(options, runtimeState);
+  let snapshot = null;
+  const savedState = await loadWatchState(options.stateFile);
+  
+  if (savedState) {
+    log('info', 'Resuming from saved watch state...', options);
+    snapshot = savedState;
+  } else {
+    log('info', 'Bootstrapping watch state...', options);
+    snapshot = await bootstrapState(options, runtimeState);
+  }
   
   const { index, projectToInputs } = buildProjectIndex(snapshot.inputs);
   
@@ -25,7 +33,7 @@ async function startWatchService(options, runtimeState = {}) {
 
     try {
       fs.watch(input.path, async (event, filename) => {
-        if (event === 'change') {
+        if (event === 'change' || event === 'rename') {
           const currentFp = await quickFingerprint(input.path);
           if (currentFp !== snapshot.inputFingerprints[input.path]) {
             snapshot.inputFingerprints[input.path] = currentFp;
