@@ -5,6 +5,7 @@ const { resolveMavenPackages } = require("./maven");
 const { resolveNuGetPackages } = require("./nuget");
 const { resolveGoPackages } = require("./go");
 const { resolvePythonPackages } = require("./python");
+const { resolveGradlePackages } = require("./gradle");
 const { log } = require("../cli/output");
 
 const { GRAPH_RESOLUTION_SUPPORT } = require("../config/constants");
@@ -52,6 +53,9 @@ async function resolveEcosystemPackages(ecosystem, roots, options, state) {
         break;
       case "python":
         packageMap = await resolvePythonPackages(roots, options, state);
+        break;
+      case "gradle":
+        packageMap = await resolveGradlePackages(roots, options, state);
         break;
       default:
         packageMap = new Map();

@@ -408,6 +408,8 @@ async function discoverDependencyInputs(roots, options) {
 
   const {
     MAVEN_MANIFEST_NAMES,
+    GRADLE_BUILD_FILES,
+    GRADLE_AUX_FILES,
     NUGET_MANIFEST_NAMES,
     PYTHON_MANIFEST_NAMES,
     GO_MANIFEST_NAMES,
@@ -419,6 +421,20 @@ async function discoverDependencyInputs(roots, options) {
       for (const name of MAVEN_MANIFEST_NAMES) {
         const p = path.join(dir, name);
         if (fs.existsSync(p)) inputs.push({ ecosystem: "maven", path: p, projectRoot: dir, isDir: false });
+      }
+    }
+  }
+
+  if (options.ecosystems.includes("gradle")) {
+    const dirs = await discoverManifestFiles(roots, GRADLE_BUILD_FILES, options, counters, "Gradle projects");
+    for (const dir of dirs) {
+      for (const name of GRADLE_BUILD_FILES) {
+        const p = path.join(dir, name);
+        if (fs.existsSync(p)) inputs.push({ ecosystem: "gradle", path: p, projectRoot: dir, isDir: false });
+      }
+      for (const name of GRADLE_AUX_FILES) {
+        const p = path.join(dir, name);
+        if (fs.existsSync(p)) inputs.push({ ecosystem: "gradle", path: p, projectRoot: dir, isDir: false });
       }
     }
   }

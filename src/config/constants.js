@@ -8,6 +8,7 @@ const SEVERITY_ORDER = { low: 1, moderate: 2, high: 3, critical: 4 };
 const SUPPORTED_ECOSYSTEMS = [
   "npm",
   "maven",
+  "gradle",
   "nuget",
   "vscode",
   "python",
@@ -16,6 +17,7 @@ const SUPPORTED_ECOSYSTEMS = [
 const OSV_ECOSYSTEM_MAP = {
   npm: "npm",
   maven: "Maven",
+  gradle: "Maven",
   nuget: "NuGet",
   vscode: "VSCode",
   python: "PyPI",
@@ -25,6 +27,7 @@ const OSV_ECOSYSTEM_MAP = {
 const GRAPH_RESOLUTION_SUPPORT = {
   npm: "supported",
   maven: "supported",
+  gradle: "supported",
   nuget: "supported",
   go: "supported",
   python: "partial",
@@ -46,6 +49,14 @@ const PYTHON_MANIFEST_NAMES = new Set([
   "poetry.lock",
 ]);
 const GO_MANIFEST_NAMES = new Set(["go.mod"]);
+const GRADLE_BUILD_FILES = new Set(["build.gradle", "build.gradle.kts"]);
+const GRADLE_AUX_FILES = new Set([
+  "settings.gradle",
+  "settings.gradle.kts",
+  "gradle.lockfile",
+  "buildscript-gradle.lockfile",
+  "libs.versions.toml",
+]);
 
 const COLORS = {
   reset: "\x1b[0m",
@@ -139,6 +150,8 @@ module.exports = {
   NUGET_MANIFEST_NAMES,
   PYTHON_MANIFEST_NAMES,
   GO_MANIFEST_NAMES,
+  GRADLE_BUILD_FILES,
+  GRADLE_AUX_FILES,
   GRAPH_RESOLUTION_SUPPORT,
   DEFAULT_WATCH_STATE_FILE,
   DEFAULT_ALERTS_FILE,

@@ -126,9 +126,71 @@ function advisoryPasses(advisory, threshold) {
   );
 }
 
+function cvssToSeverity(score) {
+  if (score == null) return "MODERATE";
+  if (score >= 9.0) return "CRITICAL";
+  if (score >= 7.0) return "HIGH";
+  if (score >= 4.0) return "MODERATE";
+  return "LOW";
+}
+
+function extractNvdCvss(metrics) {
+  if (!metrics) return null;
+  return (
+    metrics.cvssMetricV31?.[0]?.cvssData?.baseScore ??
+    metrics.cvssMetricV30?.[0]?.cvssData?.baseScore ??
+    metrics.cvssMetricV2?.[0]?.cvssData?.baseScore ??
+    null
+  );
+}
+
+/**
+ * Normalizes an NVD CVE object (from /rest/json/cves/2.0 vulnerabilities[].cve)
+ * into the same advisory shape used throughout eco-guardian.
+ */
+function normalizeNvdCve(cveRecord, candidate) {
+  const cveId = cveRecord?.id || null;
+  const metrics = cveRecord?.metrics || {};
+  const cvss = extractNvdCvss(metrics);
+  const description = (cveRecord?.descriptions || [])
+    .find((d) => d.lang === "en")?.value || cveId || "NVD finding";
+  return {
+    id: cveId || `NVD-${Date.now()}`,
+    aliases: cveId ? [cveId] : [],
+    severity: cvssToSeverity(cvss),
+    cvss_score: cvss,
+    title: description.slice(0, 200),
+    description,
+    affected_versions: null,
+    fixed_versions: [],
+    references: (cveRecord?.references || []).map((r) => r.url).filter(Boolean),
+    source: "nvd",
+    cve: cveId,
+    match_confidence: candidate?.confidence || "unknown",
+  };
+}
+
+/**
+ * Cross-source dedupe: if the same CVE-ID appears in both OSV and NVD results,
+ * prefer the OSV entry (it has richer fixed_versions data) and drop the NVD duplicate.
+ */
+function dedupeAcrossSources(advisories) {
+  const osvCves = new Set(
+    advisories
+      .filter((a) => a.source !== "nvd" && a.cve)
+      .map((a) => a.cve)
+  );
+  return advisories.filter((a) => {
+    if (a.source === "nvd" && a.cve && osvCves.has(a.cve)) return false;
+    return true;
+  });
+}
+
 module.exports = {
   normalizeOsvAdvisory,
   normalizeNpmAdvisory,
+  normalizeNvdCve,
   dedupeAdvisories,
+  dedupeAcrossSources,
   advisoryPasses,
 };

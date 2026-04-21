@@ -57,6 +57,8 @@ async function buildFindings(packageMap, vulnerabilityMap, state) {
         ecosystem: pkg.ecosystem,
         package: pkg.name,
         version: pkg.version,
+        source: advisory.source || "osv",
+        match_confidence: advisory.match_confidence || null,
         resolution_mode: pkg.resolution_mode || "inventory",
         resolved_path: pkg.resolved_path || null,
         depth: typeof pkg.depth === "number" ? pkg.depth : null,

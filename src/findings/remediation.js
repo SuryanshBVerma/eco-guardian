@@ -65,6 +65,11 @@ function generateRemediationHint({
         ? `Update ${packageName} to version ${fixedVersion} in pom.xml.`
         : "Review dependency usage.";
     }
+    if (eco === "gradle") {
+      return fixedVersion
+        ? `Update ${packageName} to version ${fixedVersion} in build.gradle/build.gradle.kts or your Gradle version catalog/lockfile.`
+        : "Review Gradle dependency usage.";
+    }
     if (eco === "nuget") {
       return fixedVersion
         ? `Update ${packageName} to version ${fixedVersion} in project manifest.`

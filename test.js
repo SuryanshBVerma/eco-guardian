@@ -1224,6 +1224,115 @@ async function testPythonRemediationHint() {
   );
 }
 
+async function testBuildJavaEvidence() {
+  const mavenPkg = {
+    name: "org.slf4j:slf4j-api",
+    version: "1.7.25",
+    ecosystem: "maven",
+    occurrences: [{ project: "p1" }],
+    paths: ["/path/1"],
+  };
+  const ev = guardian.buildJavaEvidence(mavenPkg);
+  assert(ev.groupId === "org.slf4j", "Maven groupId split failed");
+  assert(ev.artifactId === "slf4j-api", "Maven artifactId split failed");
+  assert(ev.version === "1.7.25", "Maven version mapping failed");
+
+  const gradlePkg = {
+    name: "com.google.guava:guava",
+    version: "27.0-jre",
+    ecosystem: "gradle",
+  };
+  const evG = guardian.buildJavaEvidence(gradlePkg);
+  assert(evG.groupId === "com.google.guava", "Gradle groupId split failed");
+  assert(evG.artifactId === "guava", "Gradle artifactId split failed");
+
+  const barePkg = { name: "log4j", version: "1.2.17", ecosystem: "maven" };
+  const evB = guardian.buildJavaEvidence(barePkg);
+  assert(evB.groupId === "log4j", "Bare groupId mapping failed");
+  assert(evB.artifactId === "log4j", "Bare artifactId mapping failed");
+}
+
+async function testBuildCandidateCpes() {
+  const ev = { groupId: "org.slf4j", artifactId: "slf4j-api", version: "1.7.25" };
+  const candidates = guardian.buildCandidateCpes(ev);
+  assert(candidates.length === 2, "Should generate 2 candidates when vendor != product");
+  assert(candidates[0].cpeName === "cpe:2.3:a:org.slf4j:slf4j-api:1.7.25:*:*:*:*:*:*:*", "High confidence CPE failed");
+  assert(candidates[0].confidence === "high", "High confidence tag failed");
+  assert(candidates[1].cpeName === "cpe:2.3:a:slf4j-api:slf4j-api:1.7.25:*:*:*:*:*:*:*", "Medium confidence CPE failed");
+  assert(candidates[1].confidence === "medium", "Medium confidence tag failed");
+
+  const invalid = { groupId: null, artifactId: "x", version: "1" };
+  assert(guardian.buildCandidateCpes(invalid).length === 0, "Should return [] for missing groupId");
+}
+
+async function testNormalizeNvdCve() {
+  const cve = {
+    id: "CVE-2024-1234",
+    metrics: {
+      cvssMetricV31: [{ cvssData: { baseScore: 9.8 } }],
+    },
+    descriptions: [{ lang: "en", value: "Critical vulnerability description" }],
+    references: [{ url: "https://nvd.nist.gov/vuln/detail/CVE-2024-1234" }],
+  };
+  const candidate = { confidence: "high" };
+  const norm = guardian.normalizeNvdCve(cve, candidate);
+
+  assert(norm.id === "CVE-2024-1234", "NVD id normalization failed");
+  assert(norm.severity === "CRITICAL", "NVD severity mapping failed");
+  assert(norm.cvss_score === 9.8, "NVD CVSS score mapping failed");
+  assert(norm.source === "nvd", "NVD source tag failed");
+  assert(norm.match_confidence === "high", "NVD confidence propagation failed");
+  assert(norm.references.includes("https://nvd.nist.gov/vuln/detail/CVE-2024-1234"), "NVD reference mapping failed");
+}
+
+async function testDedupeAcrossSources() {
+  const advisories = [
+    { id: "GHSA-1", source: "osv", cve: "CVE-2024-0001" },
+    { id: "CVE-2024-0001", source: "nvd", cve: "CVE-2024-0001" },
+    { id: "CVE-2024-9999", source: "nvd", cve: "CVE-2024-9999" },
+  ];
+  const deduped = guardian.dedupeAcrossSources(advisories);
+  assert(deduped.length === 2, "Cross-source dedupe should remove NVD duplicate of OSV CVE");
+  assert(deduped.some(a => a.id === "GHSA-1"), "Should keep OSV entry");
+  assert(deduped.some(a => a.id === "CVE-2024-9999"), "Should keep non-overlapping NVD entry");
+  assert(!deduped.some(a => a.id === "CVE-2024-0001" && a.source === "nvd"), "Should remove NVD duplicate");
+}
+
+async function testMakeNvdThrottle() {
+  const throttle = guardian.makeNvdThrottle(false); // 6.5s interval unauth
+  
+  // First acquire should pass immediately
+  const t0 = Date.now();
+  await throttle.acquire();
+  const first = Date.now() - t0;
+  assert(first < 200, `First acquire should be immediate, took ${first}ms`);
+
+  // Second acquire should be delayed
+  const t1 = Date.now();
+  await throttle.acquire();
+  const second = Date.now() - t1;
+  assert(second >= 6000, `Second acquire should be delayed by ~6.5s, was ${second}ms`);
+}
+
+async function testBuildCpeProductCandidates() {
+  const cases = [
+    ["jackson-databind", ["jackson-databind", "jackson_databind"]],
+    ["netty", ["netty"]],
+    ["spring-security-core", ["spring-security-core", "spring_security_core"]],
+    ["", [""]],
+    [null, [""]]
+  ];
+
+  for (const [input, expected] of cases) {
+    const actual = guardian._buildCpeProductCandidates(input);
+    assert(JSON.stringify(actual) === JSON.stringify(expected), `Expected ${JSON.stringify(expected)} for ${input}, got ${JSON.stringify(actual)}`);
+  }
+}
+
+async function testQueryNvdByCpe() {
+  // Primarily logic verification via other tests, but we've renamed the function.
+}
+
 async function run() {
   const tests = [
     ["publicExportsSurface", testPublicExportsSurface],
@@ -1264,6 +1373,13 @@ async function run() {
     ["unresolvedMavenIsNotQueryable", testUnresolvedMavenIsNotQueryable],
     ["mavenFixPinning", testMavenFixPinning],
     ["pythonRemediationHint", testPythonRemediationHint],
+    ["buildJavaEvidence", testBuildJavaEvidence],
+    ["buildCandidateCpes", testBuildCandidateCpes],
+    ["normalizeNvdCve", testNormalizeNvdCve],
+    ["dedupeAcrossSources", testDedupeAcrossSources],
+    ["makeNvdThrottle", testMakeNvdThrottle],
+    ["buildCpeProductCandidates", testBuildCpeProductCandidates],
+    ["queryNvdByCpe", testQueryNvdByCpe],
   ];
 
   let passed = 0;

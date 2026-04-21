@@ -61,6 +61,8 @@ async function writeSarifReport(
         package: f.package,
         version: f.version,
         fixed_version: f.fixed_version,
+        source: f.source || "osv",
+        match_confidence: f.match_confidence || null,
       },
     };
   });

@@ -10,6 +10,7 @@ const {
 } = require("../scan/discovery");
 const { harvestNpmPackages } = require("../scan/harvest");
 const { collectMavenPackages } = require("../scan/maven");
+const { collectGradlePackages } = require("../scan/gradle");
 const { collectNuGetPackages } = require("../scan/nuget");
 const { collectVSCodeExtensions } = require("../scan/vscode");
 const { collectPythonPackages } = require("../scan/python");
@@ -123,6 +124,32 @@ async function collectPackageMap(options, state = {}) {
       mergePackageMaps(
         packageMap,
         await collectMavenPackages(rootsInfo.roots, options, state),
+      );
+    }
+  }
+  if (options.ecosystems.includes("gradle")) {
+    if (options.graphResolution) {
+      const resolved = await resolveEcosystemPackages(
+        "gradle",
+        rootsInfo.roots,
+        options,
+        state,
+      );
+      resolutionSummary.push({
+        ecosystem: "gradle",
+        mode: resolved.mode,
+        reason: resolved.reason,
+      });
+      mergePackageMaps(
+        packageMap,
+        resolved.usedFallback
+          ? await collectGradlePackages(rootsInfo.roots, options, state)
+          : resolved.packageMap,
+      );
+    } else {
+      mergePackageMaps(
+        packageMap,
+        await collectGradlePackages(rootsInfo.roots, options, state),
       );
     }
   }

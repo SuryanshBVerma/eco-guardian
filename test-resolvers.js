@@ -6,6 +6,7 @@ const { resolveMavenPackages } = require("./src/resolve/maven");
 const { resolveNuGetPackages } = require("./src/resolve/nuget");
 const { resolveGoPackages } = require("./src/resolve/go");
 const { resolvePythonPackages } = require("./src/resolve/python");
+const { resolveGradlePackages } = require("./src/resolve/gradle");
 const { resolveEcosystemPackages } = require("./src/resolve/index");
 
 function assert(condition, message) {
@@ -157,6 +158,33 @@ async function testPythonResolver() {
   );
 }
 
+async function testGradleResolver() {
+  require("./src/resolve/shared").execAsync = async () => `
+runtimeClasspath - Runtime classpath of source set 'main'.
++--- org.slf4j:slf4j-api:1.7.25
+\\--- com.google.guava:guava:27.0-jre
+     \\--- com.google.guava:failureaccess:1.0 -> 1.0.1
+  `;
+
+  const map = await resolveGradlePackages(["/root"], { verbose: false }, {});
+  assert(
+    map.has("gradle|org.slf4j:slf4j-api|1.7.25"),
+    "gradle resolver should find slf4j-api",
+  );
+  assert(
+    map.get("gradle|org.slf4j:slf4j-api|1.7.25").depth === 1,
+    "slf4j-api depth should be 1",
+  );
+  assert(
+    map.has("gradle|com.google.guava:failureaccess|1.0.1"),
+    "gradle resolver should find transitioned version",
+  );
+  assert(
+    map.get("gradle|com.google.guava:failureaccess|1.0.1").depth === 2,
+    "failureaccess depth should be 2",
+  );
+}
+
 async function testResolveEcosystemFallback() {
   // Test 1: unsupported ecosystem (n/a)
   const res1 = await resolveEcosystemPackages(
@@ -214,6 +242,8 @@ async function run() {
     process.stdout.write("✓ go resolver\n");
     await testPythonResolver();
     process.stdout.write("✓ python resolver\n");
+    await testGradleResolver();
+    process.stdout.write("✓ gradle resolver\n");
     await testResolveEcosystemFallback();
     process.stdout.write("✓ resolver fallback logic\n");
     process.stdout.write("\nAll resolver tests passed\n");

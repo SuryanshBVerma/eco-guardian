@@ -32,10 +32,16 @@ function printUsage() {
     "  --global-only        Only scan global npm installs\n",
   );
   process.stdout.write(
-    "  --ecosystems <list>  Comma-separated ecosystems: npm,maven,nuget,vscode,python,go (default: npm)\n",
+    "  --ecosystems <list>  Comma-separated ecosystems: npm,maven,gradle,nuget,vscode,python,go (default: npm)\n",
   );
   process.stdout.write(
     "  --graph-resolution   Resolve dependency graphs using ecosystem-specific native tools\n",
+  );
+  process.stdout.write(
+    "  --dependency-check-mode  Java-only secondary analysis using CPE/CVE matching against NVD\n",
+  );
+  process.stdout.write(
+    "  --nvd-api-key <key>  NVD API key for higher rate limits (optional)\n",
   );
   process.stdout.write(
     "  --severity <level>   Minimum: low|moderate|high|critical (default: low)\n",
@@ -129,6 +135,8 @@ function parseArgs(argv) {
     globalOnly: false,
     ecosystems: ["npm"],
     graphResolution: false,
+    dependencyCheckMode: false,
+    nvdApiKey: null,
     severity: "low",
     json: false,
     banner: "on",
@@ -371,6 +379,17 @@ function parseArgs(argv) {
     }
     if (token === "--graph-resolution") {
       args.graphResolution = true;
+      continue;
+    }
+    if (token === "--dependency-check-mode") {
+      args.dependencyCheckMode = true;
+      continue;
+    }
+    if (token === "--nvd-api-key") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) throw new Error("Missing value for --nvd-api-key");
+      args.nvdApiKey = next;
+      i += 1;
       continue;
     }
     if (token === "--watch") {

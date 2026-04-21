@@ -1,8 +1,9 @@
 # eco-guardian
 
-eco-guardian is a Node.js CLI that scans local machines for vulnerable packages across npm, Maven, NuGet, VSCode extensions, Python, and Go.
+eco-guardian is a Node.js CLI that scans local machines for vulnerable packages across npm, Maven, Gradle, NuGet, VSCode extensions, Python, and Go.
 
-It discovers dependencies locally, queries OSV (and npm advisories for npm packages), then reports findings in console/JSON and export formats.
+It discovers dependencies locally, queries OSV (and npm advisories for npm packages), and can optionally run a Java-only dependency-check-style mode that performs CPE/CVE matching against NVD for Maven/Gradle dependencies.
+Then it reports findings in console/JSON and export formats.
 
 ## Setup
 
@@ -29,7 +30,7 @@ Common examples:
 
 ```bash
 node eco-guardian.js --path ~/projects --severity high
-node eco-guardian.js --ecosystems npm,maven,nuget,vscode,python,go
+node eco-guardian.js --ecosystems npm,maven,gradle,nuget,vscode,python,go
 node eco-guardian.js --graph-resolution --ecosystems npm,maven
 node eco-guardian.js --export-sarif results.sarif
 node eco-guardian.js --export-json results.json --export-csv results.csv
@@ -42,7 +43,7 @@ node eco-guardian.js --fail-on-severity high --max-critical 0 --max-high 5
 | Flag                         | Description                                                                  |
 | ---------------------------- | ---------------------------------------------------------------------------- |
 | `--path <dir>`               | Scan only this path.                                                         |
-| `--ecosystems <list>`        | Comma-separated ecosystems: `npm,maven,nuget,vscode,python,go`.              |
+| `--ecosystems <list>`        | Comma-separated ecosystems: `npm,maven,gradle,nuget,vscode,python,go`.              |
 | `--global-only`              | Scan only global npm installs.                                               |
 | `--severity <level>`         | Minimum severity: `low`, `moderate`, `high`, `critical`.                     |
 | `--json`                     | Print findings JSON to stdout.                                               |
@@ -71,6 +72,8 @@ node eco-guardian.js --fail-on-severity high --max-critical 0 --max-high 5
 | `--watch-debounce-ms <ms>`    | Debounce dirty-project rescans (default: `1500`).                            |
 | `--verbose`                  | Print full advisory details in console mode.                                 |
 | `--graph-resolution`         | Resolve dependency graphs with native ecosystem tooling.                     |
+| `--dependency-check-mode`    | Java-only secondary analysis using CPE/CVE matching against NVD.            |
+| `--nvd-api-key <key>`        | NVD API key for higher rate limits (optional).                              |
 | `--global`                   | On Unix-like systems, include `/` root scan.                                 |
 | `--all-drives`               | Full-machine scan mode.                                                      |
 | `--help`                     | Print help.                                                                  |
@@ -111,6 +114,7 @@ Graph resolution support matrix:
 | --------- | -------------- |
 | npm       | supported      |
 | maven     | supported      |
+| gradle    | supported      |
 | nuget     | supported      |
 | go        | supported      |
 | python    | partial        |
@@ -132,6 +136,18 @@ Exit codes:
 - `2`: scan/runtime error
 - `3`: policy gate failed (`--fail-on-severity`, `--max-critical`, `--max-high`)
 
+### Java Dependency-Check Mode (Experimental)
+
+When enabled with `--dependency-check-mode`, eco-guardian performs secondary analysis for Maven and Gradle ecosystems by matching resolved package coordinates to NVD CPEs and querying the NVD CVE API.
+
+**Limitations:**
+- **Java-only:** Only affects `maven` and `gradle` ecosystems in v1.
+- **Heuristic:** CPE matching is based on heuristics and may yield false positives or negatives.
+- **No caching:** NVD results are queried fresh on every scan and are not cached to ensure data accuracy.
+- **Rate limiting:** Without an NVD API key, the scan may be throttled for large dependency sets.
+
+---
+
 ## Scripts
 
 ```bash
@@ -145,6 +161,7 @@ npm run coverage:check
 
 - `node test.js`
 - `node test-resolvers.js`
+- `node test-gradle.js`
 - `node test-coverage.js`
 
 `test-ripgrep.js` exists in the repo but is not part of the default `npm test` script.
@@ -158,7 +175,7 @@ Environment variable:
 ## Notes
 
 - Only package identifiers (name/version/ecosystem) are sent to advisory providers; file paths and source contents remain local.
-- Automated fix commands are generated for npm, maven, nuget, python, and go findings (not VSCode extensions).
+- Automated fix commands are generated for npm, maven, nuget, python, and go findings (not Gradle or VSCode extensions in v1).
 - Scheduler examples for weekly automation are in [SCHEDULER_GUIDE.md](SCHEDULER_GUIDE.md).
 
 ## License

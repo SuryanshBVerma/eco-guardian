@@ -99,6 +99,10 @@ function buildFixCommand({
       : null;
   }
 
+  if (eco === "gradle") {
+    return null;
+  }
+
   if (eco === "go") {
     return fixedVersion
       ? `go get ${quote(`${packageName}@v${fixedVersion.replace(/^v/, "")}`)}`
