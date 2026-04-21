@@ -152,8 +152,10 @@ function normalizeNvdCve(cveRecord, candidate) {
   const cveId = cveRecord?.id || null;
   const metrics = cveRecord?.metrics || {};
   const cvss = extractNvdCvss(metrics);
-  const description = (cveRecord?.descriptions || [])
-    .find((d) => d.lang === "en")?.value || cveId || "NVD finding";
+  const description =
+    (cveRecord?.descriptions || []).find((d) => d.lang === "en")?.value ||
+    cveId ||
+    "NVD finding";
   return {
     id: cveId || `NVD-${Date.now()}`,
     aliases: cveId ? [cveId] : [],
@@ -176,9 +178,7 @@ function normalizeNvdCve(cveRecord, candidate) {
  */
 function dedupeAcrossSources(advisories) {
   const osvCves = new Set(
-    advisories
-      .filter((a) => a.source !== "nvd" && a.cve)
-      .map((a) => a.cve)
+    advisories.filter((a) => a.source !== "nvd" && a.cve).map((a) => a.cve),
   );
   return advisories.filter((a) => {
     if (a.source === "nvd" && a.cve && osvCves.has(a.cve)) return false;

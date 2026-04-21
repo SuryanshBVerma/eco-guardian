@@ -1,11 +1,12 @@
-'use strict';
+"use strict";
 
-const fs = require('fs');
-const readline = require('readline');
+const fs = require("fs");
+const readline = require("readline");
 
 async function appendAlert(alert, filePath) {
   if (!filePath) return;
-  const line = JSON.stringify({ ...alert, timestamp: new Date().toISOString() }) + '\n';
+  const line =
+    JSON.stringify({ ...alert, timestamp: new Date().toISOString() }) + "\n";
   fs.appendFileSync(filePath, line);
 }
 
@@ -15,7 +16,7 @@ async function loadAlertLedger(filePath) {
   const fileStream = fs.createReadStream(filePath);
   const rl = readline.createInterface({
     input: fileStream,
-    crlfDelay: Infinity
+    crlfDelay: Infinity,
   });
 
   for await (const line of rl) {
@@ -31,12 +32,21 @@ async function loadAlertLedger(filePath) {
 }
 
 function alreadyAlerted(ledger, findingFingerprint) {
-  return ledger.some(entry => entry.fingerprint === findingFingerprint && entry.type === 'alert');
+  return ledger.some(
+    (entry) =>
+      entry.fingerprint === findingFingerprint && entry.type === "alert",
+  );
 }
 
 function markResolved(ledger, findingFingerprint, filePath) {
-  if (ledger.some(entry => entry.fingerprint === findingFingerprint && entry.type === 'resolved')) return;
-  appendAlert({ fingerprint: findingFingerprint, type: 'resolved' }, filePath);
+  if (
+    ledger.some(
+      (entry) =>
+        entry.fingerprint === findingFingerprint && entry.type === "resolved",
+    )
+  )
+    return;
+  appendAlert({ fingerprint: findingFingerprint, type: "resolved" }, filePath);
 }
 
 module.exports = {

@@ -1,6 +1,6 @@
-'use strict';
+"use strict";
 
-const { log } = require('../cli/output');
+const { log } = require("../cli/output");
 
 class EventQueue {
   constructor(options, snapshot, processFn) {
@@ -25,11 +25,15 @@ class EventQueue {
     this.running = true;
     const batch = Array.from(this.dirtyProjects);
     this.dirtyProjects.clear();
-    
+
     try {
       await this.processFn(batch);
     } catch (error) {
-      log('error', `Error processing dirty projects: ${error.message}`, this.options);
+      log(
+        "error",
+        `Error processing dirty projects: ${error.message}`,
+        this.options,
+      );
     } finally {
       this.running = false;
       if (this.dirtyProjects.size > 0) {
@@ -40,8 +44,8 @@ class EventQueue {
 
   runForever() {
     return new Promise(() => {
-      log('success', 'eco-guardian watch service is active.', this.options);
-      log('info', 'Press Ctrl+C to stop.', this.options);
+      log("success", "eco-guardian watch service is active.", this.options);
+      log("info", "Press Ctrl+C to stop.", this.options);
     });
   }
 }

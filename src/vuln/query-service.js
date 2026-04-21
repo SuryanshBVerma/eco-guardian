@@ -4,9 +4,13 @@ const { CACHE_TTL_MS } = require("../config/constants");
 const { nowMs, hrSeconds } = require("../shared/async");
 const { log } = require("../cli/output");
 const { loadCache, saveCache } = require("./cache");
-const { queryOsvForPackages, queryNpmBulk, queryNvdByCpe, makeNvdThrottle } = require("./providers");
+const {
+  queryOsvForPackages,
+  queryNpmBulk,
+  queryNvdByCpe,
+  makeNvdThrottle,
+} = require("./providers");
 const { buildJavaEvidence } = require("../java/evidence");
-const { buildCandidateCpes } = require("../java/cpe");
 const {
   normalizeNpmAdvisory,
   dedupeAdvisories,
@@ -282,31 +286,60 @@ async function queryVulnerabilities(packageMap, options) {
 
   if (options.dependencyCheckMode) {
     const JAVA_ECOSYSTEMS = new Set(["maven", "gradle"]);
-    const javaPkgs = queryablePackages.filter(
-      (pkg) => JAVA_ECOSYSTEMS.has(String(pkg.ecosystem || "").toLowerCase()),
+    const javaPkgs = queryablePackages.filter((pkg) =>
+      JAVA_ECOSYSTEMS.has(String(pkg.ecosystem || "").toLowerCase()),
     );
     if (javaPkgs.length > 0) {
-      log("info", `NVD dependency-check mode: enriching ${javaPkgs.length} Java package(s)`, options);
+      log(
+        "info",
+        `NVD dependency-check mode: enriching ${javaPkgs.length} Java package(s)`,
+        options,
+      );
       const throttle = makeNvdThrottle(!!options.nvdApiKey);
       const progress = { done: 0, total: javaPkgs.length };
       const estSec = options.nvdApiKey
-        ? Math.ceil(javaPkgs.length / 40 * 30)
-        : Math.ceil(javaPkgs.length / 3 * 30);
-      log("info", `NVD: ${javaPkgs.length} CPE requests — est. ~${estSec}s${options.nvdApiKey ? " (authenticated)" : " (unauthenticated, 3 req/30s)"}`, options);
+        ? Math.ceil((javaPkgs.length / 40) * 30)
+        : Math.ceil((javaPkgs.length / 3) * 30);
+      log(
+        "info",
+        `NVD: ${javaPkgs.length} CPE requests — est. ~${estSec}s${options.nvdApiKey ? " (authenticated)" : " (unauthenticated, 3 req/30s)"}`,
+        options,
+      );
 
       for (const pkg of javaPkgs) {
         const evidence = buildJavaEvidence(pkg);
         const label = `[${++progress.done}/${progress.total}] `;
         diagnostics.nvdRequests += 1;
-        
-        const cves = await queryNvdByCpe(evidence.artifactId, evidence.version, evidence.groupId, options, diagnostics, throttle, label);
-        const nvdAdvisories = cves.map(cve => normalizeNvdCve(cve, { confidence: "high" }));
+
+        const cves = await queryNvdByCpe(
+          evidence.artifactId,
+          evidence.version,
+          evidence.groupId,
+          options,
+          diagnostics,
+          throttle,
+          label,
+        );
+        const nvdAdvisories = cves.map((cve) =>
+          normalizeNvdCve(cve, { confidence: "high" }),
+        );
 
         if (nvdAdvisories.length > 0) {
-          const existing = results[pkg.key] || { vulnerable: false, advisories: [] };
-          const merged = dedupeAcrossSources([...existing.advisories, ...nvdAdvisories]);
-          const finalFiltered = dedupeAdvisories(merged).filter((a) => advisoryPasses(a, options.severity));
-          results[pkg.key] = { vulnerable: finalFiltered.length > 0, advisories: finalFiltered };
+          const existing = results[pkg.key] || {
+            vulnerable: false,
+            advisories: [],
+          };
+          const merged = dedupeAcrossSources([
+            ...existing.advisories,
+            ...nvdAdvisories,
+          ]);
+          const finalFiltered = dedupeAdvisories(merged).filter((a) =>
+            advisoryPasses(a, options.severity),
+          );
+          results[pkg.key] = {
+            vulnerable: finalFiltered.length > 0,
+            advisories: finalFiltered,
+          };
         }
       }
     }

@@ -21,6 +21,7 @@ class ResourceMonitor {
     this.interval = setInterval(() => {
       this.sample();
     }, 500);
+    if (typeof this.interval.unref === "function") this.interval.unref();
   }
 
   sample() {

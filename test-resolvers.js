@@ -1,6 +1,8 @@
 "use strict";
 
 const path = require("path");
+const fs = require("fs/promises");
+const https = require("https");
 const { resolveNpmPackages } = require("./src/resolve/npm");
 const { resolveMavenPackages } = require("./src/resolve/maven");
 const { resolveNuGetPackages } = require("./src/resolve/nuget");
@@ -159,30 +161,97 @@ async function testPythonResolver() {
 }
 
 async function testGradleResolver() {
-  require("./src/resolve/shared").execAsync = async () => `
-runtimeClasspath - Runtime classpath of source set 'main'.
-+--- org.slf4j:slf4j-api:1.7.25
-\\--- com.google.guava:guava:27.0-jre
-     \\--- com.google.guava:failureaccess:1.0 -> 1.0.1
-  `;
+  const projectRoot = path.resolve("/root");
+  const originalReadFile = fs.readFile;
+  const originalReaddir = fs.readdir;
+  const originalGet = https.get;
 
-  const map = await resolveGradlePackages(["/root"], { verbose: false }, {});
-  assert(
-    map.has("gradle|org.slf4j:slf4j-api|1.7.25"),
-    "gradle resolver should find slf4j-api",
-  );
-  assert(
-    map.get("gradle|org.slf4j:slf4j-api|1.7.25").depth === 1,
-    "slf4j-api depth should be 1",
-  );
-  assert(
-    map.has("gradle|com.google.guava:failureaccess|1.0.1"),
-    "gradle resolver should find transitioned version",
-  );
-  assert(
-    map.get("gradle|com.google.guava:failureaccess|1.0.1").depth === 2,
-    "failureaccess depth should be 2",
-  );
+  const files = {
+    [path.join(projectRoot, "build.gradle")]: `
+      dependencies {
+        implementation 'org.slf4j:slf4j-api:1.7.25'
+        implementation 'com.google.guava:guava:27.0-jre'
+      }
+    `,
+  };
+
+  const httpMocks = {
+    "https://repo1.maven.org/maven2/org/slf4j/slf4j-api/1.7.25/slf4j-api-1.7.25.module":
+      JSON.stringify({ variants: [] }),
+    "https://repo1.maven.org/maven2/com/google/guava/guava/27.0-jre/guava-27.0-jre.module":
+      JSON.stringify({
+        variants: [
+          {
+            name: "runtimeElements",
+            dependencies: [
+              {
+                group: "com.google.guava",
+                module: "failureaccess",
+                version: { requires: "1.0.1" },
+              },
+            ],
+          },
+        ],
+      }),
+    "https://repo1.maven.org/maven2/com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1.module":
+      JSON.stringify({ variants: [] }),
+  };
+
+  fs.readdir = async (dir, opts) => {
+    if (dir === projectRoot) {
+      if (opts && opts.withFileTypes) {
+        return [{ name: "build.gradle", isDirectory: () => false }];
+      }
+      return ["build.gradle"];
+    }
+    return [];
+  };
+
+  fs.readFile = async (file) => {
+    if (files[file]) return files[file];
+    throw new Error(`File not found: ${file}`);
+  };
+
+  https.get = (url, cb) => {
+    const payload = httpMocks[url];
+    const res = {
+      statusCode: payload ? 200 : 404,
+      on: (event, handler) => {
+        if (event === "data" && payload) handler(payload);
+        if (event === "end") handler();
+      },
+    };
+    cb(res);
+    return { on: () => {} };
+  };
+
+  try {
+    const map = await resolveGradlePackages(
+      [projectRoot],
+      { verbose: false, graphResolution: true },
+      {},
+    );
+    assert(
+      map.has("gradle|org.slf4j:slf4j-api|1.7.25"),
+      "gradle resolver should find slf4j-api",
+    );
+    assert(
+      map.get("gradle|org.slf4j:slf4j-api|1.7.25").depth === 1,
+      "slf4j-api depth should be 1",
+    );
+    assert(
+      map.has("gradle|com.google.guava:failureaccess|1.0.1"),
+      "gradle resolver should find transitioned version",
+    );
+    assert(
+      map.get("gradle|com.google.guava:failureaccess|1.0.1").depth === 2,
+      "failureaccess depth should be 2",
+    );
+  } finally {
+    fs.readFile = originalReadFile;
+    fs.readdir = originalReaddir;
+    https.get = originalGet;
+  }
 }
 
 async function testResolveEcosystemFallback() {

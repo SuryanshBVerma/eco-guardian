@@ -59,7 +59,9 @@ async function writeTxtReport(
     );
     lines.push(`   Title: ${finding.title || finding.advisory_id || ""}`);
     if (finding.source && finding.source !== "osv") {
-      lines.push(`   Source: ${finding.source}${finding.match_confidence ? ` (confidence: ${finding.match_confidence})` : ""}`);
+      lines.push(
+        `   Source: ${finding.source}${finding.match_confidence ? ` (confidence: ${finding.match_confidence})` : ""}`,
+      );
     }
     lines.push(`   Locations: ${(finding.found_in || []).length}`);
     for (const entry of finding.found_in || []) {

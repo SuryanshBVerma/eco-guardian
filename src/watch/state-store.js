@@ -1,10 +1,10 @@
-'use strict';
+"use strict";
 
-const fs = require('fs');
-const path = require('path');
-const { collectPackageMap, analyzePackageMap } = require('../app/run-scan');
-const { discoverDependencyInputs } = require('../scan/discovery');
-const { quickFingerprint } = require('./fingerprint');
+const fs = require("fs");
+const path = require("path");
+const { collectPackageMap, analyzePackageMap } = require("../app/run-scan");
+const { discoverDependencyInputs } = require("../scan/discovery");
+const { quickFingerprint } = require("./fingerprint");
 
 async function loadWatchState(filePath) {
   if (!filePath || !fs.existsSync(filePath)) return null;
@@ -28,7 +28,8 @@ async function saveWatchState(filePath, state) {
 function deriveProjectRoot(finding, inputDirs) {
   if (!finding.found_in || finding.found_in.length === 0) return "unknown";
   const entry = finding.found_in[0];
-  const pathSample = typeof entry === "string" ? entry : (entry.path || entry.project || "");
+  const pathSample =
+    typeof entry === "string" ? entry : entry.path || entry.project || "";
   if (!pathSample) return "unknown";
 
   // Sort inputDirs by length descending to find the deepest match
@@ -40,10 +41,20 @@ function deriveProjectRoot(finding, inputDirs) {
 
 async function bootstrapState(options, runtimeState) {
   const collection = await collectPackageMap(options, runtimeState);
-  const analysis = await analyzePackageMap(collection.packageMap, options, runtimeState, collection);
+  const analysis = await analyzePackageMap(
+    collection.packageMap,
+    options,
+    runtimeState,
+    collection,
+  );
 
-  const inputs = await discoverDependencyInputs(collection.rootsInfo.roots, options);
-  const inputDirs = inputs.map((i) => (i.isDir ? i.path : path.dirname(i.path)));
+  const inputs = await discoverDependencyInputs(
+    collection.rootsInfo.roots,
+    options,
+  );
+  const inputDirs = inputs.map((i) =>
+    i.isDir ? i.path : path.dirname(i.path),
+  );
 
   const inputFingerprints = {};
   for (const input of inputs) {
@@ -74,5 +85,5 @@ async function bootstrapState(options, runtimeState) {
 module.exports = {
   loadWatchState,
   saveWatchState,
-  bootstrapState
+  bootstrapState,
 };

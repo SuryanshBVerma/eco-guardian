@@ -126,7 +126,7 @@ function parseArgs(argv) {
     DEFAULT_ALERTS_FILE,
     DEFAULT_NOTIFY_SEVERITY,
     DEFAULT_RECONCILE_INTERVAL_SEC,
-    DEFAULT_WATCH_DEBOUNCE_MS
+    DEFAULT_WATCH_DEBOUNCE_MS,
   } = require("../config/constants");
 
   const args = {
@@ -387,7 +387,8 @@ function parseArgs(argv) {
     }
     if (token === "--nvd-api-key") {
       const next = argv[i + 1];
-      if (!next || next.startsWith("--")) throw new Error("Missing value for --nvd-api-key");
+      if (!next || next.startsWith("--"))
+        throw new Error("Missing value for --nvd-api-key");
       args.nvdApiKey = next;
       i += 1;
       continue;
@@ -398,42 +399,48 @@ function parseArgs(argv) {
     }
     if (token === "--notify-on-severity") {
       const next = argv[i + 1];
-      if (!next || next.startsWith("--")) throw new Error(`Missing value for ${token}`);
+      if (!next || next.startsWith("--"))
+        throw new Error(`Missing value for ${token}`);
       args.notifyOnSeverity = String(next).toLowerCase();
       i += 1;
       continue;
     }
     if (token === "--state-file") {
       const next = argv[i + 1];
-      if (!next || next.startsWith("--")) throw new Error(`Missing value for ${token}`);
+      if (!next || next.startsWith("--"))
+        throw new Error(`Missing value for ${token}`);
       args.stateFile = next;
       i += 1;
       continue;
     }
     if (token === "--alerts-file") {
       const next = argv[i + 1];
-      if (!next || next.startsWith("--")) throw new Error(`Missing value for ${token}`);
+      if (!next || next.startsWith("--"))
+        throw new Error(`Missing value for ${token}`);
       args.alertsFile = next;
       i += 1;
       continue;
     }
     if (token === "--alerts-md") {
       const next = argv[i + 1];
-      if (!next || next.startsWith("--")) throw new Error(`Missing value for ${token}`);
+      if (!next || next.startsWith("--"))
+        throw new Error(`Missing value for ${token}`);
       args.alertsMd = next;
       i += 1;
       continue;
     }
     if (token === "--reconcile-interval") {
       const next = argv[i + 1];
-      if (!next || next.startsWith("--")) throw new Error(`Missing value for ${token}`);
+      if (!next || next.startsWith("--"))
+        throw new Error(`Missing value for ${token}`);
       args.reconcileInterval = Number(next);
       i += 1;
       continue;
     }
     if (token === "--watch-debounce-ms") {
       const next = argv[i + 1];
-      if (!next || next.startsWith("--")) throw new Error(`Missing value for ${token}`);
+      if (!next || next.startsWith("--"))
+        throw new Error(`Missing value for ${token}`);
       args.watchDebounceMs = Number(next);
       i += 1;
       continue;

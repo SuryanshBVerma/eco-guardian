@@ -71,7 +71,7 @@ async function main(argv = process.argv.slice(2)) {
   }
 
   if (options.echo) {
-    await new Promise((r) => setTimeout(r, 3000));
+    await new Promise((resolve) => setTimeout(resolve, 3000));
     process.stdout.write(`...${options.echo}?\n`);
     process.exit(0);
   }

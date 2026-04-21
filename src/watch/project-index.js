@@ -1,6 +1,4 @@
-'use strict';
-
-const path = require('path');
+"use strict";
 
 function buildProjectIndex(inputs) {
   const index = {}; // path -> input metadata

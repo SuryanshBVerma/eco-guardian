@@ -34,7 +34,7 @@ function printSummary(
 
   if (options.dependencyCheckMode) {
     process.stdout.write(
-      `Dependency-check:  enabled (Java/NVD secondary enrichment)\n`,
+      "Dependency-check:  enabled (Java/NVD secondary enrichment)\n",
     );
   }
 
@@ -66,10 +66,14 @@ function printSummary(
       process.stdout.write("Provider status:   partial failures detected\n");
     }
     if (queryDiagnostics.nvdRequests > 0) {
-      process.stdout.write(`NVD requests:      ${queryDiagnostics.nvdRequests}\n`);
+      process.stdout.write(
+        `NVD requests:      ${queryDiagnostics.nvdRequests}\n`,
+      );
     }
     if (queryDiagnostics.nvdErrors > 0) {
-      process.stdout.write(`NVD errors:        ${queryDiagnostics.nvdErrors}\n`);
+      process.stdout.write(
+        `NVD errors:        ${queryDiagnostics.nvdErrors}\n`,
+      );
     }
   }
 
@@ -190,7 +194,9 @@ function printFindingsDetailed(findings, options) {
       `|- CVE: ${finding.cve || "N/A"} | ${finding.advisory_id} | CVSS: ${finding.cvss == null ? "N/A" : finding.cvss}\n`,
     );
     if (finding.source && finding.source !== "osv") {
-      process.stdout.write(`|- Source: ${finding.source}${finding.match_confidence ? ` (confidence: ${finding.match_confidence})` : ""}\n`);
+      process.stdout.write(
+        `|- Source: ${finding.source}${finding.match_confidence ? ` (confidence: ${finding.match_confidence})` : ""}\n`,
+      );
     }
     process.stdout.write(`|- ${finding.title}\n`);
     process.stdout.write(`|- Found in ${finding.found_in.length} locations:\n`);

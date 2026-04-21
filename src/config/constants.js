@@ -57,6 +57,7 @@ const GRADLE_AUX_FILES = new Set([
   "buildscript-gradle.lockfile",
   "libs.versions.toml",
 ]);
+const MAVEN_CENTRAL_URL = "https://repo1.maven.org/maven2";
 
 const COLORS = {
   reset: "\x1b[0m",
@@ -153,7 +154,9 @@ module.exports = {
   GRADLE_BUILD_FILES,
   GRADLE_AUX_FILES,
   GRAPH_RESOLUTION_SUPPORT,
+  MAVEN_CENTRAL_URL,
   DEFAULT_WATCH_STATE_FILE,
+
   DEFAULT_ALERTS_FILE,
   DEFAULT_ALERTS_MD_FILE,
   DEFAULT_NOTIFY_SEVERITY,

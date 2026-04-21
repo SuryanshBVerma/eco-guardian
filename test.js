@@ -485,7 +485,10 @@ async function testCliBannerOffResultOnly() {
         "off",
       ]);
 
-      assert(process.exitCode === 0, "banner off run should exit with status 0");
+      assert(
+        process.exitCode === 0,
+        "banner off run should exit with status 0",
+      );
       assert(
         out.includes("eco-guardian scan complete"),
         "banner off run should still print summary to stdout",
@@ -1253,16 +1256,34 @@ async function testBuildJavaEvidence() {
 }
 
 async function testBuildCandidateCpes() {
-  const ev = { groupId: "org.slf4j", artifactId: "slf4j-api", version: "1.7.25" };
+  const ev = {
+    groupId: "org.slf4j",
+    artifactId: "slf4j-api",
+    version: "1.7.25",
+  };
   const candidates = guardian.buildCandidateCpes(ev);
-  assert(candidates.length === 2, "Should generate 2 candidates when vendor != product");
-  assert(candidates[0].cpeName === "cpe:2.3:a:org.slf4j:slf4j-api:1.7.25:*:*:*:*:*:*:*", "High confidence CPE failed");
+  assert(
+    candidates.length === 2,
+    "Should generate 2 candidates when vendor != product",
+  );
+  assert(
+    candidates[0].cpeName ===
+      "cpe:2.3:a:org.slf4j:slf4j-api:1.7.25:*:*:*:*:*:*:*",
+    "High confidence CPE failed",
+  );
   assert(candidates[0].confidence === "high", "High confidence tag failed");
-  assert(candidates[1].cpeName === "cpe:2.3:a:slf4j-api:slf4j-api:1.7.25:*:*:*:*:*:*:*", "Medium confidence CPE failed");
+  assert(
+    candidates[1].cpeName ===
+      "cpe:2.3:a:slf4j-api:slf4j-api:1.7.25:*:*:*:*:*:*:*",
+    "Medium confidence CPE failed",
+  );
   assert(candidates[1].confidence === "medium", "Medium confidence tag failed");
 
   const invalid = { groupId: null, artifactId: "x", version: "1" };
-  assert(guardian.buildCandidateCpes(invalid).length === 0, "Should return [] for missing groupId");
+  assert(
+    guardian.buildCandidateCpes(invalid).length === 0,
+    "Should return [] for missing groupId",
+  );
 }
 
 async function testNormalizeNvdCve() {
@@ -1282,7 +1303,10 @@ async function testNormalizeNvdCve() {
   assert(norm.cvss_score === 9.8, "NVD CVSS score mapping failed");
   assert(norm.source === "nvd", "NVD source tag failed");
   assert(norm.match_confidence === "high", "NVD confidence propagation failed");
-  assert(norm.references.includes("https://nvd.nist.gov/vuln/detail/CVE-2024-1234"), "NVD reference mapping failed");
+  assert(
+    norm.references.includes("https://nvd.nist.gov/vuln/detail/CVE-2024-1234"),
+    "NVD reference mapping failed",
+  );
 }
 
 async function testDedupeAcrossSources() {
@@ -1292,15 +1316,27 @@ async function testDedupeAcrossSources() {
     { id: "CVE-2024-9999", source: "nvd", cve: "CVE-2024-9999" },
   ];
   const deduped = guardian.dedupeAcrossSources(advisories);
-  assert(deduped.length === 2, "Cross-source dedupe should remove NVD duplicate of OSV CVE");
-  assert(deduped.some(a => a.id === "GHSA-1"), "Should keep OSV entry");
-  assert(deduped.some(a => a.id === "CVE-2024-9999"), "Should keep non-overlapping NVD entry");
-  assert(!deduped.some(a => a.id === "CVE-2024-0001" && a.source === "nvd"), "Should remove NVD duplicate");
+  assert(
+    deduped.length === 2,
+    "Cross-source dedupe should remove NVD duplicate of OSV CVE",
+  );
+  assert(
+    deduped.some((a) => a.id === "GHSA-1"),
+    "Should keep OSV entry",
+  );
+  assert(
+    deduped.some((a) => a.id === "CVE-2024-9999"),
+    "Should keep non-overlapping NVD entry",
+  );
+  assert(
+    !deduped.some((a) => a.id === "CVE-2024-0001" && a.source === "nvd"),
+    "Should remove NVD duplicate",
+  );
 }
 
 async function testMakeNvdThrottle() {
   const throttle = guardian.makeNvdThrottle(false); // 6.5s interval unauth
-  
+
   // First acquire should pass immediately
   const t0 = Date.now();
   await throttle.acquire();
@@ -1311,7 +1347,10 @@ async function testMakeNvdThrottle() {
   const t1 = Date.now();
   await throttle.acquire();
   const second = Date.now() - t1;
-  assert(second >= 6000, `Second acquire should be delayed by ~6.5s, was ${second}ms`);
+  assert(
+    second >= 6000,
+    `Second acquire should be delayed by ~6.5s, was ${second}ms`,
+  );
 }
 
 async function testBuildCpeProductCandidates() {
@@ -1320,12 +1359,15 @@ async function testBuildCpeProductCandidates() {
     ["netty", ["netty"]],
     ["spring-security-core", ["spring-security-core", "spring_security_core"]],
     ["", [""]],
-    [null, [""]]
+    [null, [""]],
   ];
 
   for (const [input, expected] of cases) {
     const actual = guardian._buildCpeProductCandidates(input);
-    assert(JSON.stringify(actual) === JSON.stringify(expected), `Expected ${JSON.stringify(expected)} for ${input}, got ${JSON.stringify(actual)}`);
+    assert(
+      JSON.stringify(actual) === JSON.stringify(expected),
+      `Expected ${JSON.stringify(expected)} for ${input}, got ${JSON.stringify(actual)}`,
+    );
   }
 }
 

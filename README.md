@@ -1,9 +1,16 @@
 # eco-guardian
 
-eco-guardian is a Node.js CLI that scans local machines for vulnerable packages across npm, Maven, Gradle, NuGet, VSCode extensions, Python, and Go.
+eco-guardian is a Node.js CLI vulnerability scanner for local dependency inventories across:
 
-It discovers dependencies locally, queries OSV (and npm advisories for npm packages), and can optionally run a Java-only dependency-check-style mode that performs CPE/CVE matching against NVD for Maven/Gradle dependencies.
-Then it reports findings in console/JSON and export formats.
+- npm
+- Maven
+- Gradle
+- NuGet
+- VSCode extensions
+- Python
+- Go
+
+It discovers dependency manifests locally, queries OSV (plus npm advisory cross-checks for npm packages), and can optionally enrich Java findings with NVD data in dependency-check mode.
 
 ## Setup
 
@@ -23,92 +30,71 @@ node eco-guardian.js
 ## Usage
 
 ```bash
-node eco-guardian.js [options]
+node eco-guardian.js [flags]
 ```
 
-Common examples:
+Examples:
 
 ```bash
-node eco-guardian.js --path ~/projects --severity high
+node eco-guardian.js --path ./my-project --severity high
 node eco-guardian.js --ecosystems npm,maven,gradle,nuget,vscode,python,go
-node eco-guardian.js --graph-resolution --ecosystems npm,maven
-node eco-guardian.js --export-sarif results.sarif
-node eco-guardian.js --export-json results.json --export-csv results.csv
+node eco-guardian.js --graph-resolution --ecosystems npm,maven,gradle
+node eco-guardian.js --dependency-check-mode --ecosystems maven,gradle
+node eco-guardian.js --export-html report.html --export-sarif report.sarif
 node eco-guardian.js --baseline .eco-guardian-baseline.json --strict-baseline
-node eco-guardian.js --fail-on-severity high --max-critical 0 --max-high 5
+node eco-guardian.js --watch --notify-on-severity high
 ```
 
-## Options
+## Flags
 
-| Flag                         | Description                                                                  |
-| ---------------------------- | ---------------------------------------------------------------------------- |
-| `--path <dir>`               | Scan only this path.                                                         |
-| `--ecosystems <list>`        | Comma-separated ecosystems: `npm,maven,gradle,nuget,vscode,python,go`.              |
-| `--global-only`              | Scan only global npm installs.                                               |
-| `--severity <level>`         | Minimum severity: `low`, `moderate`, `high`, `critical`.                     |
-| `--json`                     | Print findings JSON to stdout.                                               |
-| `--banner <on|off>`          | Toggle CLI chrome/progress output (`off` shows final result output only).    |
-| `--no-cache`                 | Disable local vulnerability cache.                                           |
-| `--fix`                      | Generate fix scripts (`eco-guardian-fixes.ps1` and `eco-guardian-fixes.sh`). |
-| `--export-txt <file>`        | Write TXT report.                                                            |
-| `--export-html <file>`       | Write HTML report.                                                           |
-| `--export-sarif <file>`      | Write SARIF 2.1.0 report.                                                    |
-| `--export-json <file>`       | Write JSON findings file.                                                    |
-| `--export-csv <file>`        | Write CSV findings file.                                                     |
-| `--baseline <file>`          | Apply suppression baseline (default file: `.eco-guardian-baseline.json`).    |
-| `--write-baseline <file>`    | Write current findings as a baseline file.                                   |
-| `--strict-baseline`          | Error when an explicit baseline file is missing or invalid JSON.             |
-| `--fail-on-severity <level>` | Policy gate failure if any finding is at or above this level.                |
-| `--max-critical <n>`         | Policy gate failure if critical findings exceed `n`.                         |
-| `--max-high <n>`             | Policy gate failure if high findings exceed `n`.                             |
-| `--why <package>`            | Show dependency path and remediation context for one package/ecosystem.      |
-| `--benchmark`                | Show peak RAM, average CPU, and scan duration.                               |
-| `--watch`                    | Run eco-guardian as a long-lived incremental monitor.                       |
-| `--notify-on-severity <level>`| Alert only on new findings at or above this severity (default: `high`).     |
-| `--state-file <file>`         | Persistent watch snapshot file.                                              |
-| `--alerts-file <file>`        | Append-only JSONL alert ledger (default: `eco-guardian-alerts.jsonl`).       |
-| `--alerts-md <file>`          | Human-readable Markdown alert digest.                                        |
-| `--reconcile-interval <sec>`  | Low-frequency safety sweep interval (default: `900`).                        |
-| `--watch-debounce-ms <ms>`    | Debounce dirty-project rescans (default: `1500`).                            |
-| `--verbose`                  | Print full advisory details in console mode.                                 |
-| `--graph-resolution`         | Resolve dependency graphs with native ecosystem tooling.                     |
-| `--dependency-check-mode`    | Java-only secondary analysis using CPE/CVE matching against NVD.            |
-| `--nvd-api-key <key>`        | NVD API key for higher rate limits (optional).                              |
-| `--global`                   | On Unix-like systems, include `/` root scan.                                 |
-| `--all-drives`               | Full-machine scan mode.                                                      |
-| `--help`                     | Print help.                                                                  |
-| `--version`                  | Print version.                                                               |
+| Flag                           | Description                                                                       |
+| ------------------------------ | --------------------------------------------------------------------------------- |
+| `--path <dir>`                 | Scan a specific directory.                                                        |
+| `--global-only`                | Scan only global npm installs.                                                    |
+| `--ecosystems <list>`          | Comma-separated list: `npm,maven,gradle,nuget,vscode,python,go` (default: `npm`). |
+| `--graph-resolution`           | Resolve dependency graphs with ecosystem-native resolvers.                        |
+| `--dependency-check-mode`      | Java-only NVD enrichment for Maven/Gradle findings.                               |
+| `--nvd-api-key <key>`          | NVD API key for higher NVD rate limits.                                           |
+| `--severity <level>`           | Minimum severity: `low`, `moderate`, `high`, `critical`.                          |
+| `--json`                       | Print findings JSON to stdout.                                                    |
+| `--banner <on\|off>`           | Toggle CLI chrome/progress output.                                                |
+| `--no-cache`                   | Disable local cache reads/writes.                                                 |
+| `--fix`                        | Generate fix scripts for npm, maven, nuget, python, go.                           |
+| `--export-txt <file>`          | Export TXT report.                                                                |
+| `--export-html <file>`         | Export HTML report.                                                               |
+| `--export-sarif <file>`        | Export SARIF 2.1.0 report.                                                        |
+| `--export-json <file>`         | Export JSON report.                                                               |
+| `--export-csv <file>`          | Export CSV report.                                                                |
+| `--baseline <file>`            | Apply baseline suppression file.                                                  |
+| `--write-baseline <file>`      | Write current findings as a baseline.                                             |
+| `--strict-baseline`            | Fail when explicit baseline file is missing/invalid.                              |
+| `--fail-on-severity <level>`   | Policy gate: fail if any finding is at or above level.                            |
+| `--max-critical <n>`           | Policy gate: fail if critical findings exceed `n`.                                |
+| `--max-high <n>`               | Policy gate: fail if high findings exceed `n`.                                    |
+| `--why <package>`              | Show focused dependency path/remediation output.                                  |
+| `--benchmark`                  | Show peak RAM, average CPU, duration.                                             |
+| `--watch`                      | Run incremental watch mode.                                                       |
+| `--notify-on-severity <level>` | Watch alert threshold (default: `high`).                                          |
+| `--state-file <file>`          | Persistent watch state snapshot file.                                             |
+| `--alerts-file <file>`         | JSONL alert ledger file.                                                          |
+| `--alerts-md <file>`           | Markdown alert digest output.                                                     |
+| `--reconcile-interval <sec>`   | Watch reconciliation interval (default: `900`).                                   |
+| `--watch-debounce-ms <ms>`     | Debounce before rescanning dirty projects (default: `1500`).                      |
+| `--verbose`                    | Print detailed finding output and phase timings.                                  |
+| `--global`                     | On Unix-like systems, include `/` root scan.                                      |
+| `--all-drives`                 | Alias for full-disk opt-in behavior.                                              |
+| `--help`                       | Show help.                                                                        |
+| `--version`                    | Show version.                                                                     |
 
-## Continuous Watch Mode
+## Behavior Notes
 
-`eco-guardian --watch` performs one bootstrap scan, builds a dependency-input index, and then watches only relevant package manifests and sentinel directories (like `node_modules`).
-
-When an input changes:
-1.  eco-guardian rescans **only** the affected project/ecosystem.
-2.  The vulnerability cache is reused where possible to minimize latency.
-3.  New findings are compared against the bootstrap snapshot.
-4.  Notifications are dispatched only for newly introduced findings that pass the `--notify-on-severity` threshold and are not in the baseline.
-
-Note: Because `fs.watch()` behavior varies by platform, a background reconciliation pass periodically sweeps the index to ensure no events were missed.
-
-### Alert History
-
-- **JSONL Ledger**: All alerts and resolutions are logged to `--alerts-file` (default: `eco-guardian-alerts.jsonl`). This file serves as the authoritative history for deduplication.
-- **Markdown Digest**: An optional, human-readable table can be maintained via `--alerts-md`.
-- **State Snapshot**: The watcher's current view of the world is persisted in `--state-file` to allow for incremental resumes (planned).
-
-## Discovery and Resolution Notes
-
-- Discovery engine priority:
-  1.  `rg` (ripgrep) when available
-  2.  Native tools (`mdfind` on macOS, `locate` on Linux, `dir` on Windows)
-  3.  Recursive Node.js filesystem walker fallback
-- Default root behavior:
-  - If `--path` is provided, scan that path
-  - If `--global-only` is set, scan only npm global root
-  - Without `--path`, Windows discovers readable drives; Unix-like systems start from home (plus `/` when `--global` or `--all-drives` is set)
-
-Graph resolution support matrix:
+- Discovery preference order is: ripgrep (`rg`) -> native OS tools -> recursive filesystem walk.
+- Default scan roots:
+  - `--path` if provided
+  - `--global-only` scans only npm global root
+  - otherwise: Windows drive roots, or Unix home directory (plus `/` when `--global`/`--all-drives` is set)
+  - npm global root is also added unless disabled by env var (below)
+- Graph resolution support matrix:
 
 | Ecosystem | Support        |
 | --------- | -------------- |
@@ -120,33 +106,17 @@ Graph resolution support matrix:
 | python    | partial        |
 | vscode    | not applicable |
 
-When graph resolution is unavailable or fails for a given ecosystem, scanning falls back to inventory collection for that ecosystem.
+- If graph resolution returns no data for an ecosystem, scanning falls back to inventory collection for that ecosystem.
+- `--dependency-check-mode` applies only to Java ecosystems (`maven`, `gradle`).
+- Automated fix command generation does not currently cover Gradle or VSCode extension findings.
 
-## Outputs and Exit Codes
+## Watch Mode
 
-- Console summary includes counts, resolution mode details, baseline suppression count, and (when configured) policy status.
-- TXT/HTML/SARIF exports are available.
-- JSON/CSV exports are available via `--export-json` and `--export-csv`.
-- Policy-gated runs can return a dedicated exit code.
+`--watch` runs a bootstrap scan, indexes dependency inputs, and rescans only dirty projects/ecosystems on change.
 
-Exit codes:
-
-- `0`: no visible findings
-- `1`: findings present
-- `2`: scan/runtime error
-- `3`: policy gate failed (`--fail-on-severity`, `--max-critical`, `--max-high`)
-
-### Java Dependency-Check Mode (Experimental)
-
-When enabled with `--dependency-check-mode`, eco-guardian performs secondary analysis for Maven and Gradle ecosystems by matching resolved package coordinates to NVD CPEs and querying the NVD CVE API.
-
-**Limitations:**
-- **Java-only:** Only affects `maven` and `gradle` ecosystems in v1.
-- **Heuristic:** CPE matching is based on heuristics and may yield false positives or negatives.
-- **No caching:** NVD results are queried fresh on every scan and are not cached to ensure data accuracy.
-- **Rate limiting:** Without an NVD API key, the scan may be throttled for large dependency sets.
-
----
+- Alerts are written to JSONL (`--alerts-file`) and optionally Markdown (`--alerts-md`).
+- Watch state is persisted to `--state-file` and reloaded for resume behavior.
+- A periodic reconcile pass mitigates missed filesystem events.
 
 ## Scripts
 
@@ -157,26 +127,35 @@ npm run coverage
 npm run coverage:check
 ```
 
-`npm test` runs:
+Current `npm test` pipeline:
 
 - `node test.js`
 - `node test-resolvers.js`
 - `node test-gradle.js`
+- `node test-gradle-static.js`
 - `node test-coverage.js`
+- `node test-watch.js`
 
-`test-ripgrep.js` exists in the repo but is not part of the default `npm test` script.
+`test-ripgrep.js` exists in the repository but is not included in the default `npm test` script.
 
 ## Configuration
 
-Environment variable:
+Environment variables:
 
-- `NPM_GUARDIAN_DISABLE_GLOBAL=1`: skip adding npm global root to scan roots.
+- `NPM_GUARDIAN_DISABLE_GLOBAL=1`: do not add npm global root to scan roots.
+
+## Exit Codes
+
+- `0`: no visible findings
+- `1`: findings present
+- `2`: scan/runtime error
+- `3`: policy gate failed
 
 ## Notes
 
-- Only package identifiers (name/version/ecosystem) are sent to advisory providers; file paths and source contents remain local.
-- Automated fix commands are generated for npm, maven, nuget, python, and go findings (not Gradle or VSCode extensions in v1).
-- Scheduler examples for weekly automation are in [SCHEDULER_GUIDE.md](SCHEDULER_GUIDE.md).
+- Only package identifiers (name/version/ecosystem) are sent to advisory providers.
+- Scheduler examples are in [SCHEDULER_GUIDE.md](SCHEDULER_GUIDE.md).
+- Contributor guidance is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

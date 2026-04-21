@@ -1,6 +1,4 @@
 "use strict";
-
-const readline = require("readline");
 const {
   THOUGHT_WORDS,
   THOUGHT_BOUNCE_FRAMES,
@@ -26,6 +24,7 @@ class MusingEmitter {
     this.intervalId = setInterval(() => {
       this._pickNewWord();
     }, 3000);
+    if (typeof this.intervalId.unref === "function") this.intervalId.unref();
 
     // Update animation every 200ms
     this.frameId = setInterval(() => {
@@ -35,6 +34,7 @@ class MusingEmitter {
         this.draw();
       }
     }, 200);
+    if (typeof this.frameId.unref === "function") this.frameId.unref();
   }
 
   _pickNewWord() {
@@ -60,6 +60,8 @@ class MusingEmitter {
     if (!this.isActive) return;
     clearInterval(this.intervalId);
     clearInterval(this.frameId);
+    this.intervalId = null;
+    this.frameId = null;
     this.isActive = false;
     this.clear();
   }

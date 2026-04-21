@@ -17,8 +17,15 @@ const {
 } = require("./src/scan/gradle");
 const { buildJavaEvidence } = require("./src/java/evidence");
 const { buildCandidateCpes, normalizeToken } = require("./src/java/cpe");
-const { normalizeNvdCve, dedupeAcrossSources } = require("./src/vuln/normalizers");
-const { queryNvdByCpe, makeNvdThrottle, _buildCpeProductCandidates } = require("./src/vuln/providers");
+const {
+  normalizeNvdCve,
+  dedupeAcrossSources,
+} = require("./src/vuln/normalizers");
+const {
+  queryNvdByCpe,
+  makeNvdThrottle,
+  _buildCpeProductCandidates,
+} = require("./src/vuln/providers");
 const {
   parsePackagesConfig,
   parseProjectPackageReferences,

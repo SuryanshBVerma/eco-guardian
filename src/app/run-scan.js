@@ -248,7 +248,12 @@ async function collectPackageMap(options, state = {}) {
   };
 }
 
-async function analyzePackageMap(packageMap, options, state = {}, metadata = {}) {
+async function analyzePackageMap(
+  packageMap,
+  options,
+  state = {},
+  metadata = {},
+) {
   const { phaseTimes = {}, resolutionSummary = [], counters = {} } = metadata;
 
   const queryStart = nowMs();
@@ -344,11 +349,14 @@ async function analyzePackageMap(packageMap, options, state = {}, metadata = {})
     }
 
     if (fixFile) log("success", `Fix script written to: ${fixFile}`, options);
-    if (jsonFile) log("success", `JSON report written to: ${jsonFile}`, options);
+    if (jsonFile)
+      log("success", `JSON report written to: ${jsonFile}`, options);
     if (csvFile) log("success", `CSV report written to: ${csvFile}`, options);
     if (txtFile) log("success", `TXT report written to: ${txtFile}`, options);
-    if (htmlFile) log("success", `HTML report written to: ${htmlFile}`, options);
-    if (sarifFile) log("success", `SARIF report written to: ${sarifFile}`, options);
+    if (htmlFile)
+      log("success", `HTML report written to: ${htmlFile}`, options);
+    if (sarifFile)
+      log("success", `SARIF report written to: ${sarifFile}`, options);
 
     if (counters.skippedPermissions > 0) {
       log(
@@ -372,11 +380,21 @@ async function analyzePackageMap(packageMap, options, state = {}, metadata = {})
 
   if (options.verbose && !options.json) {
     const total = Object.values(phaseTimes).reduce((a, b) => a + b, 0);
-    process.stderr.write(`Phase 1 (discovery):  ${(phaseTimes.discovery / 1000).toFixed(1)}s\n`);
-    process.stderr.write(`Phase 2 (harvesting): ${(phaseTimes.harvest / 1000).toFixed(1)}s\n`);
-    process.stderr.write(`Phase 3 (API query):  ${(phaseTimes.query / 1000).toFixed(1)}s\n`);
-    process.stderr.write(`Phase 4 (reporting):  ${(phaseTimes.report / 1000).toFixed(1)}s\n`);
-    process.stderr.write(`Total:                ${(total / 1000).toFixed(1)}s\n`);
+    process.stderr.write(
+      `Phase 1 (discovery):  ${(phaseTimes.discovery / 1000).toFixed(1)}s\n`,
+    );
+    process.stderr.write(
+      `Phase 2 (harvesting): ${(phaseTimes.harvest / 1000).toFixed(1)}s\n`,
+    );
+    process.stderr.write(
+      `Phase 3 (API query):  ${(phaseTimes.query / 1000).toFixed(1)}s\n`,
+    );
+    process.stderr.write(
+      `Phase 4 (reporting):  ${(phaseTimes.report / 1000).toFixed(1)}s\n`,
+    );
+    process.stderr.write(
+      `Total:                ${(total / 1000).toFixed(1)}s\n`,
+    );
   }
 
   const exitCode =
@@ -397,31 +415,55 @@ async function analyzePackageMap(packageMap, options, state = {}, metadata = {})
 
 async function runScan(options, state = {}) {
   const monitor = new ResourceMonitor(options);
+  let monitorStopped = false;
+
   if (options.benchmark) monitor.start();
   if (!options.json) musing.start();
 
-  if (!options.json) {
-    const rgActive = await isRipgrepAvailable();
-    log("info", `Discovery Mode: ${rgActive ? "Ripgrep (High Performance)" : "Standard (Native Fallback)"}`, options);
+  try {
+    if (!options.json) {
+      const rgActive = await isRipgrepAvailable();
+      log(
+        "info",
+        `Discovery Mode: ${rgActive ? "Ripgrep (High Performance)" : "Standard (Native Fallback)"}`,
+        options,
+      );
 
-    if (
-      path.resolve(options.path) === path.resolve(__dirname, "../../") ||
-      path.resolve(options.path) === path.resolve(process.cwd())
-    ) {
-      const pkgName = require("../../package.json").name;
-      if (["@npm-guardian/eco-guardian", "npm-guardian", "eco-guardian"].includes(pkgName)) {
-        log("info", "I have gazed into my own soul. It is clean... for now.", options);
+      if (
+        path.resolve(options.path) === path.resolve(__dirname, "../../") ||
+        path.resolve(options.path) === path.resolve(process.cwd())
+      ) {
+        const pkgName = require("../../package.json").name;
+        if (
+          [
+            "@npm-guardian/eco-guardian",
+            "npm-guardian",
+            "eco-guardian",
+          ].includes(pkgName)
+        ) {
+          log(
+            "info",
+            "I have gazed into my own soul. It is clean... for now.",
+            options,
+          );
+        }
       }
     }
+
+    const collection = await collectPackageMap(options, state);
+    const metrics = options.benchmark ? monitor.stop() : null;
+    if (options.benchmark) monitorStopped = true;
+
+    return analyzePackageMap(collection.packageMap, options, state, {
+      ...collection,
+      metrics,
+    });
+  } finally {
+    if (!options.json) musing.stop();
+    if (options.benchmark && !monitorStopped) {
+      monitor.stop();
+    }
   }
-
-  const collection = await collectPackageMap(options, state);
-  const metrics = options.benchmark ? monitor.stop() : null;
-
-  return analyzePackageMap(collection.packageMap, options, state, {
-    ...collection,
-    metrics,
-  });
 }
 
 module.exports = {
