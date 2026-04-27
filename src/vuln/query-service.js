@@ -1,7 +1,7 @@
 "use strict";
 
 const { CACHE_TTL_MS } = require("../config/constants");
-const { nowMs, hrSeconds } = require("../shared/async");
+const { nowMs, hrSeconds, asyncPool } = require("../shared/async");
 const { log } = require("../cli/output");
 const { loadCache, saveCache } = require("./cache");
 const {
@@ -164,6 +164,22 @@ function advisoryRangeMatchesVersion(rangeExpr, pkgVersion) {
   return false;
 }
 
+function shouldRunNvdEnrichment(options, queryablePackages) {
+  const mode = String(options && options.nvdMode ? options.nvdMode : "auto")
+    .toLowerCase()
+    .trim();
+  if (mode === "off") return false;
+
+  const JAVA_ECOSYSTEMS = new Set(["maven", "gradle"]);
+  const hasJavaPackages = (queryablePackages || []).some((pkg) =>
+    JAVA_ECOSYSTEMS.has(String(pkg.ecosystem || "").toLowerCase()),
+  );
+
+  if (mode === "on") return hasJavaPackages;
+  if (mode === "auto") return hasJavaPackages;
+  return false;
+}
+
 async function queryVulnerabilities(packageMap, options) {
   const started = nowMs();
   const packages = Array.from(packageMap.values());
@@ -284,7 +300,7 @@ async function queryVulnerabilities(packageMap, options) {
     cache.results[key] = record;
   }
 
-  if (options.dependencyCheckMode) {
+  if (shouldRunNvdEnrichment(options, queryablePackages)) {
     const JAVA_ECOSYSTEMS = new Set(["maven", "gradle"]);
     const javaPkgs = queryablePackages.filter((pkg) =>
       JAVA_ECOSYSTEMS.has(String(pkg.ecosystem || "").toLowerCase()),
@@ -295,20 +311,24 @@ async function queryVulnerabilities(packageMap, options) {
         `NVD dependency-check mode: enriching ${javaPkgs.length} Java package(s)`,
         options,
       );
-      const throttle = makeNvdThrottle(!!options.nvdApiKey);
-      const progress = { done: 0, total: javaPkgs.length };
-      const estSec = options.nvdApiKey
+      const hasApiKey = !!(options.nvdApiKey) || !!process.env.NVD_API_KEY;
+      const throttle = makeNvdThrottle(hasApiKey);
+      const NVD_CONCURRENCY = 2;
+      let nvdDone = 0;
+      const nvdTotal = javaPkgs.length;
+      const estSec = hasApiKey
         ? Math.ceil((javaPkgs.length / 40) * 30)
         : Math.ceil((javaPkgs.length / 3) * 30);
       log(
         "info",
-        `NVD: ${javaPkgs.length} CPE requests — est. ~${estSec}s${options.nvdApiKey ? " (authenticated)" : " (unauthenticated, 3 req/30s)"}`,
+        `NVD: ${javaPkgs.length} CPE requests (parallel x${NVD_CONCURRENCY}) — est. ~${estSec}s${hasApiKey ? " (authenticated)" : " (unauthenticated, 3 req/30s)"}`,
         options,
       );
 
-      for (const pkg of javaPkgs) {
+      await asyncPool(NVD_CONCURRENCY, javaPkgs, async (pkg) => {
+        const idx = ++nvdDone;
         const evidence = buildJavaEvidence(pkg);
-        const label = `[${++progress.done}/${progress.total}] `;
+        const label = `[${idx}/${nvdTotal}] `;
         diagnostics.nvdRequests += 1;
 
         const cves = await queryNvdByCpe(
@@ -341,7 +361,7 @@ async function queryVulnerabilities(packageMap, options) {
             advisories: finalFiltered,
           };
         }
-      }
+      });
     }
   }
 
@@ -363,4 +383,5 @@ async function queryVulnerabilities(packageMap, options) {
 module.exports = {
   queryVulnerabilities,
   advisoryRangeMatchesVersion,
+  shouldRunNvdEnrichment,
 };

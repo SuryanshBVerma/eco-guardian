@@ -218,6 +218,59 @@ async function testVulnerabilityCacheAndProviders() {
   }
 }
 
+async function testNvdModeDecisionLogic() {
+  const { shouldRunNvdEnrichment } = require("./src/vuln/query-service");
+
+  const gradlePkg = {
+    ecosystem: "gradle",
+    version: "1.0.0",
+    queryable: true,
+  };
+  const mavenPkg = {
+    ecosystem: "maven",
+    version: "1.0.0",
+    queryable: true,
+  };
+  const npmPkg = {
+    ecosystem: "npm",
+    version: "1.0.0",
+    queryable: true,
+  };
+
+  assert(
+    shouldRunNvdEnrichment({ nvdMode: "auto" }, [gradlePkg]) === true,
+    "auto mode should enable NVD for gradle packages",
+  );
+  assert(
+    shouldRunNvdEnrichment({ nvdMode: "auto" }, [mavenPkg]) === true,
+    "auto mode should enable NVD for maven packages",
+  );
+  assert(
+    shouldRunNvdEnrichment({ nvdMode: "auto" }, [npmPkg]) === false,
+    "auto mode should not enable NVD for non-Java packages",
+  );
+  assert(
+    shouldRunNvdEnrichment({ nvdMode: "off" }, [gradlePkg]) === false,
+    "off mode should disable NVD even for Java packages",
+  );
+  assert(
+    shouldRunNvdEnrichment({ nvdMode: "on" }, [gradlePkg]) === true,
+    "on mode should enable NVD for Java packages",
+  );
+  assert(
+    shouldRunNvdEnrichment({ nvdMode: "on" }, [npmPkg]) === false,
+    "on mode should still skip non-Java packages",
+  );
+  assert(
+    shouldRunNvdEnrichment({}, [gradlePkg]) === true,
+    "default mode should behave as auto",
+  );
+  assert(
+    shouldRunNvdEnrichment({ nvdMode: "invalid" }, [gradlePkg]) === false,
+    "invalid mode should fail closed",
+  );
+}
+
 async function testFindingsBuilderAndFix() {
   const { buildFindings } = require("./src/findings/builder");
   const {
@@ -759,12 +812,19 @@ async function testRunScanOrchestrationDetails() {
 }
 
 async function testVulnProviderDetails() {
-  const { queryNpmBulk } = require("./src/vuln/providers");
+  const { queryNpmBulk, queryOsvForPackages } = require("./src/vuln/providers");
   const https = require("https");
   const originalRequest = https.request;
 
   const restore = silence();
   try {
+    // Test queryOsvForPackages with empty input
+    const emptyResult = await queryOsvForPackages([], {}, null);
+    assert(
+      emptyResult && typeof emptyResult === "object" && Object.keys(emptyResult).length === 0,
+      "queryOsvForPackages([], ...) should return {}"
+    );
+
     // Test queryNpmBulk
     https.request = (url, opts, cb) => {
       const res = new (require("events").EventEmitter)();
@@ -782,6 +842,24 @@ async function testVulnProviderDetails() {
       return req;
     };
     await queryNpmBulk({}, { verbose: true });
+
+    // Test queryNpmBulk with non-empty body (success response)
+    https.request = (url, opts, cb) => {
+      const res = new (require("events").EventEmitter)();
+      res.statusCode = 200;
+      res.setEncoding = () => {};
+      setTimeout(() => {
+        cb(res);
+        res.emit("data", JSON.stringify({ "pkg-a": [{ id: "ADV-1" }] }));
+        res.emit("end");
+      }, 1);
+      const req = new (require("events").EventEmitter)();
+      req.setTimeout = () => {};
+      req.write = () => {};
+      req.end = () => {};
+      return req;
+    };
+    await queryNpmBulk({ "pkg-a": ["1.0.0"] }, { verbose: true });
   } finally {
     https.request = originalRequest;
     restore();
@@ -953,6 +1031,8 @@ async function runAll() {
     console.log("✓ Global-only branch");
     await testVulnerabilityCacheAndProviders();
     console.log("✓ Vuln cache and providers");
+    await testNvdModeDecisionLogic();
+    console.log("✓ NVD mode decision logic");
     await testFindingsBuilderAndFix();
     console.log("✓ Findings builder and fix");
     await testRemediationHints();

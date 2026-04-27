@@ -57,6 +57,12 @@ async function main(argv = process.argv.slice(2)) {
     process.exitCode = 0;
     return;
   }
+  if (options.ui) {
+    const { startUiServer } = require("../ui/server");
+    await startUiServer(options, state);
+    process.exitCode = 0;
+    return;
+  }
 
   if (options.seek) {
     if (options.seek === "01001000") {

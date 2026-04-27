@@ -10,7 +10,7 @@ eco-guardian is a Node.js CLI vulnerability scanner for local dependency invento
 - Python
 - Go
 
-It discovers dependency manifests locally, queries OSV (plus npm advisory cross-checks for npm packages), and can optionally enrich Java findings with NVD data in dependency-check mode.
+It discovers dependency manifests locally, queries OSV (plus npm advisory cross-checks for npm packages), and enriches Java findings with NVD data using parallel CPE queries with pagination and keyword-search version verification.
 
 ## Setup
 
@@ -39,10 +39,16 @@ Examples:
 node eco-guardian.js --path ./my-project --severity high
 node eco-guardian.js --ecosystems npm,maven,gradle,nuget,vscode,python,go
 node eco-guardian.js --graph-resolution --ecosystems npm,maven,gradle
-node eco-guardian.js --dependency-check-mode --ecosystems maven,gradle
+node eco-guardian.js --ecosystems gradle --graph-resolution --gradle-task :application:dependencies --path ./service
+node eco-guardian.js --nvd-mode on --ecosystems maven,gradle
+node eco-guardian.js --nvd-mode on --ecosystems maven --nvd-api-key xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+# Or via environment variable:
+set NVD_API_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx && node eco-guardian.js --ecosystems maven,gradle --graph-resolution
+node eco-guardian.js --no-nvd --ecosystems gradle
 node eco-guardian.js --export-html report.html --export-sarif report.sarif
 node eco-guardian.js --baseline .eco-guardian-baseline.json --strict-baseline
 node eco-guardian.js --watch --notify-on-severity high
+node eco-guardian.js --ui
 ```
 
 ## Flags
@@ -53,8 +59,12 @@ node eco-guardian.js --watch --notify-on-severity high
 | `--global-only`                | Scan only global npm installs.                                                    |
 | `--ecosystems <list>`          | Comma-separated list: `npm,maven,gradle,nuget,vscode,python,go` (default: `npm`). |
 | `--graph-resolution`           | Resolve dependency graphs with ecosystem-native resolvers.                        |
-| `--dependency-check-mode`      | Java-only NVD enrichment for Maven/Gradle findings.                               |
-| `--nvd-api-key <key>`          | NVD API key for higher NVD rate limits.                                           |
+| `--ui`                         | Launch a local browser UI for generating CLI commands.                            |
+| `--gradle-task <task>`         | Gradle dependencies task to execute for graph resolution (e.g. `:app:dependencies`). |
+| `--dependency-check-mode`      | Compatibility alias for `--nvd-mode on`.                                          |
+| `--nvd-mode <auto\|on\|off>`  | NVD enrichment mode for Java ecosystems (`maven`, `gradle`). Default: `auto`.     |
+| `--no-nvd`                     | Disable NVD enrichment.                                                            |
+| `--nvd-api-key <key>`          | NVD API key for higher rate limits (also reads `NVD_API_KEY` env).          |
 | `--severity <level>`           | Minimum severity: `low`, `moderate`, `high`, `critical`.                          |
 | `--json`                       | Print findings JSON to stdout.                                                    |
 | `--banner <on\|off>`           | Toggle CLI chrome/progress output.                                                |
@@ -107,8 +117,15 @@ node eco-guardian.js --watch --notify-on-severity high
 | vscode    | not applicable |
 
 - If graph resolution returns no data for an ecosystem, scanning falls back to inventory collection for that ecosystem.
-- `--dependency-check-mode` applies only to Java ecosystems (`maven`, `gradle`).
+- For Gradle graph resolution, `--gradle-task` can scope analysis to a specific module task output.
+- In `auto` NVD mode (default), Java ecosystems (`maven`, `gradle`) are enriched with NVD in addition to OSV.
+- NVD queries run in parallel (2 concurrent workers) with API pagination (up to 100 results per artifact) and throttle to stay within NVD rate limits.
+- NVD keyword-search fallback results are filtered against the package version to reduce false positives.
+- `--dependency-check-mode` is retained as a compatibility alias for `--nvd-mode on`.
+- Maven POM parsing resolves `project.*` built-in properties (`${project.version}`, `${project.groupId}`, `${project.artifactId}`) and `${parent.version}` from the parent POM reference.
+- XML comments and CDATA sections in POM files are safely stripped before parsing.
 - Automated fix command generation does not currently cover Gradle or VSCode extension findings.
+- `--ui` starts a local command builder that reuses the same flag semantics as the CLI.
 
 ## Watch Mode
 
@@ -130,6 +147,7 @@ npm run coverage:check
 Current `npm test` pipeline:
 
 - `node test.js`
+- `node test-ui.js`
 - `node test-resolvers.js`
 - `node test-gradle.js`
 - `node test-gradle-static.js`
@@ -143,6 +161,7 @@ Current `npm test` pipeline:
 Environment variables:
 
 - `NPM_GUARDIAN_DISABLE_GLOBAL=1`: do not add npm global root to scan roots.
+- `NVD_API_KEY`: NVD API key for higher rate limits (alternative to `--nvd-api-key`).
 
 ## Exit Codes
 

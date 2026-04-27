@@ -32,9 +32,10 @@ function printSummary(
   process.stdout.write(`Vulnerable pkgs:   ${vulnerablePackages}\n`);
   process.stdout.write(`Clean packages:    ${clean.toLocaleString()}\n`);
 
-  if (options.dependencyCheckMode) {
+  const nvdMode = String(options.nvdMode || "auto").toLowerCase();
+  if (nvdMode !== "off") {
     process.stdout.write(
-      "Dependency-check:  enabled (Java/NVD secondary enrichment)\n",
+      `NVD enrichment:   ${nvdMode} (Java ecosystems)\n`,
     );
   }
 

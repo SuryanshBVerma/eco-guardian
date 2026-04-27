@@ -187,10 +187,17 @@ function dedupeAcrossSources(advisories) {
 }
 
 module.exports = {
+  normalizeSeverity,
+  severityAllowed,
+  findOsvCvss,
+  eventsToRange,
+  extractOsvFixed,
   normalizeOsvAdvisory,
   normalizeNpmAdvisory,
   normalizeNvdCve,
   dedupeAdvisories,
   dedupeAcrossSources,
   advisoryPasses,
+  cvssToSeverity,
+  extractNvdCvss,
 };

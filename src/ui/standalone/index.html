@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>eco-guardian command builder</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Standalone landing page</p>
+        <h1>eco&#8209;guardian<br><em>command builder</em></h1>
+        <p class="lede">Tune flags in the browser, then copy the exact npx command to run the scanner.</p>
+      </div>
+      <div class="hero-card">
+        <div class="meta-label">Generated command</div>
+        <pre id="command" class="command" aria-live="polite">Loading...</pre>
+        <div class="actions">
+          <button id="copy-btn" type="button">Copy command</button>
+          <span id="status" class="status" aria-live="polite">Ready.</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="app" class="grid"></section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

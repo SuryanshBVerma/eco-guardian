@@ -38,10 +38,22 @@ function printUsage() {
     "  --graph-resolution   Resolve dependency graphs using ecosystem-specific native tools\n",
   );
   process.stdout.write(
-    "  --dependency-check-mode  Java-only secondary analysis using CPE/CVE matching against NVD\n",
+    "  --ui                 Launch a local command-builder UI\n",
   );
   process.stdout.write(
-    "  --nvd-api-key <key>  NVD API key for higher rate limits (optional)\n",
+    "  --gradle-task <task>  Gradle dependencies task to run, such as :app:dependencies\n",
+  );
+  process.stdout.write(
+    "  --dependency-check-mode  Compatibility alias for --nvd-mode on\n",
+  );
+  process.stdout.write(
+    "  --nvd-mode <mode>  NVD enrichment mode for Java ecosystems: auto|on|off (default: auto)\n",
+  );
+  process.stdout.write(
+    "  --no-nvd           Disable NVD enrichment\n",
+  );
+  process.stdout.write(
+    "  --nvd-api-key <key>  NVD API key (optional, also reads NVD_API_KEY env)\n",
   );
   process.stdout.write(
     "  --severity <level>   Minimum: low|moderate|high|critical (default: low)\n",
@@ -110,7 +122,7 @@ function printUsage() {
     "  --reconcile-interval <sec> Low-frequency safety sweep interval (default: 900)\n",
   );
   process.stdout.write(
-    "  --watch-debounce-ms <ms> Debounce interval before rescanning dirty projects\n",
+    "  --watch-debounce-ms <ms> Debounce interval before rescanning dirty projects (default: 1500)\n",
   );
   process.stdout.write("  --help               Show this help\n");
   process.stdout.write("  --version            Show version\n");
@@ -135,7 +147,10 @@ function parseArgs(argv) {
     globalOnly: false,
     ecosystems: ["npm"],
     graphResolution: false,
+    ui: false,
+    gradleTask: null,
     dependencyCheckMode: false,
+    nvdMode: "auto",
     nvdApiKey: null,
     severity: "low",
     json: false,
@@ -381,8 +396,39 @@ function parseArgs(argv) {
       args.graphResolution = true;
       continue;
     }
+    if (token === "--ui") {
+      args.ui = true;
+      continue;
+    }
+    if (token === "--gradle-task") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) {
+        throw new Error("Missing value for --gradle-task");
+      }
+      args.gradleTask = next;
+      i += 1;
+      continue;
+    }
     if (token === "--dependency-check-mode") {
       args.dependencyCheckMode = true;
+      args.nvdMode = "on";
+      continue;
+    }
+    if (token === "--nvd-mode") {
+      const next = argv[i + 1];
+      if (!next || next.startsWith("--")) {
+        throw new Error("Missing value for --nvd-mode");
+      }
+      const normalized = String(next).toLowerCase();
+      if (!["auto", "on", "off"].includes(normalized)) {
+        throw new Error("Invalid --nvd-mode. Use: auto, on, off");
+      }
+      args.nvdMode = normalized;
+      i += 1;
+      continue;
+    }
+    if (token === "--no-nvd") {
+      args.nvdMode = "off";
       continue;
     }
     if (token === "--nvd-api-key") {

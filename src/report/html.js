@@ -6,6 +6,102 @@ const path = require("path");
 const { VERSION } = require("../config/constants");
 const { summarizeSeverities, escapeHtml } = require("./common");
 
+function severityRank(value) {
+    const key = String(value || "").toLowerCase();
+    if (key === "critical") return 4;
+    if (key === "high") return 3;
+    if (key === "moderate") return 2;
+    if (key === "low") return 1;
+    return 0;
+}
+
+function sortFindings(findings) {
+    return (findings || []).slice().sort((a, b) => {
+        const sev = severityRank(b.severity) - severityRank(a.severity);
+        if (sev !== 0) return sev;
+        const pkg = String(a.package || "").localeCompare(String(b.package || ""));
+        if (pkg !== 0) return pkg;
+        return String(a.version || "").localeCompare(String(b.version || ""));
+    });
+}
+
+function renderPathText(segments) {
+    if (!Array.isArray(segments) || segments.length === 0) {
+        return "Not available";
+    }
+    return escapeHtml(segments.join(" / "));
+}
+
+function renderLocationText(finding) {
+    const entries = Array.isArray(finding.found_in) ? finding.found_in : [];
+    if (entries.length === 0) {
+        return "Not available";
+    }
+
+    return entries
+        .map((entry) => {
+            const label = entry.manifest_path || entry.project || "(unknown location)";
+            const parent =
+                entry.parent && entry.parent.name
+                    ? ` via ${entry.parent.name}${entry.parent.version ? `@${entry.parent.version}` : ""}`
+                    : "";
+            return `${label}${parent}${entry.dependency_type ? ` (${entry.dependency_type})` : ""}`;
+        })
+        .map((value) => escapeHtml(value))
+        .join("; ");
+}
+
+function renderFixText(finding) {
+    const commands = Array.isArray(finding.fix_commands)
+        ? finding.fix_commands
+        : finding.fix_command
+            ? [finding.fix_command]
+            : [];
+
+    if (commands.length > 0) {
+        return commands.map((cmd) => `<pre class="command">${escapeHtml(cmd)}</pre>`).join("");
+    }
+
+    return "Manual review required.";
+}
+
+function renderFindingItem(finding) {
+    const severity = String(finding.severity || "N/A");
+    const sevClass = severity.toLowerCase();
+    const ref =
+        (finding.references && finding.references[0]) ||
+        `https://osv.dev/vulnerability/${finding.advisory_id}`;
+    const source = String(finding.source || "osv");
+    const sourceSuffix = finding.match_confidence
+        ? ` (confidence: ${escapeHtml(finding.match_confidence)})`
+        : "";
+    const remediation = escapeHtml(
+        finding.remediation_hint ||
+            (finding.fixed_version
+                ? `Upgrade to ${finding.fixed_version}`
+                : "Manual review required"),
+    ).replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+    const locationCount = (Array.isArray(finding.found_in) ? finding.found_in : []).length;
+
+    return `
+        <article class="finding severity-${sevClass}">
+            <div class="finding-head">
+                <span class="badge badge-${sevClass}">${escapeHtml(severity)}</span>
+                <span class="finding-title">${escapeHtml(finding.package)}@${escapeHtml(finding.version)}</span>
+                <span class="finding-subtitle">${escapeHtml(finding.ecosystem || "npm")} · ${escapeHtml(finding.advisory_id || "N/A")} · CVSS ${finding.cvss == null ? "N/A" : escapeHtml(finding.cvss)}</span>
+            </div>
+            <div class="finding-body">
+                <div class="finding-line"><strong>Issue:</strong> ${escapeHtml(finding.title || finding.advisory_id || "")}</div>
+                <div class="finding-line"><strong>Origin:</strong> Source ${escapeHtml(source)}${sourceSuffix}; Path ${renderPathText(finding.resolved_path)}; Locations ${locationCount}; ${renderLocationText(finding)}</div>
+                <div class="finding-line"><strong>Fix:</strong> ${finding.fixed_version ? `Upgrade to ${escapeHtml(finding.fixed_version)}. ` : ""}${remediation}</div>
+                <div class="finding-line"><a href="${escapeHtml(ref)}" target="_blank" rel="noreferrer">Advisory reference</a></div>
+                <div class="finding-line">${renderFixText(finding)}</div>
+            </div>
+        </article>
+    `;
+}
+
 async function writeHtmlReport(
   findings,
   packageCount,
@@ -19,26 +115,15 @@ async function writeHtmlReport(
   const outFile = path.resolve(process.cwd(), options.exportHtml);
   const severity = summarizeSeverities(findings);
   const generatedAt = new Date().toLocaleString();
+    const sortedFindings = sortFindings(findings);
 
   const resolutionHtml =
     options.graphResolution && resolutionSummary.length > 0
       ? `
-        <div style="margin-bottom: 40px;">
-            <div class="card-label">Resolution Status</div>
-            <div class="summary-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 0;">
-                ${resolutionSummary
-                  .map(
-                    (item) => `
-                <div class="card" style="padding: 16px;">
-                    <div class="card-label" style="font-size: 0.65rem;">${escapeHtml(item.ecosystem)}</div>
-                    <div class="card-value" style="font-size: 1rem;">${escapeHtml(item.mode)}</div>
-                    ${item.reason ? `<div class="meta" style="font-size: 0.65rem; margin-top: 4px;">Fallback: ${escapeHtml(item.reason)}</div>` : ""}
+                <div class="resolution-line">
+                        <strong>Resolution:</strong>
+                        ${resolutionSummary.map((item) => `${escapeHtml(item.ecosystem)} ${escapeHtml(item.mode)}${item.reason ? ` (${escapeHtml(item.reason)})` : ""}`).join("; ")}
                 </div>
-                `,
-                  )
-                  .join("")}
-            </div>
-        </div>
     `
       : "";
 
@@ -92,80 +177,37 @@ async function writeHtmlReport(
             font-size: 0.875rem;
         }
 
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
+        .summary-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 20px 0 24px;
         }
 
-        .card {
-            background: var(--card-bg);
-            padding: 24px;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
             border: 1px solid var(--border-color);
-        }
-
-        .card-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            font-weight: 600;
-            color: var(--text-muted);
-            margin-bottom: 4px;
-        }
-
-        .card-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-        }
-
-        .severity-critical { color: var(--critical); }
-        .severity-high { color: var(--high); }
-        .severity-moderate { color: var(--moderate); }
-        .severity-low { color: var(--low); }
-
-        .table-container {
+            border-radius: 999px;
             background: var(--card-bg);
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            border: 1px solid var(--border-color);
-            overflow: hidden;
+            font-size: 0.85rem;
+            color: var(--text-main);
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-        }
-
-        th {
-            background: #f1f5f9;
-            padding: 12px 16px;
-            font-size: 0.75rem;
+        .chip strong {
             font-weight: 600;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        td {
-            padding: 16px;
-            vertical-align: top;
-            border-bottom: 1px solid var(--border-color);
-            font-size: 0.875rem;
-        }
-
-        tr:last-child td {
-            border-bottom: none;
         }
 
         .badge {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
             padding: 2px 8px;
-            border-radius: 9999px;
-            font-size: 0.75rem;
+            border-radius: 999px;
+            font-size: 0.72rem;
             font-weight: 600;
+            letter-spacing: 0.02em;
         }
 
         .badge-critical { background: #fee2e2; color: #991b1b; }
@@ -173,133 +215,81 @@ async function writeHtmlReport(
         .badge-moderate { background: #fef9c3; color: #854d0e; }
         .badge-low { background: #dbeafe; color: #1e40af; }
 
-        .pkg-name { font-weight: 600; color: var(--primary); }
-        .advisory-id { font-family: monospace; color: var(--text-muted); }
-        
-        .locations {
-            margin-top: 8px;
-            font-size: 0.75rem;
-            color: var(--text-muted);
+        .finding-list {
+            display: grid;
+            gap: 12px;
         }
 
-        .remediation {
-            margin-top: 4px;
-            font-style: italic;
+        .finding {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: var(--card-bg);
+            padding: 14px 16px;
+        }
+
+        .finding-head {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .finding-title {
+            font-weight: 600;
             color: var(--text-main);
         }
 
-        .fix-commands-header {
-            margin-top: 16px;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            font-weight: 700;
+        .finding-subtitle {
             color: var(--text-muted);
-            letter-spacing: 0.05em;
+            font-size: 0.82rem;
         }
 
-        .code-block {
-            background: #1e293b;
-            color: #f1f5f9;
-            padding: 10px 14px;
+        .finding-body {
+            margin-top: 10px;
+            display: grid;
+            gap: 6px;
+        }
+
+        .finding-line {
+            font-size: 0.92rem;
+            color: var(--text-muted);
+        }
+
+        .finding-line strong {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .command {
+            margin: 4px 0 0;
+            padding: 8px 10px;
             border-radius: 8px;
-            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-            font-size: 0.8rem;
-            margin-top: 8px;
-            white-space: pre-wrap;
-            border: 1px solid #334155;
-            box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
-        }
-
-        .path-breadcrumb {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            align-items: center;
-            margin-top: 6px;
-            font-size: 0.7rem;
-            color: var(--text-muted);
-        }
-
-        .path-step {
-            background: #f1f5f9;
-            padding: 1px 6px;
-            border-radius: 4px;
             border: 1px solid var(--border-color);
+            background: #f8fafc;
+            color: var(--text-main);
+            font-size: 0.82rem;
+            white-space: pre-wrap;
         }
 
-        .path-sep {
-            color: #94a3b8;
-            font-weight: 700;
+        .resolution-line {
+            margin: 0 0 24px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
         }
 
-        .path-vulnerable {
-            background: #fee2e2;
-            color: #991b1b;
-            border-color: #fecaca;
+        .empty-state {
+            color: var(--text-muted);
+            font-size: 0.9rem;
         }
 
         a { color: var(--primary); text-decoration: none; }
         a:hover { text-decoration: underline; }
-
-        /* Vantablack Mode */
-        body.vantablack {
-            --bg-color: #000000;
-            --card-bg: #050505;
-            --text-main: #ff8c00;
-            --text-muted: #8b4513;
-            --border-color: #1a1a1a;
-            --primary: #ff4500;
-        }
-        body.vantablack .code-block { border-color: #ff4500; box-shadow: 0 0 10px rgba(255, 69, 0, 0.2); }
-        body.vantablack h1 { text-shadow: 0 0 8px #ff4500; }
-        
-        /* Redacted mode */
-        .shield-mode .remediation, .shield-mode .pkg-name { filter: blur(4px); transition: filter 0.3s; cursor: help; }
-        .shield-mode .remediation:hover, .shield-mode .pkg-name:hover { filter: none; }
-
-        /* Ghost Panel */
-        #ghost-lore {
-            display: none;
-            background: #0f172a;
-            color: #38bdf8;
-            padding: 20px;
-            border: 2px dashed #38bdf8;
-            margin-bottom: 30px;
-            font-family: monospace;
-            font-size: 0.8rem;
-            animation: flicker 2s infinite;
-        }
-        @keyframes flicker {
-            0% { opacity: 0.8; }
-            5% { opacity: 0.5; }
-            10% { opacity: 0.8; }
-            100% { opacity: 1; }
-        }
-
-        /* Vigilant Eye */
-        #vigilant-eye {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 60px;
-            height: 30px;
-            display: none;
-            pointer-events: none;
-            opacity: 0.6;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1 id="main-banner" style="cursor: pointer; user-select: none;">Security Report</h1>
-            <div id="ghost-lore">
-                [INTERCEPTED DATA - SOURCE: GUARDIAN_SENTINEL_2077]<br>
-                > The worm was never meant to be stopped. We only built a cage.<br>
-                > Every dependency is a potential door. Every lockfile is a hope.<br>
-                > DO NOT TRUST THE MANIFESTS. THEY LIE.<br>
-                [END OF TRANSMISSION]
-            </div>
+            <h1>Security Report</h1>
             <div class="meta">Generated by <strong>eco-guardian v${VERSION}</strong> on ${escapeHtml(generatedAt)}</div>
             <div class="meta">Machine: ${escapeHtml(os.hostname())} (${escapeHtml(os.platform())} ${escapeHtml(os.arch())})</div>
             <div class="meta">User: ${escapeHtml(os.userInfo().username)}</div>
@@ -308,194 +298,24 @@ async function writeHtmlReport(
             <div class="meta">Severity Threshold: ${escapeHtml(options.severity.toUpperCase())}${options.severity !== "critical" ? " and above" : ""}</div>
         </header>
 
-        <div class="summary-grid">
-            <div class="card">
-                <div class="card-label">Packages Scanned</div>
-                <div class="card-value">${packageCount.toLocaleString()}</div>
-            </div>
-            <div class="card">
-                <div class="card-label">Total Vulnerabilities</div>
-                <div class="card-value">${findings.length}</div>
-            </div>
-            <div class="card">
-                <div class="card-label">Critical</div>
-                <div class="card-value severity-critical">${severity.critical}</div>
-            </div>
-            <div class="card">
-                <div class="card-label">High</div>
-                <div class="card-value severity-high">${severity.high}</div>
-            </div>
-            ${
-              suppressedCount > 0
-                ? `
-            <div class="card">
-                <div class="card-label">Suppressed</div>
-                <div class="card-value" style="color: var(--text-muted);">${suppressedCount}</div>
-            </div>
-            `
-                : ""
-            }
-            ${
-              policy && policy.enabled
-                ? `
-            <div class="card">
-                <div class="card-label">Policy</div>
-                <div class="card-value" style="font-size: 1.1rem; color: ${policy.passed ? "#16a34a" : "#dc2626"};">${policy.passed ? "PASS" : "FAIL"}</div>
-                ${policy.violations.length > 0 ? `<div class="meta">${escapeHtml(policy.violations.join(", "))}</div>` : ""}
-            </div>
-            `
-                : ""
-            }
-            ${
-              queryDiagnostics
-                ? `
-            <div class="card">
-                <div class="card-label">Provider Retries</div>
-                <div class="card-value">${Number(queryDiagnostics.retries || 0)}</div>
-                ${queryDiagnostics.partialProviderFailure ? '<div class="meta">Partial provider failure detected</div>' : ""}
-            </div>
-            `
-                : ""
-            }
+        <div class="summary-strip">
+            <div class="chip"><strong>Packages</strong> ${packageCount.toLocaleString()}</div>
+            <div class="chip"><strong>Vulnerabilities</strong> ${findings.length}</div>
+            <div class="chip"><strong>Critical</strong> ${severity.critical}</div>
+            <div class="chip"><strong>High</strong> ${severity.high}</div>
+            <div class="chip"><strong>Moderate</strong> ${severity.moderate}</div>
+            <div class="chip"><strong>Low</strong> ${severity.low}</div>
+            ${suppressedCount > 0 ? `<div class="chip"><strong>Suppressed</strong> ${suppressedCount}</div>` : ""}
+            ${policy && policy.enabled ? `<div class="chip"><strong>Policy</strong> ${policy.passed ? "PASS" : "FAIL"}${policy.violations.length > 0 ? ` (${escapeHtml(policy.violations.join(", "))})` : ""}</div>` : ""}
+            ${queryDiagnostics ? `<div class="chip"><strong>Retries</strong> ${Number(queryDiagnostics.retries || 0)}</div>` : ""}
         </div>
 
         ${resolutionHtml}
 
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 100px;">Severity</th>
-                        <th style="width: 100px;">Ecosystem</th>
-                        <th style="width: 250px;">Package</th>
-                        <th>Advisory / Details</th>
-                        <th style="width: 450px;">Resolution</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${findings
-                      .map((f) => {
-                        const sevClass = f.severity.toLowerCase();
-                        const ref =
-                          (f.references && f.references[0]) ||
-                          `https://osv.dev/vulnerability/${f.advisory_id}`;
-                        let remediation =
-                          f.remediation_hint ||
-                          (f.fixed_version
-                            ? `Upgrade to **${f.fixed_version}**`
-                            : "Manual review required");
-                        remediation = escapeHtml(remediation).replace(
-                          /\*\*(.*?)\*\*/g,
-                          "<strong>$1</strong>",
-                        );
-
-                        const pathBreadcrumb =
-                          f.resolved_path && f.resolved_path.length > 0
-                            ? `<div class="path-breadcrumb">
-                            ${f.resolved_path
-                              .map(
-                                (p, i) => `
-                                <span class="path-step ${i === f.resolved_path.length - 1 ? "path-vulnerable" : ""}">${escapeHtml(p)}</span>
-                                ${i < f.resolved_path.length - 1 ? '<span class="path-sep">/</span>' : ""}
-                            `,
-                              )
-                              .join("")}
-                          </div>`
-                            : "";
-
-                        return `
-                    <tr>
-                        <td><span class="badge badge-${sevClass}">${escapeHtml(f.severity)}</span></td>
-                        <td>${escapeHtml(f.ecosystem || "npm")}</td>
-                        <td>
-                            <div class="pkg-name">${escapeHtml(f.package)}@${escapeHtml(f.version)}</div>
-                            <div class="locations">Found in ${(f.found_in || []).length} locations</div>
-                            ${pathBreadcrumb}
-                            ${f.resolution_mode && f.resolution_mode !== "inventory" ? `<div class="locations" style="font-size: 0.65rem; opacity: 0.8;">Resolution: ${escapeHtml(f.resolution_mode)}</div>` : ""}
-                        </td>
-                        <td>
-                            <div class="advisory-id"><a href="${escapeHtml(ref)}" target="_blank">${escapeHtml(f.advisory_id || "N/A")}</a></div>
-                            <div style="margin-top: 4px; font-weight: 500;">${escapeHtml(f.title || "")}</div>
-                            <div class="meta" style="margin-top: 4px;">CVSS: ${f.cvss == null ? "N/A" : escapeHtml(f.cvss)}</div>
-                            <div class="remediation" style="font-size: 0.8rem; margin-top: 8px;">${remediation}</div>
-                        </td>
-                        <td>
-                            ${
-                              f.fix_commands && f.fix_commands.length > 0
-                                ? `
-                                ${f.fix_commands.map((cmd) => `<div class="code-block">${escapeHtml(cmd)}</div>`).join("")}
-                            `
-                                : '<div class="remediation" style="font-style: normal; color: var(--text-muted);">Manual resolution required</div>'
-                            }
-                        </td>
-                    </tr>`;
-                      })
-                      .join("")}
-                    ${findings.length === 0 ? '<tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--text-muted);">No vulnerabilities found.</td></tr>' : ""}
-                </tbody>
-            </table>
-        </div>
+        <section class="finding-list">
+            ${sortedFindings.length > 0 ? sortedFindings.map((finding) => renderFindingItem(finding)).join("") : '<div class="empty-state">No vulnerabilities found.</div>'}
+        </section>
     </div>
-    <div id="vigilant-eye">
-        <svg viewBox="0 0 100 50">
-            <ellipse cx="30" cy="25" rx="15" ry="10" fill="white" />
-            <circle id="pupil-l" cx="30" cy="25" r="5" fill="black" />
-            <ellipse cx="70" cy="25" rx="15" ry="10" fill="white" />
-            <circle id="pupil-r" cx="70" cy="25" r="5" fill="black" />
-        </svg>
-    </div>
-    <script>
-        // Ghost Header Logic
-        let bannerClicks = 0;
-        document.getElementById('main-banner').addEventListener('click', () => {
-            bannerClicks++;
-            if (bannerClicks === 3) {
-                document.getElementById('ghost-lore').style.display = 'block';
-            }
-        });
-
-        // Konami Code Logic
-        const konami = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
-        let konamiIndex = 0;
-        document.addEventListener('keydown', (e) => {
-            if (e.key === konami[konamiIndex]) {
-                konamiIndex++;
-                if (konamiIndex === konami.length) {
-                    document.body.classList.toggle('vantablack');
-                    document.body.classList.toggle('shield-mode');
-                    konamiIndex = 0;
-                }
-            } else {
-                konamiIndex = 0;
-            }
-        });
-
-        // Vigilant Eye Logic
-        let idleTimer;
-        const resetTimer = () => {
-            clearTimeout(idleTimer);
-            document.getElementById('vigilant-eye').style.display = 'none';
-            idleTimer = setTimeout(() => {
-                document.getElementById('vigilant-eye').style.display = 'block';
-            }, 120000); // 2 minutes
-        };
-        window.onload = resetTimer;
-        document.onmousemove = (e) => {
-            resetTimer();
-            const eye = document.getElementById('vigilant-eye');
-            if (eye.style.display === 'block') {
-                const pupils = [document.getElementById('pupil-l'), document.getElementById('pupil-r')];
-                pupils.forEach(p => {
-                    const rect = p.getBoundingClientRect();
-                    const centerX = rect.left + rect.width / 2;
-                    const centerY = rect.top + rect.height / 2;
-                    const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-                    p.setAttribute('cx', (centerX === rect.left + rect.width / 2 ? (p === pupils[0] ? 30 : 70) : 0) + Math.cos(angle) * 3);
-                    p.setAttribute('cy', 25 + Math.sin(angle) * 3);
-                });
-            }
-        };
-    </script>
 </body>
 </html>`;
 

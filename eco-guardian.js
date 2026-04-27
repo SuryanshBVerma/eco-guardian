@@ -10,6 +10,15 @@ const { normalizeOsvAdvisory } = require("./src/vuln/normalizers");
 const { buildFixCommand } = require("./src/findings/fix");
 const { runScan } = require("./src/app/run-scan");
 const { main } = require("./src/app/main");
+const {
+  UI_MANIFEST,
+  buildCommand,
+  getVisibleFields,
+  normalizeState,
+  shellQuote,
+  validateState,
+} = require("./src/ui/command-builder");
+const { startUiServer } = require("./src/ui/server");
 const { parsePomDependencies } = require("./src/scan/maven");
 const {
   parseGradleLockfile,
@@ -24,7 +33,9 @@ const {
 const {
   queryNvdByCpe,
   makeNvdThrottle,
+  isTransientError,
   _buildCpeProductCandidates,
+  _cveMentionsVersion,
 } = require("./src/vuln/providers");
 const {
   parsePackagesConfig,
@@ -63,6 +74,13 @@ module.exports = {
   parseDirectoryPackagesProps,
   parsePackagesLockJson,
   parseEcosystemList,
+  UI_MANIFEST,
+  buildCommand,
+  getVisibleFields,
+  normalizeState,
+  shellQuote,
+  validateState,
+  startUiServer,
   collectVSCodeExtensions,
   parseRequirementsTxt,
   parsePipfileLock,
@@ -75,5 +93,7 @@ module.exports = {
   dedupeAcrossSources,
   queryNvdByCpe,
   makeNvdThrottle,
+  isTransientError,
   _buildCpeProductCandidates,
+  _cveMentionsVersion,
 };

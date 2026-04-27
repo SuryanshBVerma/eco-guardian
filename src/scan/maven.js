@@ -35,6 +35,37 @@ function parsePomDependencies(xmlText, filePath) {
     }
   }
 
+  const projectGroupId = extractTagText(xmlText, "groupId");
+  const projectArtifactId = extractTagText(xmlText, "artifactId");
+  const projectVersion = extractTagText(xmlText, "version");
+  if (projectGroupId) {
+    if (!Object.prototype.hasOwnProperty.call(properties, "project.groupId"))
+      properties["project.groupId"] = projectGroupId;
+    if (!Object.prototype.hasOwnProperty.call(properties, "pom.groupId"))
+      properties["pom.groupId"] = projectGroupId;
+  }
+  if (projectArtifactId) {
+    if (!Object.prototype.hasOwnProperty.call(properties, "project.artifactId"))
+      properties["project.artifactId"] = projectArtifactId;
+    if (!Object.prototype.hasOwnProperty.call(properties, "pom.artifactId"))
+      properties["pom.artifactId"] = projectArtifactId;
+  }
+  if (projectVersion) {
+    if (!Object.prototype.hasOwnProperty.call(properties, "project.version"))
+      properties["project.version"] = projectVersion;
+    if (!Object.prototype.hasOwnProperty.call(properties, "pom.version"))
+      properties["pom.version"] = projectVersion;
+  }
+
+  const parentElems = extractAllElements(xmlText, "parent");
+  if (parentElems.length > 0) {
+    const parentVersion = extractTagText(parentElems[0], "version");
+    if (parentVersion &&
+        !Object.prototype.hasOwnProperty.call(properties, "parent.version")) {
+      properties["parent.version"] = parentVersion;
+    }
+  }
+
   const dependencyManagement = {};
   const dmElems = extractAllElements(xmlText, "dependencyManagement");
   for (const dmElem of dmElems) {
@@ -66,7 +97,7 @@ function parsePomDependencies(xmlText, filePath) {
       resolveProperty(rawV, properties) || dependencyManagement[`${g}:${a}`];
 
     const name = `${g}:${a}`;
-    const version = v || null;
+    const version = v && !v.includes("${") ? v : null;
 
     if (!version) {
       records.push({

@@ -31,7 +31,7 @@ async function resolveMavenPackages(roots, options, state) {
       try {
         const stdout = await shared.execAsync(
           "mvn dependency:tree -DoutputType=text",
-          { cwd: root },
+          { cwd: root, timeout: 120000 },
         );
         const lines = stdout.split("\n");
 

@@ -1,11 +1,13 @@
 "use strict";
 
 const path = require("path");
+const os = require("os");
 const fs = require("fs/promises");
 const https = require("https");
 const { resolveGradleStatic } = require("./src/gradle/resolve-static");
 const { parseVersionCatalog } = require("./src/gradle/parse-version-catalog");
 const { parseGradleSettings } = require("./src/gradle/parse-settings");
+const { parseGradleDependenciesOutput } = require("./src/gradle/parse-dependencies-output");
 const {
   isResolvableVersion,
   parsePomDependencies,
@@ -14,6 +16,15 @@ const {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+async function withTempDir(fn) {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "eco-guardian-gradle-"));
+  try {
+    return await fn(root);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
 }
 
 async function testParseVersionCatalog() {
@@ -123,6 +134,54 @@ include 'app', 'core:api', 'core:impl'
   );
 }
 
+async function testParseGradleDependenciesOutput() {
+  const output = `
+compileClasspath - Compile classpath for source set 'main'.
++--- org.example:demo:1.0.0
+|    +--- org.example:child:2.0.0
+|    \\--- project :adapter
+\\--- org.other:direct:4.0.0 -> 4.0.1
+
+runtimeClasspath - Runtime classpath of source set 'main'.
++--- org.example:runtime-only:5.0.0 (c)
+`;
+
+  const records = parseGradleDependenciesOutput(output, {
+    projectDir: "/tmp/project/application",
+    projectName: "application",
+    manifestPath: "/tmp/project/application/build.gradle",
+  });
+
+  assert(records.length === 4, `Expected 4 parsed records, got ${records.length}`);
+  assert(
+    records.some((record) => record.key === "gradle|org.example:demo|1.0.0"),
+    "Should parse the root dependency",
+  );
+  assert(
+    records.some((record) => record.key === "gradle|org.example:child|2.0.0"),
+    "Should parse the child dependency",
+  );
+  assert(
+    records.some((record) => record.key === "gradle|org.other:direct|4.0.1"),
+    "Should honor resolved versions after the arrow",
+  );
+  assert(
+    records.some((record) => record.key === "gradle|org.example:runtime-only|5.0.0"),
+    "Should parse constrained dependencies",
+  );
+  assert(
+    records.every((record) => !record.name.startsWith("project :")),
+    "Project nodes should not be emitted as package records",
+  );
+  const child = records.find((record) => record.key === "gradle|org.example:child|2.0.0");
+  assert(child.depth === 2, "Child dependency depth should be 2");
+  assert(
+    child.resolvedPath.join(" / ") ===
+      "org.example:demo@1.0.0 / org.example:child@2.0.0",
+    "Child dependency path should preserve tree order",
+  );
+}
+
 async function testStaticResolutionMetadata() {
   // Mock fs and https
   const originalReadFile = fs.readFile;
@@ -211,6 +270,82 @@ async function testStaticResolutionMetadata() {
     fs.readdir = originalReaddir;
     https.get = originalGet;
   }
+}
+
+async function testTaskBasedResolutionUsesGradleTree() {
+  await withTempDir(async (root) => {
+    const appDir = path.join(root, "application");
+    await fs.mkdir(appDir, { recursive: true });
+    await fs.writeFile(path.join(root, "gradlew.bat"), "", "utf8");
+    await fs.writeFile(path.join(root, "gradlew"), "", "utf8");
+    await fs.writeFile(path.join(root, "settings.gradle"), "include 'application'", "utf8");
+    await fs.writeFile(
+      path.join(appDir, "build.gradle"),
+      "dependencies { implementation 'org.example:demo:1.0.0' }",
+      "utf8",
+    );
+
+    let seenCommand = null;
+    const tree = `
+compileClasspath - Compile classpath for source set 'main'.
++--- org.example:demo:1.0.0
+|    +--- org.example:child:2.0.0
+    |    \\--- project :adapter
+    \\--- org.other:direct:4.0.0 -> 4.0.1
+`;
+
+    const result = await resolveGradleStatic(
+      [root],
+      {
+        graphResolution: true,
+        verbose: false,
+        gradleTask: ":application:dependencies",
+      },
+      {
+        commandRunner: async (file, args, options) => {
+          seenCommand = { file, args, options };
+          return { ok: true, stdout: tree, stderr: "" };
+        },
+      },
+    );
+
+    assert(seenCommand, "Gradle task should have been executed");
+    const normalizedFile = path.basename(seenCommand.file).toLowerCase();
+    const commandText = [seenCommand.file]
+      .concat(Array.isArray(seenCommand.args) ? seenCommand.args : [])
+      .join(" ")
+      .toLowerCase();
+    assert(
+      normalizedFile.startsWith("gradlew") || commandText.includes("gradlew"),
+      "Should execute the Gradle wrapper",
+    );
+    assert(
+      commandText.includes(":application:dependencies"),
+      "Should execute the requested Gradle task",
+    );
+    assert(
+      result.packageMap.has("gradle|org.example:demo|1.0.0"),
+      "Task-backed resolver should keep the direct dependency",
+    );
+    assert(
+      result.packageMap.has("gradle|org.example:child|2.0.0"),
+      "Task-backed resolver should keep transitive dependencies from the tree",
+    );
+    assert(
+      result.packageMap.has("gradle|org.other:direct|4.0.1"),
+      "Task-backed resolver should keep resolved versions after arrows",
+    );
+    assert(
+      result.packageMap.get("gradle|org.example:child|2.0.0").depth === 2,
+      "Task-backed resolver should preserve tree depth",
+    );
+    assert(
+      result.packageMap.get("gradle|org.example:demo|1.0.0").occurrences[0].manifest_path.endsWith(
+        path.join("application", "build.gradle"),
+      ),
+      "Task-backed resolver should attribute findings to the selected module manifest",
+    );
+  });
 }
 
 async function testSkipsUnresolvableTransitivesFromPomFallback() {
@@ -401,8 +536,12 @@ async function runAll() {
     console.log("[PASS] testParseVersionCatalog");
     await testParseGradleSettings();
     console.log("[PASS] testParseGradleSettings");
+    await testParseGradleDependenciesOutput();
+    console.log("[PASS] testParseGradleDependenciesOutput");
     await testMetadataVersionFiltering();
     console.log("[PASS] testMetadataVersionFiltering");
+    await testTaskBasedResolutionUsesGradleTree();
+    console.log("[PASS] testTaskBasedResolutionUsesGradleTree");
     await testStaticResolutionMetadata();
     console.log("[PASS] testStaticResolutionMetadata");
     await testSkipsUnresolvableTransitivesFromPomFallback();

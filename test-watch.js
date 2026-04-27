@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("assert");
+const os = require("os");
 const path = require("path");
 const fs = require("fs");
 const {
@@ -38,7 +39,6 @@ async function testScopedDiffing() {
     },
   ];
 
-  // If we rescan P1, F1 should remain, and F2 (different project) should NOT be considered resolved.
   const snapshot = { findings: oldFindings };
   const originalCollect = runScan.collectPackageMap;
   const originalAnalyze = runScan.analyzePackageMap;
@@ -54,9 +54,6 @@ async function testScopedDiffing() {
       notifyOnSeverity: "high",
     });
 
-    // F1 exists in P1, F2 exists in P2.
-    // After rescanning P1, snapshot.findings should still have BOTH if they are stable.
-    // In this test, newFindings for P1 matches oldFindings for P1, so nothing should be added/removed.
     const fingerprints = snapshot.findings.map((f) => f.fingerprint);
     assert(fingerprints.includes("F1"), "P1 finding should be preserved");
     assert(
@@ -67,24 +64,27 @@ async function testScopedDiffing() {
     runScan.collectPackageMap = originalCollect;
     runScan.analyzePackageMap = originalAnalyze;
   }
-  console.log("✓ Scoped diffing verified");
+  console.log("[PASS] Scoped diffing verified");
 }
 
 async function testStatePersistence() {
   console.log("Testing State Persistence Round-Trip...");
-  const testFile = "test-snapshot.json";
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "eco-watch-"));
+  const testFile = path.join(tempDir, "test-snapshot.json");
   const state = { findings: [{ f: 1 }], lastBootstrap: "now" };
 
-  await saveWatchState(testFile, state);
-  const loaded = await loadWatchState(testFile);
-  assert.deepStrictEqual(
-    loaded,
-    state,
-    "State should be saved and loaded accurately",
-  );
-
-  if (fs.existsSync(testFile)) fs.unlinkSync(testFile);
-  console.log("✓ State persistence verified");
+  try {
+    await saveWatchState(testFile, state);
+    const loaded = await loadWatchState(testFile);
+    assert.deepStrictEqual(
+      loaded,
+      state,
+      "State should be saved and loaded accurately",
+    );
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+  console.log("[PASS] State persistence verified");
 }
 
 async function runTests() {

@@ -16,11 +16,22 @@ const { createGraphPackage } = require("../resolve/shared");
 const { asyncPool } = require("../shared/async");
 const { API_CONCURRENCY } = require("../config/constants");
 const { log } = require("../cli/output");
+const { resolveGradleTaskPackages } = require("./task-resolution");
 
 /**
  * Main orchestrator for static Gradle resolution.
  */
 async function resolveGradleStatic(roots, options, state) {
+  const taskResolved = await resolveGradleTaskPackages(roots, options, state);
+  if (taskResolved.packageMap.size > 0) {
+    return {
+      packageMap: taskResolved.packageMap,
+      mode: taskResolved.mode,
+      reason: taskResolved.reason,
+      usedFallback: false,
+    };
+  }
+
   const { discoverGradleProjects } = require("./discover");
   const packageMap = new Map();
   const rootsArray = Array.isArray(roots) ? roots : [roots];

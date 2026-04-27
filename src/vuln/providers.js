@@ -247,6 +247,7 @@ async function queryNpmBulk(body, options, diagnostics = null) {
 
 const NVD_API_BASE = "https://services.nvd.nist.gov/rest/json/cves/2.0";
 const NVD_RESULTS_PER_PAGE = 20;
+const NVD_MAX_PAGES = 5;
 // NVD recommends ~6s between requests to stay safely within 50 req/30s limit.
 // We use a simple fixed-delay throttle: one slot released every INTERVAL_MS.
 const NVD_REQUEST_INTERVAL_MS_AUTH = 650; // ~46 req/30s with key
@@ -281,7 +282,7 @@ async function queryNvdByCpe(
   const cleanV = String(version || "")
     .split(":")[0]
     .replace(/^v/, "");
-  const apiKey = options && options.nvdApiKey;
+  const apiKey = (options && options.nvdApiKey) || process.env.NVD_API_KEY || null;
   const headers = apiKey ? { apiKey } : {};
 
   const productNames = _buildCpeProductCandidates(artifactId);
@@ -341,15 +342,42 @@ async function queryNvdByCpe(
     );
     for (const cve of cves) {
       if (cve && cve.id && !seenIds.has(cve.id)) {
-        // Here we could add a heuristic check if the version actually matches the CPE data
-        // but for now we trust NVD's keyword search relevance.
-        seenIds.add(cve.id);
-        allCves.push(cve);
+        if (_cveMentionsVersion(cve, cleanV)) {
+          seenIds.add(cve.id);
+          allCves.push(cve);
+        }
       }
     }
   }
 
   return allCves;
+}
+
+/**
+ * Heuristic: check if the CVE's CPE match criteria reference our version.
+ * Returns true if the version string appears in any CPE criteria or CVE description.
+ * Used to filter keyword search results that match the artifact name but not the version.
+ */
+function _cveMentionsVersion(cve, version) {
+  if (!cve || !version) return true;
+  const ver = String(version).trim();
+  if (!ver) return true;
+
+  const raw = JSON.stringify(cve).toLowerCase();
+  if (raw.includes(ver.toLowerCase())) return true;
+
+  const configs = cve.configurations || [];
+  for (const config of configs) {
+    const nodes = config.nodes || [];
+    for (const node of nodes) {
+      const matches = node.cpeMatch || [];
+      for (const m of matches) {
+        const criteria = (m.criteria || "").toLowerCase();
+        if (criteria.includes(ver.toLowerCase())) return true;
+      }
+    }
+  }
+  return false;
 }
 
 /**
@@ -365,7 +393,8 @@ function _buildCpeProductCandidates(artifactId) {
 }
 
 /**
- * Internal fetch helper with retry logic for 429 and throttling.
+ * Internal fetch helper with retry logic for 429 and NVD API pagination.
+ * Loops through result pages (startIndex) up to NVD_MAX_PAGES.
  */
 async function _nvdFetch(
   url,
@@ -375,48 +404,71 @@ async function _nvdFetch(
   diagnostics,
   throttle,
 ) {
-  let attempt = 0;
-  while (attempt < 3) {
-    if (throttle) await throttle.acquire();
-    try {
-      const data = await httpsGet(url, 15000, headers);
-      const items =
-        data && Array.isArray(data.vulnerabilities) ? data.vulnerabilities : [];
-      return items.map((item) => item.cve).filter(Boolean);
-    } catch (err) {
-      if (err.message && err.message.includes("404")) {
-        // NVD 404 on a valid request = malformed query or truly no results
-        return [];
-      }
-      if (err.message && err.message.includes("429")) {
-        // Respect Retry-After or fall back to 30s
-        const waitMs = (err.retryAfterMs || 30000) + 1000;
+  const allItems = [];
+  const seen = new Set();
+  let startIndex = 0;
+
+  while (startIndex < NVD_MAX_PAGES * NVD_RESULTS_PER_PAGE) {
+    const pageUrl =
+      startIndex === 0 ? url : `${url}&startIndex=${startIndex}`;
+    let attempt = 0;
+    let pageItems = [];
+
+    while (attempt < 3) {
+      if (throttle) await throttle.acquire();
+      try {
+        const data = await httpsGet(pageUrl, 15000, headers);
+        const items =
+          data && Array.isArray(data.vulnerabilities)
+            ? data.vulnerabilities
+            : [];
+        pageItems = items.map((item) => item.cve).filter(Boolean);
+
+        for (const item of pageItems) {
+          if (item && item.id && !seen.has(item.id)) {
+            seen.add(item.id);
+            allItems.push(item);
+          }
+        }
+
+        const total =
+          data && typeof data.totalResults === "number"
+            ? data.totalResults
+            : 0;
+        if (startIndex + items.length >= total) return allItems;
+        if (items.length < NVD_RESULTS_PER_PAGE) return allItems;
+        break;
+      } catch (err) {
+        if (err.message && err.message.includes("404")) {
+          return startIndex === 0 ? [] : allItems;
+        }
+        if (err.message && err.message.includes("429")) {
+          const waitMs = (err.retryAfterMs || 30000) + 1000;
+          log(
+            "warn",
+            `NVD rate-limited, waiting ${Math.ceil(waitMs / 1000)}s before retry...`,
+            options,
+          );
+          await delay(waitMs);
+          attempt += 1;
+          continue;
+        }
+        if (diagnostics) diagnostics.nvdErrors = (diagnostics.nvdErrors || 0) + 1;
         log(
           "warn",
-          `NVD rate-limited, waiting ${Math.ceil(waitMs / 1000)}s before retry...`,
+          `NVD query failed for ${artifactId}: ${err.message}`,
           options,
         );
-        await delay(waitMs);
-        attempt += 1;
-        continue;
+        if (startIndex > 0) return allItems;
+        return [];
       }
-      if (diagnostics) diagnostics.nvdErrors = (diagnostics.nvdErrors || 0) + 1;
-      log(
-        "warn",
-        `NVD query failed for ${artifactId}: ${err.message}`,
-        options,
-      );
-      return [];
     }
+
+    if (pageItems.length < NVD_RESULTS_PER_PAGE) return allItems;
+    startIndex += NVD_RESULTS_PER_PAGE;
   }
 
-  if (diagnostics) diagnostics.nvdErrors = (diagnostics.nvdErrors || 0) + 1;
-  log(
-    "warn",
-    `NVD query failed for ${artifactId} after ${attempt} retries`,
-    options,
-  );
-  return [];
+  return allItems;
 }
 
 module.exports = {
@@ -424,5 +476,7 @@ module.exports = {
   queryNpmBulk,
   queryNvdByCpe,
   makeNvdThrottle,
+  isTransientError,
   _buildCpeProductCandidates,
+  _cveMentionsVersion,
 };

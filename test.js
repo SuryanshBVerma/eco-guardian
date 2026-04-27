@@ -14,6 +14,7 @@ const { renderFindingsTable } = require("./src/report/console");
 const { loadBaseline } = require("./src/baseline");
 const { evaluatePolicy } = require("./src/policy/gates");
 const { advisoryRangeMatchesVersion } = require("./src/vuln/query-service");
+const { stripComments } = require("./src/shared/xml-lite");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -32,6 +33,7 @@ async function testParseArgs() {
   const a = guardian.parseArgs([
     "--path",
     "/tmp/x",
+    "--ui",
     "--json",
     "--severity",
     "high",
@@ -48,6 +50,7 @@ async function testParseArgs() {
     a.json === true &&
       a.fix === true &&
       a.globalOnly === true &&
+      a.ui === true &&
       a.noCache === true,
     "parseArgs boolean flags failed",
   );
@@ -79,6 +82,34 @@ async function testParseArgs() {
   const f = guardian.parseArgs(["--export-html", "report.html"]);
   assert(f.exportHtml === "report.html", "parseArgs --export-html failed");
 
+  const gt = guardian.parseArgs(["--gradle-task", ":app:dependencies"]);
+  assert(
+    gt.gradleTask === ":app:dependencies",
+    "parseArgs --gradle-task failed",
+  );
+
+  const nvdOn = guardian.parseArgs(["--nvd-mode", "on"]);
+  assert(nvdOn.nvdMode === "on", "parseArgs --nvd-mode on failed");
+
+  const nvdOff = guardian.parseArgs(["--nvd-mode", "off"]);
+  assert(nvdOff.nvdMode === "off", "parseArgs --nvd-mode off failed");
+
+  const nvdAuto = guardian.parseArgs(["--nvd-mode", "auto"]);
+  assert(nvdAuto.nvdMode === "auto", "parseArgs --nvd-mode auto failed");
+
+  const alias = guardian.parseArgs(["--dependency-check-mode"]);
+  assert(
+    alias.dependencyCheckMode === true,
+    "parseArgs --dependency-check-mode should enable compatibility flag",
+  );
+  assert(
+    alias.nvdMode === "on",
+    "parseArgs --dependency-check-mode should map to nvdMode=on",
+  );
+
+  const noNvd = guardian.parseArgs(["--no-nvd"]);
+  assert(noNvd.nvdMode === "off", "parseArgs --no-nvd failed");
+
   threw = false;
   try {
     guardian.parseArgs(["--path"]);
@@ -94,6 +125,14 @@ async function testParseArgs() {
     threw = true;
   }
   assert(threw, "parseArgs should reject missing --banner value");
+
+  threw = false;
+  try {
+    guardian.parseArgs(["--nvd-mode", "invalid"]);
+  } catch (_) {
+    threw = true;
+  }
+  assert(threw, "parseArgs should reject invalid --nvd-mode value");
 
   threw = false;
   try {
@@ -142,6 +181,7 @@ async function testPublicExportsSurface() {
     "parseProjectPackageReferences",
     "parseDirectoryPackagesProps",
     "parseEcosystemList",
+    "_cveMentionsVersion",
   ];
   for (const key of expected) {
     assert(
@@ -319,6 +359,75 @@ async function testNormalizeOsvAdvisory() {
   );
 }
 
+async function testNormalizeOsvAdvisorySparse() {
+  const sparse = guardian.normalizeOsvAdvisory({});
+  assert(sparse.id === "OSV-UNKNOWN", "empty obj → OSV-UNKNOWN id");
+  assert(Array.isArray(sparse.aliases) && sparse.aliases.length === 0, "no aliases → []");
+  assert(sparse.severity === "MODERATE", "no severity → MODERATE");
+  assert(sparse.cvss_score === null, "no cvss → null");
+  assert(sparse.title === "Vulnerability advisory", "no summary/id → default title");
+  assert(Array.isArray(sparse.fixed_versions) && sparse.fixed_versions.length === 0, "no affected → []");
+  assert(Array.isArray(sparse.references) && sparse.references.length === 0, "no references → []");
+}
+
+async function testNormalizeNpmAdvisorySparse() {
+  const { normalizeNpmAdvisory } = require("./src/vuln/normalizers");
+  const sparse = normalizeNpmAdvisory({});
+  assert(sparse.id === "NPM-UNKNOWN", "empty obj → NPM-UNKNOWN");
+  assert(sparse.cvss_score === null, "no cvssScore → null");
+  assert(Array.isArray(sparse.fixed_versions) && sparse.fixed_versions.length === 0, "no patched → []");
+  assert(Array.isArray(sparse.references) && sparse.references.length === 0, "no url → []");
+}
+
+async function testNormalizeSeverityAllLevels() {
+  const { normalizeSeverity } = require("./src/vuln/normalizers");
+  assert(normalizeSeverity(null) === "MODERATE", "null → MODERATE");
+  assert(normalizeSeverity("CRITICAL") === "CRITICAL");
+  assert(normalizeSeverity("HIGH") === "HIGH");
+  assert(normalizeSeverity("medium") === "MODERATE", "medium → MODERATE");
+  assert(normalizeSeverity("Low") === "LOW");
+  assert(normalizeSeverity("unknown") === "MODERATE", "unknown → MODERATE default");
+}
+
+async function testCvssToSeverityAllBranches() {
+  const { cvssToSeverity } = require("./src/vuln/normalizers");
+  assert(cvssToSeverity(null) === "MODERATE", "null → MODERATE");
+  assert(cvssToSeverity(9.8) === "CRITICAL");
+  assert(cvssToSeverity(7.5) === "HIGH");
+  assert(cvssToSeverity(5.0) === "MODERATE", "5.0 → MODERATE");
+  assert(cvssToSeverity(2.0) === "LOW");
+}
+
+async function testExtractNvdCvssAllVersions() {
+  const { extractNvdCvss } = require("./src/vuln/normalizers");
+  assert(extractNvdCvss(null) === null, "null metrics → null");
+  assert(extractNvdCvss({}) === null, "empty metrics → null");
+  assert(
+    extractNvdCvss({ cvssMetricV30: [{ cvssData: { baseScore: 7.5 } }] }) === 7.5,
+    "v30 fallback"
+  );
+  assert(
+    extractNvdCvss({ cvssMetricV2: [{ cvssData: { baseScore: 5.0 } }] }) === 5.0,
+    "v2 fallback"
+  );
+}
+
+async function testFindOsvCvssEdgeCases() {
+  const { findOsvCvss } = require("./src/vuln/normalizers");
+  assert(findOsvCvss(null) === null, "null → null");
+  assert(findOsvCvss({}) === null, "no severity array → null");
+  assert(findOsvCvss({ severity: [] }) === null, "empty severity → null");
+  assert(findOsvCvss({ severity: [{}] }) === null, "no score field → null");
+  assert(findOsvCvss({ severity: [{ score: "CVSS:3.1/AV:N/.../7.5" }] }) === 7.5, "valid score");
+}
+
+async function testSeverityAllowedDefaults() {
+  const { severityAllowed } = require("./src/vuln/normalizers");
+  assert(severityAllowed(null, null) === true, "null/null → allowed");
+  assert(severityAllowed("critical", "high") === true, "critical >= high → allowed");
+  assert(severityAllowed("low", "high") === false, "low < high → not allowed");
+}
+
 async function testReadPackageJson() {
   await withTempDir(async (root) => {
     const ok = path.join(root, "ok");
@@ -435,6 +544,7 @@ async function testCliHelpAndVersion() {
       out.includes("--export-txt <file>"),
       "help output should include TXT export flag",
     );
+    assert(out.includes("--ui"), "help output should include UI flag");
     assert(
       out.includes("--banner <on|off>"),
       "help output should include banner flag",
@@ -592,6 +702,26 @@ async function testHtmlReportGeneration() {
       html.includes("badge-high"),
       "HTML report should include severity badge class",
     );
+    assert(
+      html.includes("summary-strip"),
+      "HTML report should render a minimal summary strip",
+    );
+    assert(
+      html.includes("finding"),
+      "HTML report should render a minimal finding block",
+    );
+    assert(
+      html.includes("Issue:"),
+      "HTML report should show the issue summary",
+    );
+    assert(
+      html.includes("Origin:"),
+      "HTML report should show the dependency origin",
+    );
+    assert(
+      html.includes("Fix:"),
+      "HTML report should show the fix action",
+    );
   });
 }
 
@@ -645,6 +775,38 @@ async function testPolicyEvaluation() {
   assert(fail.violations.length >= 1, "policy should collect violations");
 }
 
+async function testPolicyMaxHighViolation() {
+  const findings = [
+    { severity: "high" },
+    { severity: "high" },
+    { severity: "high" },
+  ];
+  const result = evaluatePolicy(findings, { maxHigh: 2 });
+  assert(result.passed === false, "should fail when high exceed maxHigh");
+  assert(result.violations.length === 1, "should have violation");
+  assert(result.counts.high === 3, "should count all high findings");
+}
+
+async function testPolicyDisabledWhenNoThresholds() {
+  const findings = [{ severity: "critical" }];
+  const result = evaluatePolicy(findings, {});
+  assert(result.enabled === false, "policy should be disabled with no thresholds");
+  assert(result.passed === true, "should pass when disabled");
+}
+
+async function testPolicyUnknownSeverity() {
+  const findings = [{ severity: "unknown_severity" }];
+  const result = evaluatePolicy(findings, {});
+  assert(result.counts.critical === 0, "unknown severity not counted as critical");
+  assert(result.counts.high === 0, "unknown severity not counted as high");
+}
+
+async function testPolicyNullFindings() {
+  const result = evaluatePolicy(null, { maxCritical: 1 });
+  assert(result.passed === true, "null findings should pass");
+  assert(result.counts.critical === 0, "null findings should have zero counts");
+}
+
 async function testAdvisoryRangeMatching() {
   assert(
     advisoryRangeMatchesVersion(">=1.0.0, <2.0.0", "1.5.0") === true,
@@ -658,6 +820,94 @@ async function testAdvisoryRangeMatching() {
     advisoryRangeMatchesVersion("<1.0.1 || >=2.0.0", "2.1.0") === true,
     "or-expression should match",
   );
+}
+
+async function testAdvisoryRangeHyphen() {
+  assert(advisoryRangeMatchesVersion("1.0.0 - 2.0.0", "1.5.0") === true, "hyphen range should match");
+  assert(advisoryRangeMatchesVersion("1.0.0 - 2.0.0", "3.0.0") === false, "hyphen range should not match");
+}
+
+async function testAdvisoryRangeEmpty() {
+  assert(advisoryRangeMatchesVersion("", "1.0.0") === true, "empty string → matches all");
+  assert(advisoryRangeMatchesVersion(null, "1.0.0") === true, "null → matches all");
+}
+
+async function testAdvisoryRangeTilde() {
+  assert(advisoryRangeMatchesVersion("~1.2.3", "1.2.5") === true, "tilde in-range");
+  assert(advisoryRangeMatchesVersion("~1.2.3", "2.0.0") === false, "tilde out-of-range");
+}
+
+async function testAdvisoryRangeWildcard() {
+  assert(advisoryRangeMatchesVersion("1.2.x", "1.2.5") === true, "1.2.x in minor");
+  assert(advisoryRangeMatchesVersion("1.2.x", "1.3.0") === false, "1.2.x out of minor");
+  assert(advisoryRangeMatchesVersion("1.x", "1.9.0") === true, "1.x in major");
+  assert(advisoryRangeMatchesVersion("1.x", "2.0.0") === false, "1.x out of major");
+}
+
+async function testAdvisoryRangeBadVersion() {
+  assert(advisoryRangeMatchesVersion(">=1.0.0", "not-a-version") === false, "bad version → no match");
+}
+
+async function testAdvisoryRangeZeroDotWildcard() {
+  assert(advisoryRangeMatchesVersion("0.x", "0.5.0") === true, "0.x matches 0.5.0");
+  assert(advisoryRangeMatchesVersion("0.0.x", "0.0.5") === true, "0.0.x matches 0.0.5");
+}
+
+async function testAdvisoryRangeCaretZeroVersion() {
+  assert(advisoryRangeMatchesVersion("^0.2.0", "0.2.3") === true, "^0.2.0 matches 0.2.3");
+}
+
+async function testAdvisoryRangePlainEqual() {
+  assert(advisoryRangeMatchesVersion("1.2.3", "1.2.3") === true, "plain version exact match");
+  assert(advisoryRangeMatchesVersion("1.2.3", "1.2.4") === false, "plain version mismatch");
+}
+
+async function testAdvisoryRangeVeePrefix() {
+  assert(advisoryRangeMatchesVersion(">=v1.0.0, <v2.0.0", "1.5.0") === true, "v-prefix range with plain version");
+}
+
+async function testAdvisoryRangeMultipleGroups() {
+  assert(advisoryRangeMatchesVersion("<=0.9.0 || >=2.0.0", "2.1.0") === true, "second || group");
+  assert(advisoryRangeMatchesVersion("<=0.9.0 || >=2.0.0", "1.0.0") === false, "between || groups");
+}
+
+async function testTableRenderMultiple() {
+  const table = renderFindingsTable([
+    { severity: "CRITICAL", package: "pkg-a", version: "1.0", advisory_id: "ADV-1", found_in: [{ project: "proj1" }], fix_command: "npm install" },
+    { severity: "HIGH", package: "pkg-b", version: "2.0", advisory_id: "ADV-2", found_in: [{ project: "proj2" }], fix_command: null },
+    { severity: "LOW", package: "pkg-c", version: "3.0", advisory_id: null, found_in: [], fix_command: null },
+  ]);
+  assert(table.includes("pkg-a"), "table should include first package");
+  assert(table.includes("pkg-b"), "table should include second package");
+  assert(table.includes("pkg-c"), "table should include third package");
+  assert(table.includes("CRITICAL"), "table should show severity");
+}
+
+async function testNormalizeSeverityEdge() {
+  const { normalizeSeverity } = require("./src/vuln/normalizers");
+  assert(normalizeSeverity("   HIGH   ") === "HIGH", "whitespace should trim");
+  assert(normalizeSeverity("Moderate") === "MODERATE", "Moderate → MODERATE");
+  assert(normalizeSeverity(123) === "MODERATE", "number → MODERATE default");
+}
+
+async function testEventsToRangeMultiple() {
+  const { eventsToRange } = require("./src/vuln/normalizers");
+  const range = eventsToRange([
+    { ranges: [{ events: [{ introduced: "1.0.0" }, { fixed: "2.0.0" }] }] },
+    { ranges: [{ events: [{ introduced: "3.0.0" }] }] },
+  ]);
+  assert(range && range.includes(">=1.0.0"), "should include first range");
+  assert(range.includes(">=3.0.0"), "should include second range");
+}
+
+async function testDedupeAdvisoriesDuplicate() {
+  const { dedupeAdvisories } = require("./src/vuln/normalizers");
+  const result = dedupeAdvisories([
+    { id: "ADV-1", source: "osv" },
+    { id: "ADV-1", source: "osv" },
+    { id: "ADV-2", source: "npm" },
+  ]);
+  assert(result.length === 2, "should dedupe by id+source");
 }
 
 async function testStrictBaselineMissingFile() {
@@ -1371,6 +1621,299 @@ async function testBuildCpeProductCandidates() {
   }
 }
 
+async function testParsePomWithComments() {
+  const pom = [
+    "<project>",
+    "  <!-- old dep: <dependency><groupId>old</groupId><artifactId>old</artifactId><version>9</version></dependency> -->",
+    "  <properties>",
+    "    <!-- <foo>comment</foo> -->",
+    "    <guava.version>33.0.0</guava.version>",
+    "  </properties>",
+    "  <dependencies>",
+    "    <dependency>",
+    "      <groupId>com.google.guava</groupId>",
+    "      <artifactId>guava</artifactId>",
+    "      <version>${guava.version}</version>",
+    "    </dependency>",
+    "    <!-- <dependency>",
+    "      <groupId>nonexistent</groupId>",
+    "      <artifactId>ghost</artifactId>",
+    "      <version>1.0</version>",
+    "    </dependency> -->",
+    "  </dependencies>",
+    "</project>",
+  ].join("\n");
+
+  const records = guardian.parsePomDependencies(pom, "/test-pom.xml");
+  assert(records.length === 1, "Comment-shielded POM should produce exactly 1 dependency, got " + records.length);
+  assert(records[0].name === "com.google.guava:guava", "Should extract guava, not phantom deps in comments");
+  assert(records[0].version === "33.0.0", "Property resolution should still work with comments present");
+}
+
+async function testParsePomWithCdata() {
+  const pom = [
+    "<project>",
+    "  <properties>",
+    "    <foo><![CDATA[some <text> here]]></foo>",
+    "  </properties>",
+    "  <dependencies>",
+    "    <dependency>",
+    "      <groupId>junit</groupId>",
+    "      <artifactId>junit</artifactId>",
+    "      <version>4.13.2</version>",
+    "    </dependency>",
+    "  </dependencies>",
+    "</project>",
+  ].join("\n");
+
+  const records = guardian.parsePomDependencies(pom, "/test-pom.xml");
+  assert(records.length === 1, "POM with CDATA should produce exactly 1 dependency, got " + records.length);
+  assert(records[0].name === "junit:junit", "CDATA should not interfere with dependency extraction");
+}
+
+async function testStripCommentsMultiline() {
+  const input = "<root><!-- line1\n  line2\n  <tag>text</tag>\n  --><real>content</real></root>";
+  const cleaned = stripComments(input);
+  assert(!cleaned.includes("<!--"), "stripComments should remove opening comment marker");
+  assert(!cleaned.includes("-->"), "stripComments should remove closing comment marker");
+  assert(!cleaned.includes("<tag>text</tag>"), "stripComments should remove content inside comments");
+  assert(cleaned.includes("<real>content</real>"), "stripComments should preserve non-comment content");
+}
+
+async function testExtractTagTextNull() {
+  const { extractTagText } = require("./src/shared/xml-lite");
+  assert(extractTagText(null, "x") === null, "null xml should return null");
+  assert(extractTagText("<a></a>", "b") === null, "missing tag should return null");
+  assert(extractTagText("<a>", "a") === null, "missing close tag should return null");
+}
+
+async function testExtractAllElementsEdgeCases() {
+  const { extractAllElements } = require("./src/shared/xml-lite");
+  assert(extractAllElements(null, "x").length === 0, "null xml should return []");
+  assert(extractAllElements("<a>", "a").length === 0, "missing close tag should return []");
+
+  const selfClosing = extractAllElements("<dep g='x' v='1'/>", "dep");
+  assert(selfClosing.length === 1, "should extract self-closing element");
+
+  const partial = extractAllElements("<dependencymissing>text</dependencymissing>", "dependency");
+  assert(partial.length === 0, "partial tag match should not be extracted");
+}
+
+async function testExtractAttrEdgeCases() {
+  const { extractAttr } = require("./src/shared/xml-lite");
+  assert(extractAttr(null, "id") === null, "null element should return null");
+  assert(extractAttr("<pkg />", "missing") === null, "missing attr should return null");
+
+  const singleQuote = extractAttr('<pkg id=\'hello\' />', "id");
+  assert(singleQuote === "hello", "should extract single-quoted attr");
+
+  const doubleQuote = extractAttr('<pkg id="world" />', "id");
+  assert(doubleQuote === "world", "should extract double-quoted attr");
+}
+
+async function testMavenProjectVersionResolution() {
+  const pom = [
+    "<project>",
+    "  <groupId>com.example</groupId>",
+    "  <artifactId>my-lib</artifactId>",
+    "  <version>2.0.0</version>",
+    "  <dependencies>",
+    "    <dependency>",
+    "      <groupId>junit</groupId>",
+    "      <artifactId>junit</artifactId>",
+    "      <version>${project.version}</version>",
+    "    </dependency>",
+    "  </dependencies>",
+    "</project>",
+  ].join("\n");
+
+  const records = guardian.parsePomDependencies(pom, "/test-pom.xml");
+  assert(records.length === 1, "Should have 1 dependency, got " + records.length);
+  assert(records[0].version === "2.0.0", "${project.version} should resolve to 2.0.0, got " + records[0].version);
+}
+
+async function testMavenParentVersionResolution() {
+  const pom = [
+    "<project>",
+    "  <parent>",
+    "    <groupId>org.springframework.boot</groupId>",
+    "    <artifactId>spring-boot-starter-parent</artifactId>",
+    "    <version>3.2.0</version>",
+    "  </parent>",
+    "  <artifactId>my-app</artifactId>",
+    "  <dependencies>",
+    "    <dependency>",
+    "      <groupId>org.slf4j</groupId>",
+    "      <artifactId>slf4j-api</artifactId>",
+    "      <version>${parent.version}</version>",
+    "    </dependency>",
+    "  </dependencies>",
+    "</project>",
+  ].join("\n");
+
+  const records = guardian.parsePomDependencies(pom, "/test-pom.xml");
+  assert(records.length === 1, "Should have 1 dependency, got " + records.length);
+  assert(records[0].version === "3.2.0", "${parent.version} should resolve to 3.2.0, got " + records[0].version);
+}
+
+async function testMavenPomBuiltinProperties() {
+  const pom = [
+    "<project>",
+    "  <groupId>com.example</groupId>",
+    "  <artifactId>my-project</artifactId>",
+    "  <version>5.0.0</version>",
+    "  <dependencies>",
+    "    <dependency>",
+    "      <groupId>junit</groupId>",
+    "      <artifactId>junit</artifactId>",
+    "      <version>${pom.version}</version>",
+    "    </dependency>",
+    "    <dependency>",
+    "      <groupId>org.slf4j</groupId>",
+    "      <artifactId>slf4j-api</artifactId>",
+    "      <version>${project.version}</version>",
+    "    </dependency>",
+    "  </dependencies>",
+    "</project>",
+  ].join("\n");
+
+  const records = guardian.parsePomDependencies(pom, "/test-pom.xml");
+  assert(records.length === 2, "Should have 2 dependencies, got " + records.length);
+  const junit = records.find((r) => r.name === "junit:junit");
+  const slf4j = records.find((r) => r.name === "org.slf4j:slf4j-api");
+  assert(junit, "junit:junit dependency missing");
+  assert(slf4j, "slf4j-api dependency missing");
+  assert(junit.version === "5.0.0", "pom.version should resolve to 5.0.0, got " + junit.version);
+  assert(slf4j.version === "5.0.0", "project.version should resolve to 5.0.0, got " + slf4j.version);
+}
+
+async function testMavenNoBuiltinsWhenMissing() {
+  const pom = [
+    "<project>",
+    "  <dependencies>",
+    "    <dependency>",
+    "      <groupId>junit</groupId>",
+    "      <artifactId>junit</artifactId>",
+    "      <version>${project.version}</version>",
+    "    </dependency>",
+    "  </dependencies>",
+    "</project>",
+  ].join("\n");
+
+  const records = guardian.parsePomDependencies(pom, "/test-pom.xml");
+  assert(records.length === 1, "Should produce 1 record even with unresolvable version");
+  assert(records[0].version === "unresolved", "Should be unresolved when project.version is not defined, got " + records[0].version);
+  assert(records[0].queryable === false, "Unresolved should have queryable: false");
+}
+
+async function testNvdKeywordVersionFilterMatch() {
+  const cve = {
+    id: "CVE-2024-0001",
+    configurations: [{
+      nodes: [{
+        cpeMatch: [{
+          criteria: "cpe:2.3:a:apache:log4j:2.23.1:*:*:*:*:*:*:*",
+        }],
+      }],
+    }],
+  };
+  assert(
+    guardian._cveMentionsVersion(cve, "2.23.1") === true,
+    "Should match when version appears in CPE criteria",
+  );
+}
+
+async function testNvdKeywordVersionFilterReject() {
+  const cve = {
+    id: "CVE-2024-0002",
+    configurations: [{
+      nodes: [{
+        cpeMatch: [{
+          criteria: "cpe:2.3:a:apache:log4j:2.0:*:*:*:*:*:*:*",
+        }],
+      }],
+    }],
+  };
+  assert(
+    guardian._cveMentionsVersion(cve, "2.23.1") === false,
+    "Should reject when version does not appear in CPE criteria",
+  );
+}
+
+async function testNvdKeywordVersionFilterNullSafe() {
+  assert(
+    guardian._cveMentionsVersion(null, "1.0") === true,
+    "null CVE should return true (conservative)",
+  );
+  assert(
+    guardian._cveMentionsVersion({ id: "X" }, "") === true,
+    "empty version should return true (conservative)",
+  );
+  assert(
+    guardian._cveMentionsVersion({ id: "X" }, null) === true,
+    "null version should return true (conservative)",
+  );
+  assert(
+    guardian._cveMentionsVersion(void 0, "1.0") === true,
+    "undefined CVE should return true (conservative)",
+  );
+}
+
+async function testIsTransientError() {
+  const { isTransientError } = require("./src/vuln/providers");
+  assert(isTransientError(new Error("timeout")) === true, "timeout is transient");
+  assert(isTransientError(new Error("Network error occurred")) === true, "network error is transient");
+  assert(isTransientError(new Error("HTTP 429")) === true, "HTTP 429 is transient");
+  assert(isTransientError(new Error("HTTP 500")) === true, "HTTP 500 is transient");
+  assert(isTransientError(new Error("HTTP 502 bad gateway")) === true, "HTTP 502 is transient");
+  assert(isTransientError(new Error("HTTP 503")) === true, "HTTP 503 is transient");
+  assert(isTransientError(new Error("HTTP 504")) === true, "HTTP 504 is transient");
+  assert(isTransientError(new Error("Not Found")) === false, "404 is not transient");
+  assert(isTransientError(new Error("Unauthorized")) === false, "401 is not transient");
+  assert(isTransientError(null) === false, "null error is not transient");
+  assert(isTransientError({ message: "HTTP 429" }) === true, "object with message");
+  assert(isTransientError(void 0) === false, "undefined error is not transient");
+}
+
+async function testNvdEnvApiKey() {
+  const prev = process.env.NVD_API_KEY;
+  try {
+    delete process.env.NVD_API_KEY;
+    const noKey = guardian.parseArgs(["--nvd-mode", "on"]);
+    assert(noKey.nvdApiKey === null, "env key should default to null");
+
+    process.env.NVD_API_KEY = "env-key-123";
+    const envKey = guardian.parseArgs(["--nvd-mode", "on"]);
+    assert(envKey.nvdApiKey === null, "args should not auto-populate from env (handled at provider level)");
+  } finally {
+    if (prev === undefined) delete process.env.NVD_API_KEY;
+    else process.env.NVD_API_KEY = prev;
+  }
+}
+
+async function testPomPropertiesNotOverwrittenByBuiltins() {
+  const pom = [
+    "<project>",
+    "  <groupId>com.overridden</groupId>",
+    "  <version>99.0.0</version>",
+    "  <properties>",
+    "    <project.version>1.2.3</project.version>",
+    "  </properties>",
+    "  <dependencies>",
+    "    <dependency>",
+    "      <groupId>junit</groupId>",
+    "      <artifactId>junit</artifactId>",
+    "      <version>${project.version}</version>",
+    "    </dependency>",
+    "  </dependencies>",
+    "</project>",
+  ].join("\n");
+
+  const records = guardian.parsePomDependencies(pom, "/test-pom.xml");
+  assert(records[0].version === "1.2.3",
+    "<properties> project.version should take precedence over POM root <version>, got " + records[0].version);
+}
+
 async function testQueryNvdByCpe() {
   // Primarily logic verification via other tests, but we've renamed the function.
 }
@@ -1384,21 +1927,52 @@ async function run() {
     ["filterNestedNodeModules", testFilterNestedNodeModules],
     ["buildFixCommand", testBuildFixCommand],
     ["normalizeOsvAdvisory", testNormalizeOsvAdvisory],
+    ["normalizeOsvAdvisorySparse", testNormalizeOsvAdvisorySparse],
+    ["normalizeNpmAdvisorySparse", testNormalizeNpmAdvisorySparse],
+    ["normalizeSeverityAll", testNormalizeSeverityAllLevels],
+    ["normalizeSeverityEdge", testNormalizeSeverityEdge],
+    ["cvssToSeverityAll", testCvssToSeverityAllBranches],
+    ["extractNvdCvssAll", testExtractNvdCvssAllVersions],
+    ["findOsvCvssEdge", testFindOsvCvssEdgeCases],
+    ["severityAllowedDefaults", testSeverityAllowedDefaults],
+    ["eventsToRange", testEventsToRangeMultiple],
+    ["dedupeAdvisories", testDedupeAdvisoriesDuplicate],
     ["readPackageJson", testReadPackageJson],
     ["integrationSmoke", testIntegrationSmoke],
     ["cliHelpAndVersion", testCliHelpAndVersion],
     ["cliBannerOffResultOnly", testCliBannerOffResultOnly],
     ["txtReportGeneration", testHtmlReportEscaping],
     ["tableNoTruncation", testTableNoTruncation],
+    ["tableRenderMultiple", testTableRenderMultiple],
     ["fixScriptGeneration", testFixScriptGeneration],
     ["htmlReportGeneration", testHtmlReportGeneration],
     ["jsonCsvReportGeneration", testJsonCsvReportGeneration],
     ["policyEvaluation", testPolicyEvaluation],
+    ["policyMaxHigh", testPolicyMaxHighViolation],
+    ["policyDisabled", testPolicyDisabledWhenNoThresholds],
+    ["policyUnknownSeverity", testPolicyUnknownSeverity],
+    ["policyNullFindings", testPolicyNullFindings],
     ["advisoryRangeMatching", testAdvisoryRangeMatching],
+    ["advisoryRangeHyphen", testAdvisoryRangeHyphen],
+    ["advisoryRangeEmpty", testAdvisoryRangeEmpty],
+    ["advisoryRangeTilde", testAdvisoryRangeTilde],
+    ["advisoryRangeWildcard", testAdvisoryRangeWildcard],
+    ["advisoryRangeBadVersion", testAdvisoryRangeBadVersion],
+    ["advisoryRangeZeroWildcard", testAdvisoryRangeZeroDotWildcard],
+    ["advisoryRangeCaretZero", testAdvisoryRangeCaretZeroVersion],
+    ["advisoryRangePlainEqual", testAdvisoryRangePlainEqual],
+    ["advisoryRangeVeePrefix", testAdvisoryRangeVeePrefix],
+    ["advisoryRangeMultipleGroups", testAdvisoryRangeMultipleGroups],
     ["strictBaselineMissingFile", testStrictBaselineMissingFile],
     ["strictBaselineInvalidJson", testStrictBaselineInvalidJson],
     ["parseEcosystemList", testParseEcosystemList],
     ["parsePomDependencies", testParsePomDependencies],
+    ["parsePomWithComments", testParsePomWithComments],
+    ["parsePomWithCdata", testParsePomWithCdata],
+    ["stripComments", testStripCommentsMultiline],
+    ["extractTagTextNull", testExtractTagTextNull],
+    ["extractAllElementsEdge", testExtractAllElementsEdgeCases],
+    ["extractAttrEdge", testExtractAttrEdgeCases],
     ["parsePackagesConfig", testParsePackagesConfig],
     ["parseProjectPackageReferences", testParseProjectPackageReferences],
     ["parseDirectoryPackagesProps", testParseDirectoryPackagesProps],
@@ -1414,6 +1988,11 @@ async function run() {
     ["generateRemediationHintPythonGo", testGenerateRemediationHintPythonGo],
     ["unresolvedMavenIsNotQueryable", testUnresolvedMavenIsNotQueryable],
     ["mavenFixPinning", testMavenFixPinning],
+    ["mavenProjectVersion", testMavenProjectVersionResolution],
+    ["mavenParentVersion", testMavenParentVersionResolution],
+    ["mavenPomBuiltins", testMavenPomBuiltinProperties],
+    ["mavenNoBuiltinsWhenMissing", testMavenNoBuiltinsWhenMissing],
+    ["pomPropertiesPrecedence", testPomPropertiesNotOverwrittenByBuiltins],
     ["pythonRemediationHint", testPythonRemediationHint],
     ["buildJavaEvidence", testBuildJavaEvidence],
     ["buildCandidateCpes", testBuildCandidateCpes],
@@ -1421,6 +2000,11 @@ async function run() {
     ["dedupeAcrossSources", testDedupeAcrossSources],
     ["makeNvdThrottle", testMakeNvdThrottle],
     ["buildCpeProductCandidates", testBuildCpeProductCandidates],
+    ["nvdKeywordVersionFilterMatch", testNvdKeywordVersionFilterMatch],
+    ["nvdKeywordVersionFilterReject", testNvdKeywordVersionFilterReject],
+    ["nvdKeywordVersionFilterNullSafe", testNvdKeywordVersionFilterNullSafe],
+    ["isTransientError", testIsTransientError],
+    ["nvdEnvApiKey", testNvdEnvApiKey],
     ["queryNvdByCpe", testQueryNvdByCpe],
   ];
 
