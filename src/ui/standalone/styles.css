@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=Space+Grotesk:wght@400;500;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=Space+Grotesk:wght@400;500;600&display=swap");
 
 :root {
   --bg: #0a0a0a;
@@ -32,7 +32,7 @@ body {
   min-height: 100vh;
   background: radial-gradient(circle at 20% 0%, #161616 0%, var(--bg) 42%);
   color: var(--text);
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   line-height: 1.5;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.26) transparent;
@@ -86,7 +86,7 @@ body {
 .eyebrow {
   margin-bottom: 14px;
   color: var(--text-faint);
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: "IBM Plex Mono", monospace;
   font-size: 0.72rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -124,7 +124,7 @@ h1 em {
 .meta-label {
   margin-bottom: 10px;
   color: var(--text-faint);
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: "IBM Plex Mono", monospace;
   font-size: 0.68rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -137,7 +137,7 @@ h1 em {
   border-radius: var(--radius-md);
   padding: 14px;
   min-height: 104px;
-  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-family: "IBM Plex Mono", "Consolas", monospace;
   font-size: 0.82rem;
   line-height: 1.6;
   overflow: auto;
@@ -173,11 +173,13 @@ button {
   padding: 8px 14px;
   background: #ffffff;
   color: #000000;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: 0.84rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 button:hover {
@@ -187,7 +189,7 @@ button:hover {
 
 .status {
   color: var(--text-faint);
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: "IBM Plex Mono", monospace;
   font-size: 0.75rem;
 }
 
@@ -246,7 +248,7 @@ button:hover {
   border-radius: var(--radius-sm);
   padding: 9px 10px;
   color: var(--text);
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: 0.88rem;
   outline: none;
   transition: border-color 0.12s ease;

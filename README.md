@@ -1,14 +1,9 @@
 # eco-guardian
 
-eco-guardian is a Node.js CLI vulnerability scanner for local dependency inventories across:
+eco-guardian is a Node.js CLI vulnerability scanner for local dependency inventories across 16 ecosystems:
 
-- npm
-- Maven
-- Gradle
-- NuGet
-- VSCode extensions
-- Python
-- Go
+- npm, Maven, Gradle, NuGet, VSCode extensions, Python, Go
+- Ruby, Rust, PHP, Dart, Elixir, C/C++ (Conan), Haskell, Swift, R
 
 It discovers dependency manifests locally, queries OSV (plus npm advisory cross-checks for npm packages), and enriches Java findings with NVD data using parallel CPE queries with pagination and keyword-search version verification.
 
@@ -37,7 +32,7 @@ Examples:
 
 ```bash
 node eco-guardian.js --path ./my-project --severity high
-node eco-guardian.js --ecosystems npm,maven,gradle,nuget,vscode,python,go
+node eco-guardian.js --ecosystems npm,maven,gradle,nuget,vscode,python,go,ruby,rust,php,dart,elixir,conan,haskell,swift,r
 node eco-guardian.js --graph-resolution --ecosystems npm,maven,gradle
 node eco-guardian.js --ecosystems gradle --graph-resolution --gradle-task :application:dependencies --path ./service
 node eco-guardian.js --nvd-mode on --ecosystems maven,gradle
@@ -53,48 +48,48 @@ node eco-guardian.js --ui
 
 ## Flags
 
-| Flag                           | Description                                                                       |
-| ------------------------------ | --------------------------------------------------------------------------------- |
-| `--path <dir>`                 | Scan a specific directory.                                                        |
-| `--global-only`                | Scan only global npm installs.                                                    |
-| `--ecosystems <list>`          | Comma-separated list: `npm,maven,gradle,nuget,vscode,python,go` (default: `npm`). |
-| `--graph-resolution`           | Resolve dependency graphs with ecosystem-native resolvers.                        |
-| `--ui`                         | Launch a local browser UI for generating CLI commands.                            |
-| `--gradle-task <task>`         | Gradle dependencies task to execute for graph resolution (e.g. `:app:dependencies`). |
-| `--dependency-check-mode`      | Compatibility alias for `--nvd-mode on`.                                          |
-| `--nvd-mode <auto\|on\|off>`  | NVD enrichment mode for Java ecosystems (`maven`, `gradle`). Default: `auto`.     |
-| `--no-nvd`                     | Disable NVD enrichment.                                                            |
-| `--nvd-api-key <key>`          | NVD API key for higher rate limits (also reads `NVD_API_KEY` env).          |
-| `--severity <level>`           | Minimum severity: `low`, `moderate`, `high`, `critical`.                          |
-| `--json`                       | Print findings JSON to stdout.                                                    |
-| `--banner <on\|off>`           | Toggle CLI chrome/progress output.                                                |
-| `--no-cache`                   | Disable local cache reads/writes.                                                 |
-| `--fix`                        | Generate fix scripts for npm, maven, nuget, python, go.                           |
-| `--export-txt <file>`          | Export TXT report.                                                                |
-| `--export-html <file>`         | Export HTML report.                                                               |
-| `--export-sarif <file>`        | Export SARIF 2.1.0 report.                                                        |
-| `--export-json <file>`         | Export JSON report.                                                               |
-| `--export-csv <file>`          | Export CSV report.                                                                |
-| `--baseline <file>`            | Apply baseline suppression file.                                                  |
-| `--write-baseline <file>`      | Write current findings as a baseline.                                             |
-| `--strict-baseline`            | Fail when explicit baseline file is missing/invalid.                              |
-| `--fail-on-severity <level>`   | Policy gate: fail if any finding is at or above level.                            |
-| `--max-critical <n>`           | Policy gate: fail if critical findings exceed `n`.                                |
-| `--max-high <n>`               | Policy gate: fail if high findings exceed `n`.                                    |
-| `--why <package>`              | Show focused dependency path/remediation output.                                  |
-| `--benchmark`                  | Show peak RAM, average CPU, duration.                                             |
-| `--watch`                      | Run incremental watch mode.                                                       |
-| `--notify-on-severity <level>` | Watch alert threshold (default: `high`).                                          |
-| `--state-file <file>`          | Persistent watch state snapshot file.                                             |
-| `--alerts-file <file>`         | JSONL alert ledger file.                                                          |
-| `--alerts-md <file>`           | Markdown alert digest output.                                                     |
-| `--reconcile-interval <sec>`   | Watch reconciliation interval (default: `900`).                                   |
-| `--watch-debounce-ms <ms>`     | Debounce before rescanning dirty projects (default: `1500`).                      |
-| `--verbose`                    | Print detailed finding output and phase timings.                                  |
-| `--global`                     | On Unix-like systems, include `/` root scan.                                      |
-| `--all-drives`                 | Alias for full-disk opt-in behavior.                                              |
-| `--help`                       | Show help.                                                                        |
-| `--version`                    | Show version.                                                                     |
+| Flag                           | Description                                                                                                                       |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `--path <dir>`                 | Scan a specific directory.                                                                                                        |
+| `--global-only`                | Scan only global npm installs.                                                                                                    |
+| `--ecosystems <list>`          | Comma-separated list: `npm,maven,gradle,nuget,vscode,python,go,ruby,rust,php,dart,elixir,conan,haskell,swift,r` (default: `npm`). |
+| `--graph-resolution`           | Resolve dependency graphs with ecosystem-native resolvers.                                                                        |
+| `--ui`                         | Launch a local browser UI for generating CLI commands.                                                                            |
+| `--gradle-task <task>`         | Gradle dependencies task to execute for graph resolution (e.g. `:app:dependencies`).                                              |
+| `--dependency-check-mode`      | Compatibility alias for `--nvd-mode on`.                                                                                          |
+| `--nvd-mode <auto\|on\|off>`   | NVD enrichment mode for Java ecosystems (`maven`, `gradle`). Default: `auto`.                                                     |
+| `--no-nvd`                     | Disable NVD enrichment.                                                                                                           |
+| `--nvd-api-key <key>`          | NVD API key for higher rate limits (also reads `NVD_API_KEY` env).                                                                |
+| `--severity <level>`           | Minimum severity: `low`, `moderate`, `high`, `critical`.                                                                          |
+| `--json`                       | Print findings JSON to stdout.                                                                                                    |
+| `--banner <on\|off>`           | Toggle CLI chrome/progress output.                                                                                                |
+| `--no-cache`                   | Disable local cache reads/writes.                                                                                                 |
+| `--fix`                        | Generate fix scripts (npm, maven, nuget, python, go, ruby, rust, php, dart, elixir, r).                                           |
+| `--export-txt <file>`          | Export TXT report.                                                                                                                |
+| `--export-html <file>`         | Export HTML report.                                                                                                               |
+| `--export-sarif <file>`        | Export SARIF 2.1.0 report.                                                                                                        |
+| `--export-json <file>`         | Export JSON report.                                                                                                               |
+| `--export-csv <file>`          | Export CSV report.                                                                                                                |
+| `--baseline <file>`            | Apply baseline suppression file.                                                                                                  |
+| `--write-baseline <file>`      | Write current findings as a baseline.                                                                                             |
+| `--strict-baseline`            | Fail when explicit baseline file is missing/invalid.                                                                              |
+| `--fail-on-severity <level>`   | Policy gate: fail if any finding is at or above level.                                                                            |
+| `--max-critical <n>`           | Policy gate: fail if critical findings exceed `n`.                                                                                |
+| `--max-high <n>`               | Policy gate: fail if high findings exceed `n`.                                                                                    |
+| `--why <package>`              | Show focused dependency path/remediation output.                                                                                  |
+| `--benchmark`                  | Show peak RAM, average CPU, duration.                                                                                             |
+| `--watch`                      | Run incremental watch mode.                                                                                                       |
+| `--notify-on-severity <level>` | Watch alert threshold (default: `high`).                                                                                          |
+| `--state-file <file>`          | Persistent watch state snapshot file.                                                                                             |
+| `--alerts-file <file>`         | JSONL alert ledger file.                                                                                                          |
+| `--alerts-md <file>`           | Markdown alert digest output.                                                                                                     |
+| `--reconcile-interval <sec>`   | Watch reconciliation interval (default: `900`).                                                                                   |
+| `--watch-debounce-ms <ms>`     | Debounce before rescanning dirty projects (default: `1500`).                                                                      |
+| `--verbose`                    | Print detailed finding output and phase timings.                                                                                  |
+| `--global`                     | On Unix-like systems, include `/` root scan.                                                                                      |
+| `--all-drives`                 | Alias for full-disk opt-in behavior.                                                                                              |
+| `--help`                       | Show help.                                                                                                                        |
+| `--version`                    | Show version.                                                                                                                     |
 
 ## Behavior Notes
 
@@ -113,7 +108,16 @@ node eco-guardian.js --ui
 | gradle    | supported      |
 | nuget     | supported      |
 | go        | supported      |
+| ruby      | supported      |
+| rust      | supported      |
+| php       | supported      |
+| dart      | supported      |
 | python    | partial        |
+| elixir    | partial        |
+| conan     | partial        |
+| haskell   | partial        |
+| swift     | partial        |
+| r         | partial        |
 | vscode    | not applicable |
 
 - If graph resolution returns no data for an ecosystem, scanning falls back to inventory collection for that ecosystem.
@@ -124,8 +128,39 @@ node eco-guardian.js --ui
 - `--dependency-check-mode` is retained as a compatibility alias for `--nvd-mode on`.
 - Maven POM parsing resolves `project.*` built-in properties (`${project.version}`, `${project.groupId}`, `${project.artifactId}`) and `${parent.version}` from the parent POM reference.
 - XML comments and CDATA sections in POM files are safely stripped before parsing.
-- Automated fix command generation does not currently cover Gradle or VSCode extension findings.
-- `--ui` starts a local command builder that reuses the same flag semantics as the CLI.
+- Automated fix command generation does not cover Gradle, VSCode, Conan, Haskell, or Swift findings (these ecosystems have no single-package upgrade CLI or use manual pinning).
+
+## UI (Command Builder)
+
+`--ui` starts a local HTTP server that serves a browser-based command builder. No scan is run — the UI is purely for interactively constructing CLI commands.
+
+```
+src/ui/
+  standalone/         Browser SPA (zero build step, no framework)
+    index.html         Shell with hero + generated-command card
+    app.js             Renders form sections from the manifest, live-rebuilds the command
+    styles.css         Styling
+    favicon.png        Icon
+  manifest.js          Declarative schema of all CLI flags (sections: Target, Analysis,
+                       Output, Policy, Watch, Advanced)
+  command-builder.js   Engine: buildCommand(), normalizeState(), validateState(), shellQuote()
+  server.js            HTTP server — serves static assets + two JSON APIs
+```
+
+**Server endpoints:**
+
+| Method | Path             | Purpose                                                        |
+| ------ | ---------------- | -------------------------------------------------------------- |
+| GET    | `/`              | Serves `index.html`                                            |
+| GET    | `/app.js`        | Serves the standalone SPA                                      |
+| GET    | `/styles.css`    | Serves styles                                                  |
+| GET    | `/favicon.png`   | Serves favicon                                                 |
+| GET    | `/api/bootstrap` | Returns the UI manifest, initial state, and a prebuilt command |
+| POST   | `/api/command`   | Accepts JSON state, validates it, returns the built command    |
+
+The browser SPA fetches `/api/bootstrap` on load, renders all form fields dynamically from the manifest, and sends state to `/api/command` on every field change to rebuild the command live. The same `buildCommand()` and `UI_MANIFEST` run on both the server and the client (the standalone `app.js` inlines its own copies for offline use).
+
+The server binds to `127.0.0.1` on a random port and prints the URL to stdout.
 
 ## Watch Mode
 

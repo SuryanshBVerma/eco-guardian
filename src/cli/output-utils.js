@@ -1,11 +1,11 @@
-"use strict";
+'use strict'
 
-const { COLORS } = require("../config/constants");
+const { COLORS } = require('../config/constants')
 
-function colorize(color, text) {
-  return `${color}${text}${COLORS.reset}`;
+function colorize (color, text) {
+  return `${color}${text}${COLORS.reset}`
 }
 
 module.exports = {
-  colorize,
-};
+  colorize
+}

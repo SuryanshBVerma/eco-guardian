@@ -1,32 +1,32 @@
-"use strict";
+'use strict'
 
-const fsp = require("fs/promises");
-const path = require("path");
+const fsp = require('fs/promises')
+const path = require('path')
 
-function csvCell(value) {
-  const text = String(value == null ? "" : value);
-  if (/[,"\n\r]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
-  return text;
+function csvCell (value) {
+  const text = String(value == null ? '' : value)
+  if (/[,"\n\r]/.test(text)) return `"${text.replace(/"/g, '""')}"`
+  return text
 }
 
-async function writeCsvReport(findings, options) {
-  if (!options.exportCsv) return null;
-  const outFile = path.resolve(process.cwd(), options.exportCsv);
+async function writeCsvReport (findings, options) {
+  if (!options.exportCsv) return null
+  const outFile = path.resolve(process.cwd(), options.exportCsv)
   const lines = [
     [
-      "severity",
-      "ecosystem",
-      "package",
-      "version",
-      "advisory_id",
-      "cve",
-      "cvss",
-      "fixed_version",
-      "locations",
-      "resolution_mode",
-      "fix_command",
-    ].join(","),
-  ];
+      'severity',
+      'ecosystem',
+      'package',
+      'version',
+      'advisory_id',
+      'cve',
+      'cvss',
+      'fixed_version',
+      'locations',
+      'resolution_mode',
+      'fix_command'
+    ].join(',')
+  ]
 
   for (const finding of findings || []) {
     lines.push(
@@ -41,15 +41,15 @@ async function writeCsvReport(findings, options) {
         csvCell(finding.fixed_version),
         csvCell((finding.found_in || []).length),
         csvCell(finding.resolution_mode),
-        csvCell(finding.fix_command),
-      ].join(","),
-    );
+        csvCell(finding.fix_command)
+      ].join(',')
+    )
   }
 
-  await fsp.writeFile(outFile, `${lines.join("\n")}\n`, "utf8");
-  return outFile;
+  await fsp.writeFile(outFile, `${lines.join('\n')}\n`, 'utf8')
+  return outFile
 }
 
 module.exports = {
-  writeCsvReport,
-};
+  writeCsvReport
+}

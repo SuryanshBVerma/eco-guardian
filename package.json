@@ -1,7 +1,7 @@
 {
   "name": "eco-guardian",
   "version": "2.0.0",
-  "description": "Zero-dependency CLI that scans your machine for vulnerable packages across npm, Maven, Gradle, NuGet, VSCode, Python, and Go",
+  "description": "Zero-dependency CLI that scans your machine for vulnerable packages across npm, Maven, Gradle, NuGet, VSCode, Python, Go, Ruby, Rust, PHP, Dart, Elixir, C/C++ (Conan), Haskell, Swift, and R",
   "bin": {
     "eco-guardian": "./eco-guardian.js"
   },
@@ -18,6 +18,15 @@
     "vscode",
     "python",
     "go",
+    "ruby",
+    "rust",
+    "php",
+    "dart",
+    "elixir",
+    "conan",
+    "haskell",
+    "swift",
+    "r",
     "security",
     "vulnerability",
     "audit",

@@ -37,7 +37,11 @@ function requestJson(url, { method = "GET", body = null } = {}) {
           } catch (_) {
             json = text;
           }
-          resolve({ statusCode: res.statusCode, headers: res.headers, body: json });
+          resolve({
+            statusCode: res.statusCode,
+            headers: res.headers,
+            body: json,
+          });
         });
       },
     );
@@ -59,12 +63,10 @@ function assertContainsInOrder(text, parts, message) {
 async function testCommandBuilder() {
   const command = buildCommand({
     path: "C:\\demo path",
-    pathExplicit: true,
     ecosystems: ["npm", "gradle"],
     graphResolution: true,
     gradleTask: ":app:dependencies",
     dependencyCheckMode: true,
-    nvdMode: "on",
     nvdApiKey: "abc's key",
     severity: "high",
     banner: "off",
@@ -95,6 +97,49 @@ async function testCommandBuilder() {
   assert(command === expected, `command builder output mismatch:\n${command}`);
   assert(!command.includes("--seek"), "UI command should not emit --seek");
   assert(!command.includes("--echo"), "UI command should not emit --echo");
+
+  // path is emitted without pathExplicit (plain truthy check)
+  const withPath = buildCommand({ path: "/home/user/project" });
+  assert(
+    withPath.includes("--path"),
+    "path should be emitted without pathExplicit",
+  );
+  assert(
+    withPath.includes("'/home/user/project'"),
+    "path value should be quoted",
+  );
+
+  // path suppressed when globalOnly is set
+  const withGlobalOnly = buildCommand({
+    path: "/home/user/project",
+    globalOnly: true,
+  });
+  assert(
+    !withGlobalOnly.includes("--path"),
+    "path should be suppressed when globalOnly is true",
+  );
+  assert(
+    withGlobalOnly.includes("--global-only"),
+    "globalOnly flag should be present",
+  );
+
+  // dependencyCheckMode alone emits --dependency-check-mode (no nvdMode=on required)
+  const depCheckAlone = buildCommand({
+    dependencyCheckMode: true,
+    ecosystems: ["npm"],
+  });
+  assert(
+    depCheckAlone.includes("--dependency-check-mode"),
+    "dependencyCheckMode should emit flag without nvdMode=on",
+  );
+  assert(
+    !depCheckAlone.includes("--nvd-mode"),
+    "dependencyCheckMode should not also emit --nvd-mode",
+  );
+  assert(
+    !depCheckAlone.includes("--no-nvd"),
+    "dependencyCheckMode should not emit --no-nvd",
+  );
 }
 
 async function testVisibilityRules() {
@@ -148,7 +193,10 @@ async function testServerEndpoints() {
   const ui = await startUiServer(options, {});
   try {
     const bootstrap = await requestJson(`${ui.url}api/bootstrap`);
-    assert(bootstrap.statusCode === 200, "bootstrap endpoint should return 200");
+    assert(
+      bootstrap.statusCode === 200,
+      "bootstrap endpoint should return 200",
+    );
     assert(
       bootstrap.body &&
         bootstrap.body.manifest &&

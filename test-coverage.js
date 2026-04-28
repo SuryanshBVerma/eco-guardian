@@ -38,14 +38,30 @@ const silence = () => {
 async function testGraphResolutionBranches() {
   const restore = silence();
   try {
-    // Mock resolvers to return empty to trigger fallbacks and specific branches
-    shared.execAsync = async () => '{"dependencies": {}}';
+    // Mock resolvers to return empty to trigger fallbacks and specific branches.
+    // Empty string is safe for both JSON-based and line-based resolvers.
+    shared.execAsync = async () => "";
 
     await withTempDir(async (root) => {
       const options = {
         path: root,
         pathExplicit: true,
-        ecosystems: ["npm", "maven", "nuget", "python", "go"],
+        ecosystems: [
+          "npm",
+          "maven",
+          "nuget",
+          "python",
+          "go",
+          "ruby",
+          "rust",
+          "php",
+          "dart",
+          "elixir",
+          "conan",
+          "haskell",
+          "swift",
+          "r",
+        ],
         graphResolution: true,
         json: true,
         verbose: true,
@@ -821,8 +837,10 @@ async function testVulnProviderDetails() {
     // Test queryOsvForPackages with empty input
     const emptyResult = await queryOsvForPackages([], {}, null);
     assert(
-      emptyResult && typeof emptyResult === "object" && Object.keys(emptyResult).length === 0,
-      "queryOsvForPackages([], ...) should return {}"
+      emptyResult &&
+        typeof emptyResult === "object" &&
+        Object.keys(emptyResult).length === 0,
+      "queryOsvForPackages([], ...) should return {}",
     );
 
     // Test queryNpmBulk

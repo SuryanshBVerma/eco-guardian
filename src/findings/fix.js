@@ -1,171 +1,207 @@
-"use strict";
+'use strict'
 
-const fs = require("fs");
-const { PLATFORM } = require("../config/constants");
+const fs = require('fs')
+const { PLATFORM } = require('../config/constants')
 
-function escapeShellArg(value, targetOS) {
-  const text = String(value == null ? "" : value);
-  if (targetOS === "win32") {
-    return `'${text.replace(/'/g, "''")}'`;
+function escapeShellArg (value, targetOS) {
+  const text = String(value == null ? '' : value)
+  if (targetOS === 'win32') {
+    return `'${text.replace(/'/g, "''")}'`
   }
-  return `'${text.replace(/'/g, "'\\''")}'`;
+  return `'${text.replace(/'/g, "'\\''")}'`
 }
 
-function detectProjectOS(projectPath) {
+function detectProjectOS (projectPath) {
   if (
     !projectPath ||
-    projectPath === "(unknown project)" ||
-    projectPath === "(global)"
+    projectPath === '(unknown project)' ||
+    projectPath === '(global)'
   ) {
-    return PLATFORM;
+    return PLATFORM
   }
   try {
-    const entries = fs.readdirSync(projectPath);
-    const lowerEntries = entries.map((e) => e.toLowerCase());
+    const entries = fs.readdirSync(projectPath)
+    const lowerEntries = entries.map((e) => e.toLowerCase())
     if (
       lowerEntries.some(
-        (e) => e.endsWith(".bat") || e.endsWith(".cmd") || e.endsWith(".ps1"),
+        (e) => e.endsWith('.bat') || e.endsWith('.cmd') || e.endsWith('.ps1')
       )
     ) {
-      return "win32";
+      return 'win32'
     }
-    if (lowerEntries.some((e) => e.endsWith(".sh"))) return "linux";
+    if (lowerEntries.some((e) => e.endsWith('.sh'))) return 'linux'
   } catch (_) {}
-  return PLATFORM;
+  return PLATFORM
 }
 
-function pickBestFixedVersion(advisories) {
+function pickBestFixedVersion (advisories) {
   for (const advisory of advisories) {
     if (
       Array.isArray(advisory.fixed_versions) &&
       advisory.fixed_versions.length > 0
     ) {
       for (const version of advisory.fixed_versions) {
-        if (!version) continue;
+        if (!version) continue
         // Strip ranges like '>=', '<' and take the first part if it's a list
         const cleaned = version
-          .replace(/^[<>=|\s]+/, "")
-          .split(",")[0]
-          .trim();
+          .replace(/^[<>=|\s]+/, '')
+          .split(',')[0]
+          .trim()
         // If it still looks like a range (contains symbols), skip it
-        if (cleaned && !/[<>=|]/.test(cleaned)) return cleaned;
+        if (cleaned && !/[<>=|]/.test(cleaned)) return cleaned
       }
     }
   }
-  return null;
+  return null
 }
 
-function buildFixCommand({
+function buildFixCommand ({
   ecosystem,
   packageName,
   fixedVersion,
   dependencyType,
   isGlobal,
-  parentPackage,
+  parentPackage
 }) {
-  const eco = String(ecosystem || "").toLowerCase();
-  const isWindows = PLATFORM === "win32";
-  const quote = (value) => escapeShellArg(value, isWindows ? "win32" : "linux");
+  const eco = String(ecosystem || '').toLowerCase()
+  const isWindows = PLATFORM === 'win32'
+  const quote = (value) => escapeShellArg(value, isWindows ? 'win32' : 'linux')
 
-  if (eco === "npm") {
+  if (eco === 'npm') {
     if (isGlobal) {
       return fixedVersion
         ? `npm install -g ${quote(`${packageName}@${fixedVersion}`)}`
-        : `npm uninstall -g ${quote(packageName)}`;
+        : `npm uninstall -g ${quote(packageName)}`
     }
-    if (dependencyType === "direct") {
+    if (dependencyType === 'direct') {
       return fixedVersion
         ? `npm install ${quote(`${packageName}@${fixedVersion}`)}`
-        : `npm uninstall ${quote(packageName)}`;
+        : `npm uninstall ${quote(packageName)}`
     }
-    if (dependencyType === "transitive") {
+    if (dependencyType === 'transitive') {
       return parentPackage && parentPackage.name
         ? `npm install ${quote(`${parentPackage.name}@latest`)}`
-        : null;
+        : null
     }
   }
 
-  if (eco === "maven" || eco === "pypi" || eco === "python") {
-    if (!fixedVersion) return null;
-    if (eco === "maven") {
-      return `mvn versions:use-dep-version -Dincludes=${quote(packageName.includes(":") ? packageName : "*:" + packageName)} -DdepVersion=${quote(fixedVersion)} -DforceVersion=true`;
+  if (eco === 'maven' || eco === 'pypi' || eco === 'python') {
+    if (!fixedVersion) return null
+    if (eco === 'maven') {
+      return `mvn versions:use-dep-version -Dincludes=${quote(packageName.includes(':') ? packageName : '*:' + packageName)} -DdepVersion=${quote(fixedVersion)} -DforceVersion=true`
     }
-    return `pip install --upgrade ${quote(`${packageName}==${fixedVersion}`)}`;
+    return `pip install --upgrade ${quote(`${packageName}==${fixedVersion}`)}`
   }
 
-  if (eco === "nuget") {
+  if (eco === 'nuget') {
     return fixedVersion
       ? `dotnet add package ${quote(packageName)} --version ${quote(fixedVersion)}`
-      : null;
+      : null
   }
 
-  if (eco === "gradle") {
-    return null;
+  if (eco === 'gradle') {
+    return null
   }
 
-  if (eco === "go") {
+  if (eco === 'go') {
     return fixedVersion
-      ? `go get ${quote(`${packageName}@v${fixedVersion.replace(/^v/, "")}`)}`
-      : null;
+      ? `go get ${quote(`${packageName}@v${fixedVersion.replace(/^v/, '')}`)}`
+      : null
   }
 
-  return null;
-}
-
-function buildScopedProjectCommand(project, command) {
-  if (!project || project === "(unknown project)") return null;
-  const targetOS = detectProjectOS(project);
-  const escapedPsPath = String(project).replace(/'/g, "''");
-  const escapedShPath = String(project).replace(/'/g, "'\\''");
-  if (targetOS === "win32") {
-    return `Set-Location -LiteralPath '${escapedPsPath}'; ${command}`;
+  if (eco === 'ruby') {
+    return fixedVersion ? `bundle update ${quote(packageName)}` : null
   }
-  return `cd '${escapedShPath}' && ${command}`;
+
+  if (eco === 'rust') {
+    return fixedVersion ? `cargo update -p ${quote(packageName)}` : null
+  }
+
+  if (eco === 'php') {
+    return fixedVersion ? `composer update ${quote(packageName)}` : null
+  }
+
+  if (eco === 'dart') {
+    return fixedVersion ? `dart pub upgrade ${quote(packageName)}` : null
+  }
+
+  if (eco === 'elixir') {
+    return fixedVersion ? `mix deps.update ${quote(packageName)}` : null
+  }
+
+  if (eco === 'conan') {
+    return null // Conan has no simple single-package upgrade CLI
+  }
+
+  if (eco === 'haskell') {
+    return null // Too variable between Stack/Cabal projects
+  }
+
+  if (eco === 'swift') {
+    return null // SwiftPM pins versions in Package.resolved manually
+  }
+
+  if (eco === 'r') {
+    return fixedVersion ? `R -e 'install.packages("${packageName}")'` : null
+  }
+
+  return null
 }
 
-function buildFixSteps({ ecosystem, foundIn, packageName, fixedVersion }) {
-  const steps = [];
-  const seen = new Set();
+function buildScopedProjectCommand (project, command) {
+  if (!project || project === '(unknown project)') return null
+  const targetOS = detectProjectOS(project)
+  const escapedPsPath = String(project).replace(/'/g, "''")
+  const escapedShPath = String(project).replace(/'/g, "'\\''")
+  if (targetOS === 'win32') {
+    return `Set-Location -LiteralPath '${escapedPsPath}'; ${command}`
+  }
+  return `cd '${escapedShPath}' && ${command}`
+}
+
+function buildFixSteps ({ ecosystem, foundIn, packageName, fixedVersion }) {
+  const steps = []
+  const seen = new Set()
 
   for (const entry of foundIn || []) {
     const dependencyType =
-      entry && entry.dependency_type ? entry.dependency_type : "transitive";
-    const isGlobal = dependencyType === "global";
+      entry && entry.dependency_type ? entry.dependency_type : 'transitive'
+    const isGlobal = dependencyType === 'global'
     const command = buildFixCommand({
       ecosystem,
       packageName,
       fixedVersion,
       dependencyType,
       isGlobal,
-      parentPackage: entry ? entry.parent : null,
-    });
-    if (!command) continue;
+      parentPackage: entry ? entry.parent : null
+    })
+    if (!command) continue
 
     const project = isGlobal
-      ? "(global)"
+      ? '(global)'
       : entry && entry.project
         ? entry.project
-        : "(unknown project)";
-    const dedupeKey = `${project}|${command}`;
-    if (seen.has(dedupeKey)) continue;
-    seen.add(dedupeKey);
-    steps.push({ project, command });
+        : '(unknown project)'
+    const dedupeKey = `${project}|${command}`
+    if (seen.has(dedupeKey)) continue
+    seen.add(dedupeKey)
+    steps.push({ project, command })
   }
 
-  return steps;
+  return steps
 }
 
-function fixStepsToDisplayCommands(steps) {
-  const out = [];
+function fixStepsToDisplayCommands (steps) {
+  const out = []
   for (const step of steps || []) {
-    if (step.project === "(global)") {
-      out.push(step.command);
-      continue;
+    if (step.project === '(global)') {
+      out.push(step.command)
+      continue
     }
-    const scoped = buildScopedProjectCommand(step.project, step.command);
-    if (scoped) out.push(scoped);
+    const scoped = buildScopedProjectCommand(step.project, step.command)
+    if (scoped) out.push(scoped)
   }
-  return out;
+  return out
 }
 
 module.exports = {
@@ -173,5 +209,5 @@ module.exports = {
   pickBestFixedVersion,
   buildFixCommand,
   buildFixSteps,
-  fixStepsToDisplayCommands,
-};
+  fixStepsToDisplayCommands
+}

@@ -1,287 +1,530 @@
-"use strict";
+'use strict'
 
-const path = require("path");
-const { nowMs } = require("../shared/async");
-const { log } = require("../cli/output");
+const path = require('path')
+const { nowMs } = require('../shared/async')
+const { log } = require('../cli/output')
 const {
   discoverScanRoots,
   discoverNodeModules,
-  isRipgrepAvailable,
-} = require("../scan/discovery");
-const { harvestNpmPackages } = require("../scan/harvest");
-const { collectMavenPackages } = require("../scan/maven");
-const { collectGradlePackages } = require("../scan/gradle");
-const { collectNuGetPackages } = require("../scan/nuget");
-const { collectVSCodeExtensions } = require("../scan/vscode");
-const { collectPythonPackages } = require("../scan/python");
-const { collectGoPackages } = require("../scan/go");
-const { queryVulnerabilities } = require("../vuln/query-service");
-const { buildFindings } = require("../findings/builder");
+  isRipgrepAvailable
+} = require('../scan/discovery')
+const { harvestNpmPackages } = require('../scan/harvest')
+const { collectMavenPackages } = require('../scan/maven')
+const { collectGradlePackages } = require('../scan/gradle')
+const { collectNuGetPackages } = require('../scan/nuget')
+const { collectVSCodeExtensions } = require('../scan/vscode')
+const { collectPythonPackages } = require('../scan/python')
+const { collectGoPackages } = require('../scan/go')
+const { collectRubyPackages } = require('../scan/ruby')
+const { collectRustPackages } = require('../scan/rust')
+const { collectPhpPackages } = require('../scan/php')
+const { collectDartPackages } = require('../scan/dart')
+const { collectElixirPackages } = require('../scan/elixir')
+const { collectConanPackages } = require('../scan/conan')
+const { collectHaskellPackages } = require('../scan/haskell')
+const { collectSwiftPackages } = require('../scan/swift')
+const { collectRPackages } = require('../scan/r')
+const { queryVulnerabilities } = require('../vuln/query-service')
+const { buildFindings } = require('../findings/builder')
 const {
   printSummary,
   printFindingsHuman,
-  printFindingsDetailed,
-} = require("../report/console");
-const { writeFixScript } = require("../report/fix-script");
-const { writeTxtReport } = require("../report/txt");
-const { writeHtmlReport } = require("../report/html");
-const { writeJsonReport } = require("../report/json");
-const { writeCsvReport } = require("../report/csv");
-const { ResourceMonitor } = require("../shared/monitor");
-const { loadBaseline, applyBaseline, writeBaseline } = require("../baseline");
-const { writeSarifReport } = require("../report/sarif");
-const { resolveEcosystemPackages } = require("../resolve");
+  printFindingsDetailed
+} = require('../report/console')
+const { writeFixScript } = require('../report/fix-script')
+const { writeTxtReport } = require('../report/txt')
+const { writeHtmlReport } = require('../report/html')
+const { writeJsonReport } = require('../report/json')
+const { writeCsvReport } = require('../report/csv')
+const { ResourceMonitor } = require('../shared/monitor')
+const { loadBaseline, applyBaseline, writeBaseline } = require('../baseline')
+const { writeSarifReport } = require('../report/sarif')
+const { resolveEcosystemPackages } = require('../resolve')
 const {
   DEFAULT_BASELINE_FILE,
-  POLICY_FAIL_EXIT_CODE,
-} = require("../config/constants");
-const { evaluatePolicy } = require("../policy/gates");
-const musing = require("../cli/musing");
+  POLICY_FAIL_EXIT_CODE
+} = require('../config/constants')
+const { evaluatePolicy } = require('../policy/gates')
+const musing = require('../cli/musing')
 
-async function collectPackageMap(options, state = {}) {
-  const phaseTimes = { discovery: 0, harvest: 0, roots: 0 };
-  const counters = { found: 0, skippedPermissions: 0 };
-  const resolutionSummary = [];
+async function collectPackageMap (options, state = {}) {
+  const phaseTimes = { discovery: 0, harvest: 0, roots: 0 }
+  const counters = { found: 0, skippedPermissions: 0 }
+  const resolutionSummary = []
 
-  const rootsStart = nowMs();
-  const rootsInfo = await discoverScanRoots(options, state);
-  phaseTimes.roots = Date.now() - rootsStart;
-  state.globalRoot = rootsInfo.globalRoot;
+  const rootsStart = nowMs()
+  const rootsInfo = await discoverScanRoots(options, state)
+  phaseTimes.roots = Date.now() - rootsStart
+  state.globalRoot = rootsInfo.globalRoot
 
-  function mergePackageMaps(target, source) {
+  function mergePackageMaps (target, source) {
     for (const [key, record] of source.entries()) {
-      const existing = target.get(key);
+      const existing = target.get(key)
       if (!existing) {
-        target.set(key, record);
+        target.set(key, record)
       } else {
-        existing.paths.push(...record.paths);
-        existing.occurrences.push(...record.occurrences);
+        existing.paths.push(...record.paths)
+        existing.occurrences.push(...record.occurrences)
       }
     }
   }
 
-  const discoveryStart = nowMs();
-  let nodeModulesDirs = [];
-  if (options.ecosystems.includes("npm")) {
+  const discoveryStart = nowMs()
+  let nodeModulesDirs = []
+  if (options.ecosystems.includes('npm')) {
     nodeModulesDirs = options.globalOnly
       ? rootsInfo.roots.filter(
-          (r) => path.basename(path.resolve(r)) === "node_modules",
-        )
-      : await discoverNodeModules(rootsInfo.roots, options, counters);
+        (r) => path.basename(path.resolve(r)) === 'node_modules'
+      )
+      : await discoverNodeModules(rootsInfo.roots, options, counters)
   }
-  phaseTimes.discovery = Date.now() - discoveryStart;
+  phaseTimes.discovery = Date.now() - discoveryStart
 
-  const harvestStart = nowMs();
-  const packageMap = new Map();
-  if (options.ecosystems.includes("npm")) {
+  const harvestStart = nowMs()
+  const packageMap = new Map()
+  if (options.ecosystems.includes('npm')) {
     if (options.graphResolution) {
       const resolved = await resolveEcosystemPackages(
-        "npm",
+        'npm',
         nodeModulesDirs.length > 0
           ? nodeModulesDirs.map((d) => path.dirname(d))
           : rootsInfo.roots,
         options,
-        state,
-      );
+        state
+      )
       resolutionSummary.push({
-        ecosystem: "npm",
+        ecosystem: 'npm',
         mode: resolved.mode,
-        reason: resolved.reason,
-      });
+        reason: resolved.reason
+      })
       mergePackageMaps(
         packageMap,
         resolved.usedFallback
           ? await harvestNpmPackages(nodeModulesDirs, options, state)
-          : resolved.packageMap,
-      );
+          : resolved.packageMap
+      )
     } else {
       mergePackageMaps(
         packageMap,
-        await harvestNpmPackages(nodeModulesDirs, options, state),
-      );
+        await harvestNpmPackages(nodeModulesDirs, options, state)
+      )
     }
   }
-  if (options.ecosystems.includes("maven")) {
+  if (options.ecosystems.includes('maven')) {
     if (options.graphResolution) {
       const resolved = await resolveEcosystemPackages(
-        "maven",
+        'maven',
         rootsInfo.roots,
         options,
-        state,
-      );
+        state
+      )
       resolutionSummary.push({
-        ecosystem: "maven",
+        ecosystem: 'maven',
         mode: resolved.mode,
-        reason: resolved.reason,
-      });
+        reason: resolved.reason
+      })
       mergePackageMaps(
         packageMap,
         resolved.usedFallback
           ? await collectMavenPackages(rootsInfo.roots, options, state)
-          : resolved.packageMap,
-      );
+          : resolved.packageMap
+      )
     } else {
       mergePackageMaps(
         packageMap,
-        await collectMavenPackages(rootsInfo.roots, options, state),
-      );
+        await collectMavenPackages(rootsInfo.roots, options, state)
+      )
     }
   }
-  if (options.ecosystems.includes("gradle")) {
+  if (options.ecosystems.includes('gradle')) {
     if (options.graphResolution) {
       const resolved = await resolveEcosystemPackages(
-        "gradle",
+        'gradle',
         rootsInfo.roots,
         options,
-        state,
-      );
+        state
+      )
       resolutionSummary.push({
-        ecosystem: "gradle",
+        ecosystem: 'gradle',
         mode: resolved.mode,
-        reason: resolved.reason,
-      });
+        reason: resolved.reason
+      })
       mergePackageMaps(
         packageMap,
         resolved.usedFallback
           ? await collectGradlePackages(rootsInfo.roots, options, state)
-          : resolved.packageMap,
-      );
+          : resolved.packageMap
+      )
     } else {
       mergePackageMaps(
         packageMap,
-        await collectGradlePackages(rootsInfo.roots, options, state),
-      );
+        await collectGradlePackages(rootsInfo.roots, options, state)
+      )
     }
   }
-  if (options.ecosystems.includes("nuget")) {
+  if (options.ecosystems.includes('nuget')) {
     if (options.graphResolution) {
       const resolved = await resolveEcosystemPackages(
-        "nuget",
+        'nuget',
         rootsInfo.roots,
         options,
-        state,
-      );
+        state
+      )
       resolutionSummary.push({
-        ecosystem: "nuget",
+        ecosystem: 'nuget',
         mode: resolved.mode,
-        reason: resolved.reason,
-      });
+        reason: resolved.reason
+      })
       mergePackageMaps(
         packageMap,
         resolved.usedFallback
           ? await collectNuGetPackages(rootsInfo.roots, options, state)
-          : resolved.packageMap,
-      );
+          : resolved.packageMap
+      )
     } else {
       mergePackageMaps(
         packageMap,
-        await collectNuGetPackages(rootsInfo.roots, options, state),
-      );
+        await collectNuGetPackages(rootsInfo.roots, options, state)
+      )
     }
   }
-  if (options.ecosystems.includes("vscode")) {
+  if (options.ecosystems.includes('vscode')) {
     mergePackageMaps(
       packageMap,
-      await collectVSCodeExtensions(rootsInfo.roots, options, state),
-    );
+      await collectVSCodeExtensions(rootsInfo.roots, options, state)
+    )
   }
-  if (options.ecosystems.includes("python")) {
+  if (options.ecosystems.includes('python')) {
     if (options.graphResolution) {
       const resolved = await resolveEcosystemPackages(
-        "python",
+        'python',
         rootsInfo.roots,
         options,
-        state,
-      );
+        state
+      )
       resolutionSummary.push({
-        ecosystem: "python",
+        ecosystem: 'python',
         mode: resolved.mode,
-        reason: resolved.reason,
-      });
+        reason: resolved.reason
+      })
       mergePackageMaps(
         packageMap,
         resolved.usedFallback
           ? await collectPythonPackages(rootsInfo.roots, options, state)
-          : resolved.packageMap,
-      );
+          : resolved.packageMap
+      )
     } else {
       mergePackageMaps(
         packageMap,
-        await collectPythonPackages(rootsInfo.roots, options, state),
-      );
+        await collectPythonPackages(rootsInfo.roots, options, state)
+      )
     }
   }
-  if (options.ecosystems.includes("go")) {
+  if (options.ecosystems.includes('go')) {
     if (options.graphResolution) {
       const resolved = await resolveEcosystemPackages(
-        "go",
+        'go',
         rootsInfo.roots,
         options,
-        state,
-      );
+        state
+      )
       resolutionSummary.push({
-        ecosystem: "go",
+        ecosystem: 'go',
         mode: resolved.mode,
-        reason: resolved.reason,
-      });
+        reason: resolved.reason
+      })
       mergePackageMaps(
         packageMap,
         resolved.usedFallback
           ? await collectGoPackages(rootsInfo.roots, options, state)
-          : resolved.packageMap,
-      );
+          : resolved.packageMap
+      )
     } else {
       mergePackageMaps(
         packageMap,
-        await collectGoPackages(rootsInfo.roots, options, state),
-      );
+        await collectGoPackages(rootsInfo.roots, options, state)
+      )
     }
   }
-  phaseTimes.harvest = Date.now() - harvestStart;
+  if (options.ecosystems.includes('ruby')) {
+    if (options.graphResolution) {
+      const resolved = await resolveEcosystemPackages(
+        'ruby',
+        rootsInfo.roots,
+        options,
+        state
+      )
+      resolutionSummary.push({
+        ecosystem: 'ruby',
+        mode: resolved.mode,
+        reason: resolved.reason
+      })
+      mergePackageMaps(
+        packageMap,
+        resolved.usedFallback
+          ? await collectRubyPackages(rootsInfo.roots, options, state)
+          : resolved.packageMap
+      )
+    } else {
+      mergePackageMaps(
+        packageMap,
+        await collectRubyPackages(rootsInfo.roots, options, state)
+      )
+    }
+  }
+  if (options.ecosystems.includes('rust')) {
+    if (options.graphResolution) {
+      const resolved = await resolveEcosystemPackages(
+        'rust',
+        rootsInfo.roots,
+        options,
+        state
+      )
+      resolutionSummary.push({
+        ecosystem: 'rust',
+        mode: resolved.mode,
+        reason: resolved.reason
+      })
+      mergePackageMaps(
+        packageMap,
+        resolved.usedFallback
+          ? await collectRustPackages(rootsInfo.roots, options, state)
+          : resolved.packageMap
+      )
+    } else {
+      mergePackageMaps(
+        packageMap,
+        await collectRustPackages(rootsInfo.roots, options, state)
+      )
+    }
+  }
+  if (options.ecosystems.includes('php')) {
+    if (options.graphResolution) {
+      const resolved = await resolveEcosystemPackages(
+        'php',
+        rootsInfo.roots,
+        options,
+        state
+      )
+      resolutionSummary.push({
+        ecosystem: 'php',
+        mode: resolved.mode,
+        reason: resolved.reason
+      })
+      mergePackageMaps(
+        packageMap,
+        resolved.usedFallback
+          ? await collectPhpPackages(rootsInfo.roots, options, state)
+          : resolved.packageMap
+      )
+    } else {
+      mergePackageMaps(
+        packageMap,
+        await collectPhpPackages(rootsInfo.roots, options, state)
+      )
+    }
+  }
+  if (options.ecosystems.includes('dart')) {
+    if (options.graphResolution) {
+      const resolved = await resolveEcosystemPackages(
+        'dart',
+        rootsInfo.roots,
+        options,
+        state
+      )
+      resolutionSummary.push({
+        ecosystem: 'dart',
+        mode: resolved.mode,
+        reason: resolved.reason
+      })
+      mergePackageMaps(
+        packageMap,
+        resolved.usedFallback
+          ? await collectDartPackages(rootsInfo.roots, options, state)
+          : resolved.packageMap
+      )
+    } else {
+      mergePackageMaps(
+        packageMap,
+        await collectDartPackages(rootsInfo.roots, options, state)
+      )
+    }
+  }
+  if (options.ecosystems.includes('elixir')) {
+    if (options.graphResolution) {
+      const resolved = await resolveEcosystemPackages(
+        'elixir',
+        rootsInfo.roots,
+        options,
+        state
+      )
+      resolutionSummary.push({
+        ecosystem: 'elixir',
+        mode: resolved.mode,
+        reason: resolved.reason
+      })
+      mergePackageMaps(
+        packageMap,
+        resolved.usedFallback
+          ? await collectElixirPackages(rootsInfo.roots, options, state)
+          : resolved.packageMap
+      )
+    } else {
+      mergePackageMaps(
+        packageMap,
+        await collectElixirPackages(rootsInfo.roots, options, state)
+      )
+    }
+  }
+  if (options.ecosystems.includes('conan')) {
+    if (options.graphResolution) {
+      const resolved = await resolveEcosystemPackages(
+        'conan',
+        rootsInfo.roots,
+        options,
+        state
+      )
+      resolutionSummary.push({
+        ecosystem: 'conan',
+        mode: resolved.mode,
+        reason: resolved.reason
+      })
+      mergePackageMaps(
+        packageMap,
+        resolved.usedFallback
+          ? await collectConanPackages(rootsInfo.roots, options, state)
+          : resolved.packageMap
+      )
+    } else {
+      mergePackageMaps(
+        packageMap,
+        await collectConanPackages(rootsInfo.roots, options, state)
+      )
+    }
+  }
+  if (options.ecosystems.includes('haskell')) {
+    if (options.graphResolution) {
+      const resolved = await resolveEcosystemPackages(
+        'haskell',
+        rootsInfo.roots,
+        options,
+        state
+      )
+      resolutionSummary.push({
+        ecosystem: 'haskell',
+        mode: resolved.mode,
+        reason: resolved.reason
+      })
+      mergePackageMaps(
+        packageMap,
+        resolved.usedFallback
+          ? await collectHaskellPackages(rootsInfo.roots, options, state)
+          : resolved.packageMap
+      )
+    } else {
+      mergePackageMaps(
+        packageMap,
+        await collectHaskellPackages(rootsInfo.roots, options, state)
+      )
+    }
+  }
+  if (options.ecosystems.includes('swift')) {
+    if (options.graphResolution) {
+      const resolved = await resolveEcosystemPackages(
+        'swift',
+        rootsInfo.roots,
+        options,
+        state
+      )
+      resolutionSummary.push({
+        ecosystem: 'swift',
+        mode: resolved.mode,
+        reason: resolved.reason
+      })
+      mergePackageMaps(
+        packageMap,
+        resolved.usedFallback
+          ? await collectSwiftPackages(rootsInfo.roots, options, state)
+          : resolved.packageMap
+      )
+    } else {
+      mergePackageMaps(
+        packageMap,
+        await collectSwiftPackages(rootsInfo.roots, options, state)
+      )
+    }
+  }
+  if (options.ecosystems.includes('r')) {
+    if (options.graphResolution) {
+      const resolved = await resolveEcosystemPackages(
+        'r',
+        rootsInfo.roots,
+        options,
+        state
+      )
+      resolutionSummary.push({
+        ecosystem: 'r',
+        mode: resolved.mode,
+        reason: resolved.reason
+      })
+      mergePackageMaps(
+        packageMap,
+        resolved.usedFallback
+          ? await collectRPackages(rootsInfo.roots, options, state)
+          : resolved.packageMap
+      )
+    } else {
+      mergePackageMaps(
+        packageMap,
+        await collectRPackages(rootsInfo.roots, options, state)
+      )
+    }
+  }
+  phaseTimes.harvest = Date.now() - harvestStart
 
   return {
     packageMap,
     resolutionSummary,
     phaseTimes,
     counters,
-    rootsInfo,
-  };
+    rootsInfo
+  }
 }
 
-async function analyzePackageMap(
+async function analyzePackageMap (
   packageMap,
   options,
   state = {},
-  metadata = {},
+  metadata = {}
 ) {
-  const { phaseTimes = {}, resolutionSummary = [], counters = {} } = metadata;
+  const { phaseTimes = {}, resolutionSummary = [], counters = {} } = metadata
 
-  const queryStart = nowMs();
-  const vulnerabilityMap = await queryVulnerabilities(packageMap, options);
-  const queryDiagnostics = vulnerabilityMap.__diagnostics || null;
-  phaseTimes.query = Date.now() - queryStart;
+  const queryStart = nowMs()
+  const vulnerabilityMap = await queryVulnerabilities(packageMap, options)
+  const queryDiagnostics = vulnerabilityMap.__diagnostics || null
+  phaseTimes.query = Date.now() - queryStart
 
-  const reportStart = nowMs();
-  const findings = await buildFindings(packageMap, vulnerabilityMap, state);
-  phaseTimes.report = Date.now() - reportStart;
+  const reportStart = nowMs()
+  const findings = await buildFindings(packageMap, vulnerabilityMap, state)
+  phaseTimes.report = Date.now() - reportStart
 
-  const fixFile = await writeFixScript(findings, options);
+  const fixFile = await writeFixScript(findings, options)
 
-  const baselineFile = options.baseline || DEFAULT_BASELINE_FILE;
-  const baseline = await loadBaseline(baselineFile, options);
+  const baselineFile = options.baseline || DEFAULT_BASELINE_FILE
+  const baseline = await loadBaseline(baselineFile, options)
   const { findings: visibleFindings, suppressedCount } = applyBaseline(
     findings,
-    baseline,
-  );
-  const policy = evaluatePolicy(visibleFindings, options);
+    baseline
+  )
+  const policy = evaluatePolicy(visibleFindings, options)
 
   if (options.writeBaseline) {
-    await writeBaseline(findings, options.writeBaseline);
-    log("success", `Baseline written to: ${options.writeBaseline}`, options);
+    await writeBaseline(findings, options.writeBaseline)
+    log('success', `Baseline written to: ${options.writeBaseline}`, options)
   }
 
-  const jsonFile = await writeJsonReport(visibleFindings, options);
-  const csvFile = await writeCsvReport(visibleFindings, options);
+  const jsonFile = await writeJsonReport(visibleFindings, options)
+  const csvFile = await writeCsvReport(visibleFindings, options)
 
   const txtFile = await writeTxtReport(
     visibleFindings,
@@ -290,8 +533,8 @@ async function analyzePackageMap(
     resolutionSummary,
     suppressedCount,
     policy,
-    queryDiagnostics,
-  );
+    queryDiagnostics
+  )
   const htmlFile = await writeHtmlReport(
     visibleFindings,
     packageMap.size,
@@ -299,8 +542,8 @@ async function analyzePackageMap(
     resolutionSummary,
     suppressedCount,
     policy,
-    queryDiagnostics,
-  );
+    queryDiagnostics
+  )
   const sarifFile = await writeSarifReport(
     visibleFindings,
     packageMap.size,
@@ -308,23 +551,23 @@ async function analyzePackageMap(
     resolutionSummary,
     suppressedCount,
     policy,
-    queryDiagnostics,
-  );
+    queryDiagnostics
+  )
 
   const finalFindings = options.why
     ? visibleFindings.filter(
-        (f) =>
-          f.package.toLowerCase().includes(options.why.toLowerCase()) ||
-          f.ecosystem.toLowerCase() === options.why.toLowerCase(),
-      )
-    : visibleFindings;
+      (f) =>
+        f.package.toLowerCase().includes(options.why.toLowerCase()) ||
+          f.ecosystem.toLowerCase() === options.why.toLowerCase()
+    )
+    : visibleFindings
 
-  const metrics = metadata.metrics || null;
+  const metrics = metadata.metrics || null
 
   if (options.json) {
-    process.stdout.write(`${JSON.stringify(finalFindings, null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify(finalFindings, null, 2)}\n`)
   } else {
-    musing.stop();
+    musing.stop()
     printSummary(
       packageMap.size,
       finalFindings,
@@ -333,68 +576,71 @@ async function analyzePackageMap(
       resolutionSummary,
       suppressedCount,
       policy,
-      queryDiagnostics,
-    );
+      queryDiagnostics
+    )
     if (finalFindings.length === 0 && !options.why) {
       process.stdout.write(
-        `[OK] All clear. No known vulnerabilities found in ${packageMap.size.toLocaleString()} packages.\n`,
-      );
+        `[OK] All clear. No known vulnerabilities found in ${packageMap.size.toLocaleString()} packages.\n`
+      )
     } else {
       if (options.why) {
-        process.stdout.write(`\nWhy report for "${options.why}"\n`);
-        printFindingsDetailed(finalFindings, options);
+        process.stdout.write(`\nWhy report for "${options.why}"\n`)
+        printFindingsDetailed(finalFindings, options)
       } else {
-        printFindingsHuman(finalFindings, options);
+        printFindingsHuman(finalFindings, options)
       }
     }
 
-    if (fixFile) log("success", `Fix script written to: ${fixFile}`, options);
-    if (jsonFile)
-      log("success", `JSON report written to: ${jsonFile}`, options);
-    if (csvFile) log("success", `CSV report written to: ${csvFile}`, options);
-    if (txtFile) log("success", `TXT report written to: ${txtFile}`, options);
-    if (htmlFile)
-      log("success", `HTML report written to: ${htmlFile}`, options);
-    if (sarifFile)
-      log("success", `SARIF report written to: ${sarifFile}`, options);
+    if (fixFile) log('success', `Fix script written to: ${fixFile}`, options)
+    if (jsonFile) {
+      log('success', `JSON report written to: ${jsonFile}`, options)
+    }
+    if (csvFile) log('success', `CSV report written to: ${csvFile}`, options)
+    if (txtFile) log('success', `TXT report written to: ${txtFile}`, options)
+    if (htmlFile) {
+      log('success', `HTML report written to: ${htmlFile}`, options)
+    }
+    if (sarifFile) {
+      log('success', `SARIF report written to: ${sarifFile}`, options)
+    }
 
     if (counters.skippedPermissions > 0) {
       log(
-        "info",
+        'info',
         `Skipped ${counters.skippedPermissions} unreadable directories due to permissions.`,
-        options,
-      );
+        options
+      )
     }
     if (policy.enabled) {
       if (policy.passed) {
-        log("success", "Policy gate: PASSED", options);
+        log('success', 'Policy gate: PASSED', options)
       } else {
         log(
-          "warn",
-          `Policy gate: FAILED (${policy.violations.join(", ")})`,
-          options,
-        );
+          'warn',
+          `Policy gate: FAILED (${policy.violations.join(', ')})`,
+          options
+        )
       }
     }
   }
 
   if (options.verbose && !options.json) {
-    const total = Object.values(phaseTimes).reduce((a, b) => a + b, 0);
+    const total = Object.values(phaseTimes).reduce((a, b) => a + b, 0)
     process.stderr.write(
-      `Phase 1 (discovery):  ${(phaseTimes.discovery / 1000).toFixed(1)}s\n`,
-    );
+      `Phase 1 (discovery):  ${(phaseTimes.discovery / 1000).toFixed(1)}s\n`
+    )
     process.stderr.write(
-      `Phase 2 (harvesting): ${(phaseTimes.harvest / 1000).toFixed(1)}s\n`,
-    );
+      `Phase 2 (harvesting): ${(phaseTimes.harvest / 1000).toFixed(1)}s\n`
+    )
     process.stderr.write(
-      `Phase 3 (API query):  ${(phaseTimes.query / 1000).toFixed(1)}s\n`,
-    );
+      `Phase 3 (API query):  ${(phaseTimes.query / 1000).toFixed(1)}s\n`
+    )
     process.stderr.write(
-      `Phase 4 (reporting):  ${(phaseTimes.report / 1000).toFixed(1)}s\n`,
-    );
+      `Phase 4 (reporting):  ${(phaseTimes.report / 1000).toFixed(1)}s\n`
+    )
     process.stderr.write(
-      `Total:                ${(total / 1000).toFixed(1)}s\n`,
-    );
+      `Total:                ${(total / 1000).toFixed(1)}s\n`
+    )
   }
 
   const exitCode =
@@ -402,66 +648,66 @@ async function analyzePackageMap(
       ? POLICY_FAIL_EXIT_CODE
       : visibleFindings.length > 0
         ? 1
-        : 0;
+        : 0
 
   return {
     findings: visibleFindings,
     packageCount: packageMap.size,
     policy,
     queryDiagnostics,
-    exitCode,
-  };
+    exitCode
+  }
 }
 
-async function runScan(options, state = {}) {
-  const monitor = new ResourceMonitor(options);
-  let monitorStopped = false;
+async function runScan (options, state = {}) {
+  const monitor = new ResourceMonitor(options)
+  let monitorStopped = false
 
-  if (options.benchmark) monitor.start();
-  if (!options.json) musing.start();
+  if (options.benchmark) monitor.start()
+  if (!options.json) musing.start()
 
   try {
     if (!options.json) {
-      const rgActive = await isRipgrepAvailable();
+      const rgActive = await isRipgrepAvailable()
       log(
-        "info",
-        `Discovery Mode: ${rgActive ? "Ripgrep (High Performance)" : "Standard (Native Fallback)"}`,
-        options,
-      );
+        'info',
+        `Discovery Mode: ${rgActive ? 'Ripgrep (High Performance)' : 'Standard (Native Fallback)'}`,
+        options
+      )
 
       if (
-        path.resolve(options.path) === path.resolve(__dirname, "../../") ||
+        path.resolve(options.path) === path.resolve(__dirname, '../../') ||
         path.resolve(options.path) === path.resolve(process.cwd())
       ) {
-        const pkgName = require("../../package.json").name;
+        const pkgName = require('../../package.json').name
         if (
           [
-            "@npm-guardian/eco-guardian",
-            "npm-guardian",
-            "eco-guardian",
+            '@npm-guardian/eco-guardian',
+            'npm-guardian',
+            'eco-guardian'
           ].includes(pkgName)
         ) {
           log(
-            "info",
-            "I have gazed into my own soul. It is clean... for now.",
-            options,
-          );
+            'info',
+            'I have gazed into my own soul. It is clean... for now.',
+            options
+          )
         }
       }
     }
 
-    const collection = await collectPackageMap(options, state);
-    const metrics = options.benchmark ? monitor.stop() : null;
-    if (options.benchmark) monitorStopped = true;
+    const collection = await collectPackageMap(options, state)
+    const metrics = options.benchmark ? monitor.stop() : null
+    if (options.benchmark) monitorStopped = true
 
     return analyzePackageMap(collection.packageMap, options, state, {
       ...collection,
-      metrics,
-    });
+      metrics
+    })
   } finally {
-    if (!options.json) musing.stop();
+    if (!options.json) musing.stop()
     if (options.benchmark && !monitorStopped) {
-      monitor.stop();
+      monitor.stop()
     }
   }
 }
@@ -469,5 +715,5 @@ async function runScan(options, state = {}) {
 module.exports = {
   collectPackageMap,
   analyzePackageMap,
-  runScan,
-};
+  runScan
+}

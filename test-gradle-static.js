@@ -7,7 +7,9 @@ const https = require("https");
 const { resolveGradleStatic } = require("./src/gradle/resolve-static");
 const { parseVersionCatalog } = require("./src/gradle/parse-version-catalog");
 const { parseGradleSettings } = require("./src/gradle/parse-settings");
-const { parseGradleDependenciesOutput } = require("./src/gradle/parse-dependencies-output");
+const {
+  parseGradleDependenciesOutput,
+} = require("./src/gradle/parse-dependencies-output");
 const {
   isResolvableVersion,
   parsePomDependencies,
@@ -152,7 +154,10 @@ runtimeClasspath - Runtime classpath of source set 'main'.
     manifestPath: "/tmp/project/application/build.gradle",
   });
 
-  assert(records.length === 4, `Expected 4 parsed records, got ${records.length}`);
+  assert(
+    records.length === 4,
+    `Expected 4 parsed records, got ${records.length}`,
+  );
   assert(
     records.some((record) => record.key === "gradle|org.example:demo|1.0.0"),
     "Should parse the root dependency",
@@ -166,14 +171,18 @@ runtimeClasspath - Runtime classpath of source set 'main'.
     "Should honor resolved versions after the arrow",
   );
   assert(
-    records.some((record) => record.key === "gradle|org.example:runtime-only|5.0.0"),
+    records.some(
+      (record) => record.key === "gradle|org.example:runtime-only|5.0.0",
+    ),
     "Should parse constrained dependencies",
   );
   assert(
     records.every((record) => !record.name.startsWith("project :")),
     "Project nodes should not be emitted as package records",
   );
-  const child = records.find((record) => record.key === "gradle|org.example:child|2.0.0");
+  const child = records.find(
+    (record) => record.key === "gradle|org.example:child|2.0.0",
+  );
   assert(child.depth === 2, "Child dependency depth should be 2");
   assert(
     child.resolvedPath.join(" / ") ===
@@ -278,7 +287,11 @@ async function testTaskBasedResolutionUsesGradleTree() {
     await fs.mkdir(appDir, { recursive: true });
     await fs.writeFile(path.join(root, "gradlew.bat"), "", "utf8");
     await fs.writeFile(path.join(root, "gradlew"), "", "utf8");
-    await fs.writeFile(path.join(root, "settings.gradle"), "include 'application'", "utf8");
+    await fs.writeFile(
+      path.join(root, "settings.gradle"),
+      "include 'application'",
+      "utf8",
+    );
     await fs.writeFile(
       path.join(appDir, "build.gradle"),
       "dependencies { implementation 'org.example:demo:1.0.0' }",
@@ -340,9 +353,11 @@ compileClasspath - Compile classpath for source set 'main'.
       "Task-backed resolver should preserve tree depth",
     );
     assert(
-      result.packageMap.get("gradle|org.example:demo|1.0.0").occurrences[0].manifest_path.endsWith(
-        path.join("application", "build.gradle"),
-      ),
+      result.packageMap
+        .get("gradle|org.example:demo|1.0.0")
+        .occurrences[0].manifest_path.endsWith(
+          path.join("application", "build.gradle"),
+        ),
       "Task-backed resolver should attribute findings to the selected module manifest",
     );
   });
