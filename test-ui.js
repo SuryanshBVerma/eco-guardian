@@ -1,5 +1,6 @@
 "use strict";
 
+const { test } = require("node:test");
 const http = require("http");
 const assert = require("assert");
 const { parseArgs } = require("./src/cli/args");
@@ -252,20 +253,6 @@ async function testServerEndpoints() {
   }
 }
 
-async function run() {
-  const tests = [
-    ["commandBuilder", testCommandBuilder],
-    ["visibilityRules", testVisibilityRules],
-    ["serverEndpoints", testServerEndpoints],
-  ];
-
-  for (const [name, fn] of tests) {
-    process.stdout.write(`[TEST] ${name}\n`);
-    await fn();
-  }
-}
-
-run().catch((error) => {
-  process.stderr.write(`[FAIL] ${error.stack || error.message}\n`);
-  process.exitCode = 1;
-});
+test("commandBuilder", testCommandBuilder);
+test("visibilityRules", testVisibilityRules);
+test("serverEndpoints", testServerEndpoints);

@@ -1,5 +1,7 @@
 "use strict";
 
+const { test } = require("node:test");
+const assert = require("node:assert");
 const path = require("path");
 const fs = require("fs/promises");
 const https = require("https");
@@ -10,10 +12,6 @@ const { resolveGoPackages } = require("./src/resolve/go");
 const { resolvePythonPackages } = require("./src/resolve/python");
 const { resolveGradlePackages } = require("./src/resolve/gradle");
 const { resolveEcosystemPackages } = require("./src/resolve/index");
-
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
-}
 
 // Mock shared execAsync
 const shared = require("./src/resolve/shared");
@@ -298,30 +296,10 @@ async function testResolveEcosystemFallback() {
   );
 }
 
-async function run() {
-  try {
-    process.stdout.write("Running resolver parser tests...\n");
-    await testNpmResolver();
-    process.stdout.write("✓ npm resolver\n");
-    await testMavenResolver();
-    process.stdout.write("✓ maven resolver\n");
-    await testNuGetResolver();
-    process.stdout.write("✓ nuget resolver\n");
-    await testGoResolver();
-    process.stdout.write("✓ go resolver\n");
-    await testPythonResolver();
-    process.stdout.write("✓ python resolver\n");
-    await testGradleResolver();
-    process.stdout.write("✓ gradle resolver\n");
-    await testResolveEcosystemFallback();
-    process.stdout.write("✓ resolver fallback logic\n");
-    process.stdout.write("\nAll resolver tests passed\n");
-  } finally {
-    shared.execAsync = originalExec;
-  }
-}
-
-run().catch((err) => {
-  process.stderr.write(`✗ Resolver test failure: ${err.message}\n`);
-  process.exit(1);
-});
+test("npm resolver", testNpmResolver);
+test("maven resolver", testMavenResolver);
+test("nuget resolver", testNuGetResolver);
+test("go resolver", testGoResolver);
+test("python resolver", testPythonResolver);
+test("gradle resolver", testGradleResolver);
+test("resolver fallback logic", testResolveEcosystemFallback);

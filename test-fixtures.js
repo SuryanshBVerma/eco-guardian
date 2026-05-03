@@ -1,5 +1,6 @@
 "use strict";
 
+const { test } = require("node:test");
 const path = require("path");
 const os = require("os");
 const fs = require("fs/promises");
@@ -244,30 +245,17 @@ async function testCsvAndSarifOutputs() {
   });
 }
 
-async function run() {
-  const tests = [
-    ["pythonParsers", testPythonParsers],
-    ["goParser", testGoParser],
-    ["mavenParser", testMavenParser],
-    ["nugetParsers", testNuGetParsers],
-    ["gradleParsers", testGradleParsers],
-    ["sarifLocationResolver", testSarifLocationResolver],
-    ["confidenceHelpers", testConfidenceHelpers],
-    ["csvAndSarifOutputs", testCsvAndSarifOutputs],
-  ];
+const tests = [
+  ["pythonParsers", testPythonParsers],
+  ["goParser", testGoParser],
+  ["mavenParser", testMavenParser],
+  ["nugetParsers", testNuGetParsers],
+  ["gradleParsers", testGradleParsers],
+  ["sarifLocationResolver", testSarifLocationResolver],
+  ["confidenceHelpers", testConfidenceHelpers],
+  ["csvAndSarifOutputs", testCsvAndSarifOutputs],
+];
 
-  for (const [name, fn] of tests) {
-    try {
-      await fn();
-      console.log(`[PASS] ${name}`);
-    } catch (err) {
-      console.error(`[FAIL] ${name}: ${err.message}`);
-      console.error(err.stack);
-      process.exit(1);
-    }
-  }
-
-  console.log("All fixture tests PASSED.");
+for (const [name, fn] of tests) {
+  test(name, fn);
 }
-
-run();

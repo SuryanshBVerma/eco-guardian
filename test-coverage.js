@@ -1,5 +1,7 @@
 "use strict";
 
+const { test } = require("node:test");
+const assert = require("node:assert");
 const fs = require("fs");
 const fsp = require("fs/promises");
 const os = require("os");
@@ -7,10 +9,6 @@ const path = require("path");
 const guardian = require("./eco-guardian");
 const { runScan } = require("./src/app/run-scan");
 const shared = require("./src/resolve/shared");
-
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
-}
 
 async function withTempDir(fn) {
   const root = await fsp.mkdtemp(
@@ -1032,60 +1030,26 @@ async function testWatchModeLogic() {
   }
 }
 
-async function runAll() {
-  console.log("Running additional coverage tests...");
-  try {
-    await testGraphResolutionBranches();
-    console.log("✓ Graph resolution branches");
-    await testBaselineFlows();
-    console.log("✓ Baseline flows");
-    await testWhyAndVerboseLogging();
-    console.log("✓ Why/Verbose logging");
-    await testDuplicatePackageMerging();
-    console.log("✓ Duplicate package merging");
-    await testVScodeEcosystemScan();
-    console.log("✓ VS Code ecosystem");
-    await testGlobalOnlyBranch();
-    console.log("✓ Global-only branch");
-    await testVulnerabilityCacheAndProviders();
-    console.log("✓ Vuln cache and providers");
-    await testNvdModeDecisionLogic();
-    console.log("✓ NVD mode decision logic");
-    await testFindingsBuilderAndFix();
-    console.log("✓ Findings builder and fix");
-    await testRemediationHints();
-    console.log("✓ Remediation hints");
-    await testHtmlReportComplex();
-    console.log("✓ HTML report complex");
-    await testNormalizers();
-    console.log("✓ Normalizers");
-    await testAsyncHelpers();
-    console.log("✓ Async helpers");
-    await testDiscoveryDetails();
-    console.log("✓ Discovery details");
-    await testNetworkErrors();
-    console.log("✓ Network errors");
-    await testHarvestEdgeCases();
-    console.log("✓ Harvest edge cases");
-    await testCacheFailures();
-    console.log("✓ Cache failures");
-    await testLocationEnrichment();
-    console.log("✓ Location enrichment (lockfiles)");
-    await testDiscoveryNativeMocks();
-    console.log("✓ Discovery native mocks (Darwin/Linux)");
-    await testRunScanOrchestrationDetails();
-    console.log("✓ Run-scan orchestration details");
-    await testVulnProviderDetails();
-    console.log("✓ Vuln provider details");
-    await testPolicyExitCodeAndFileExports();
-    console.log("✓ Policy exit code and file exports");
-    await testWatchModeLogic();
-    console.log("✓ Watch mode internal logic");
-    console.log("\nAll coverage tests passed");
-  } catch (err) {
-    console.error("✗ Coverage test failed:", err);
-    process.exit(1);
-  }
-}
-
-runAll();
+test("Graph resolution branches", testGraphResolutionBranches);
+test("Baseline flows", testBaselineFlows);
+test("Why/Verbose logging", testWhyAndVerboseLogging);
+test("Duplicate package merging", testDuplicatePackageMerging);
+test("VS Code ecosystem", testVScodeEcosystemScan);
+test("Global-only branch", testGlobalOnlyBranch);
+test("Vuln cache and providers", testVulnerabilityCacheAndProviders);
+test("NVD mode decision logic", testNvdModeDecisionLogic);
+test("Findings builder and fix", testFindingsBuilderAndFix);
+test("Remediation hints", testRemediationHints);
+test("HTML report complex", testHtmlReportComplex);
+test("Normalizers", testNormalizers);
+test("Async helpers", testAsyncHelpers);
+test("Discovery details", testDiscoveryDetails);
+test("Network errors", testNetworkErrors);
+test("Harvest edge cases", testHarvestEdgeCases);
+test("Cache failures", testCacheFailures);
+test("Location enrichment (lockfiles)", testLocationEnrichment);
+test("Discovery native mocks (Darwin/Linux)", testDiscoveryNativeMocks);
+test("Run-scan orchestration details", testRunScanOrchestrationDetails);
+test("Vuln provider details", testVulnProviderDetails);
+test("Policy exit code and file exports", testPolicyExitCodeAndFileExports);
+test("Watch mode internal logic", testWatchModeLogic);

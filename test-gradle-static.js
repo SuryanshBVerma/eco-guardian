@@ -1,5 +1,7 @@
 "use strict";
 
+const { test } = require("node:test");
+const assert = require("node:assert");
 const path = require("path");
 const os = require("os");
 const fs = require("fs/promises");
@@ -15,10 +17,6 @@ const {
   parsePomDependencies,
   parseModuleDependencies,
 } = require("./src/gradle/fetch-metadata");
-
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
-}
 
 async function withTempDir(fn) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "eco-guardian-gradle-"));
@@ -544,35 +542,17 @@ async function testVerboseWarningAggregation() {
   }
 }
 
-async function runAll() {
-  console.log("Running Static Gradle Resolver tests...");
-  try {
-    await testParseVersionCatalog();
-    console.log("[PASS] testParseVersionCatalog");
-    await testParseGradleSettings();
-    console.log("[PASS] testParseGradleSettings");
-    await testParseGradleDependenciesOutput();
-    console.log("[PASS] testParseGradleDependenciesOutput");
-    await testMetadataVersionFiltering();
-    console.log("[PASS] testMetadataVersionFiltering");
-    await testTaskBasedResolutionUsesGradleTree();
-    console.log("[PASS] testTaskBasedResolutionUsesGradleTree");
-    await testStaticResolutionMetadata();
-    console.log("[PASS] testStaticResolutionMetadata");
-    await testSkipsUnresolvableTransitivesFromPomFallback();
-    console.log("[PASS] testSkipsUnresolvableTransitivesFromPomFallback");
-    await testVerboseWarningAggregation();
-    console.log("[PASS] testVerboseWarningAggregation");
-    console.log("All Static Gradle tests PASSED.");
-  } catch (err) {
-    console.error("[FAIL]", err.message);
-    console.error(err.stack);
-    process.exit(1);
-  }
-}
-
-if (require.main === module) {
-  runAll();
-}
-
-module.exports = { runAll };
+test("testParseVersionCatalog", testParseVersionCatalog);
+test("testParseGradleSettings", testParseGradleSettings);
+test("testParseGradleDependenciesOutput", testParseGradleDependenciesOutput);
+test("testMetadataVersionFiltering", testMetadataVersionFiltering);
+test(
+  "testTaskBasedResolutionUsesGradleTree",
+  testTaskBasedResolutionUsesGradleTree,
+);
+test("testStaticResolutionMetadata", testStaticResolutionMetadata);
+test(
+  "testSkipsUnresolvableTransitivesFromPomFallback",
+  testSkipsUnresolvableTransitivesFromPomFallback,
+);
+test("testVerboseWarningAggregation", testVerboseWarningAggregation);

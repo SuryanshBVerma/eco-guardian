@@ -1,5 +1,7 @@
 "use strict";
 
+const { test } = require("node:test");
+const assert = require("node:assert");
 const path = require("path");
 const guardian = require("./eco-guardian");
 const { parseGradleLockfile } = require("./src/gradle/parse-lockfile");
@@ -7,10 +9,6 @@ const {
   parseGradleBuild: parseGradleBuildDependencies,
 } = require("./src/gradle/parse-build");
 const { resolveGradlePackages } = require("./src/resolve/gradle");
-
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
-}
 
 async function testParseGradleLockfile() {
   const content = `
@@ -119,29 +117,7 @@ async function testGradleFixCommandIsNull() {
   assert(cmd === null, "Gradle fix command should be null in v1");
 }
 
-async function runAll() {
-  console.log("Running Gradle tests...");
-  try {
-    await testParseGradleLockfile();
-    console.log("[PASS] testParseGradleLockfile");
-    await testParseGradleBuildDependencies();
-    console.log("[PASS] testParseGradleBuildDependencies");
-    // testResolveGradlePackages is now covered by test-gradle-static.js
-
-    await testRemediationHint();
-    console.log("[PASS] testRemediationHint");
-    await testGradleFixCommandIsNull();
-    console.log("[PASS] testGradleFixCommandIsNull");
-    console.log("All Gradle tests PASSED.");
-  } catch (err) {
-    console.error("[FAIL]", err.message);
-    console.error(err.stack);
-    process.exit(1);
-  }
-}
-
-if (require.main === module) {
-  runAll();
-}
-
-module.exports = { runAll };
+test("testParseGradleLockfile", testParseGradleLockfile);
+test("testParseGradleBuildDependencies", testParseGradleBuildDependencies);
+test("testRemediationHint", testRemediationHint);
+test("testGradleFixCommandIsNull", testGradleFixCommandIsNull);

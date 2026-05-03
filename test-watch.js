@@ -1,5 +1,6 @@
 "use strict";
 
+const { test } = require("node:test");
 const assert = require("assert");
 const os = require("os");
 const path = require("path");
@@ -87,16 +88,5 @@ async function testStatePersistence() {
   console.log("[PASS] State persistence verified");
 }
 
-async function runTests() {
-  try {
-    await testScopedDiffing();
-    await testStatePersistence();
-    console.log("\nAll Watch Mode regression tests PASSED.");
-  } catch (err) {
-    console.error("\nTest FAILED:");
-    console.error(err);
-    process.exit(1);
-  }
-}
-
-runTests();
+test("testScopedDiffing", testScopedDiffing);
+test("testStatePersistence", testStatePersistence);

@@ -1,39 +1,39 @@
-'use strict'
+"use strict";
 
-const fsp = require('fs/promises')
-const path = require('path')
+const fsp = require("fs/promises");
+const path = require("path");
 const {
   PACKAGE_READ_CONCURRENCY,
-  HASKELL_MANIFEST_NAMES
-} = require('../config/constants')
-const { asyncPool } = require('../shared/async')
-const { log } = require('../cli/output')
-const { discoverManifestFiles } = require('./discovery')
+  HASKELL_MANIFEST_NAMES,
+} = require("../config/constants");
+const { asyncPool } = require("../shared/async");
+const { log } = require("../cli/output");
+const { discoverManifestFiles } = require("./discovery");
 
-function parseStackLock (content, filePath) {
-  const records = []
-  const lines = content.split(/\r?\n/)
+function parseStackLock(content, filePath) {
+  const records = [];
+  const lines = content.split(/\r?\n/);
 
-  let inPackages = false
+  let inPackages = false;
   for (const line of lines) {
-    const trimmed = line.trim()
+    const trimmed = line.trim();
 
-    if (trimmed === 'packages:' || trimmed === 'packages: []') {
-      inPackages = true
-      continue
+    if (trimmed === "packages:" || trimmed === "packages: []") {
+      inPackages = true;
+      continue;
     }
-    if (!inPackages) continue
+    if (!inPackages) continue;
 
     // Exit packages section only on non-list top-level keys
     if (
       trimmed &&
-      !trimmed.startsWith('-') &&
-      !line.startsWith('  ') &&
-      !line.startsWith('\t') &&
-      trimmed.endsWith(':')
+      !trimmed.startsWith("-") &&
+      !line.startsWith("  ") &&
+      !line.startsWith("\t") &&
+      trimmed.endsWith(":")
     ) {
-      inPackages = false
-      continue
+      inPackages = false;
+      continue;
     }
 
     // Package entries in stack.yaml.lock look like:
@@ -42,144 +42,144 @@ function parseStackLock (content, filePath) {
     //       pantry-tree:
     //         sha256: ...
     //         size: 1234
-    const hackageMatch = trimmed.match(/^hackage:\s+(\S+)-(\d[\d.]*)\b/)
+    const hackageMatch = trimmed.match(/^hackage:\s+(\S+)-(\d[\d.]*)\b/);
     if (hackageMatch) {
       records.push(
         createHaskellRecord(
           hackageMatch[1],
           hackageMatch[2],
           filePath,
-          'stack.yaml.lock'
-        )
-      )
+          "stack.yaml.lock",
+        ),
+      );
     }
   }
-  return records
+  return records;
 }
 
-function parseCabalFreeze (content, filePath) {
-  const records = []
-  const lines = content.split(/\r?\n/)
+function parseCabalFreeze(content, filePath) {
+  const records = [];
+  const lines = content.split(/\r?\n/);
 
   for (const line of lines) {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('--')) continue
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("--")) continue;
 
     // Format: constraints: package ==version,
     // or package ==version
-    const match = trimmed.match(/^constraints:\s*(.+?)\s*==\s*(\S+),?\s*$/)
+    const match = trimmed.match(/^constraints:\s*(.+?)\s*==\s*(\S+),?\s*$/);
     if (match) {
       records.push(
         createHaskellRecord(
           match[1],
-          match[2].replace(/,+$/, ''),
+          match[2].replace(/,+$/, ""),
           filePath,
-          'cabal.project.freeze'
-        )
-      )
-      continue
+          "cabal.project.freeze",
+        ),
+      );
+      continue;
     }
-    const simpleMatch = trimmed.match(/^(\S+)\s*==\s*(\S+)\s*,?\s*$/)
-    if (simpleMatch && !trimmed.startsWith('constraints:')) {
+    const simpleMatch = trimmed.match(/^(\S+)\s*==\s*(\S+)\s*,?\s*$/);
+    if (simpleMatch && !trimmed.startsWith("constraints:")) {
       records.push(
         createHaskellRecord(
           simpleMatch[1],
-          simpleMatch[2].replace(/,+$/, ''),
+          simpleMatch[2].replace(/,+$/, ""),
           filePath,
-          'cabal.project.freeze'
-        )
-      )
+          "cabal.project.freeze",
+        ),
+      );
     }
   }
-  return records
+  return records;
 }
 
-function createHaskellRecord (name, version, filePath, rawSource) {
+function createHaskellRecord(name, version, filePath, rawSource) {
   return {
     key: `haskell|${name}|${version}`,
-    ecosystem: 'haskell',
+    ecosystem: "haskell",
     name,
     version,
-    osvEcosystem: 'Hackage',
+    osvEcosystem: "Hackage",
     paths: [],
     occurrences: [
       {
         project: path.dirname(filePath),
         manifest_path: filePath,
-        dependency_type: 'direct',
-        raw_source: rawSource
-      }
-    ]
-  }
+        dependency_type: "direct",
+        raw_source: rawSource,
+      },
+    ],
+  };
 }
 
-async function collectHaskellPackages (roots, options, state) {
-  const packageMap = new Map()
-  const counters = { found: 0, skippedPermissions: 0 }
+async function collectHaskellPackages(roots, options, state) {
+  const packageMap = new Map();
+  const counters = { found: 0, skippedPermissions: 0 };
 
   const manifestDirs = await discoverManifestFiles(
     roots,
     HASKELL_MANIFEST_NAMES,
     options,
     counters,
-    'Haskell manifests'
-  )
+    "Haskell manifests",
+  );
 
-  let totalEntries = 0
+  let totalEntries = 0;
 
   await asyncPool(PACKAGE_READ_CONCURRENCY, manifestDirs, async (dir) => {
-    let files
+    let files;
     try {
-      files = await fsp.readdir(dir)
+      files = await fsp.readdir(dir);
     } catch (_) {
-      return
+      return;
     }
 
-    const records = []
+    const records = [];
     for (const file of files) {
-      const filePath = path.join(dir, file)
-      if (file === 'stack.yaml.lock') {
-        let raw
+      const filePath = path.join(dir, file);
+      if (file === "stack.yaml.lock") {
+        let raw;
         try {
-          raw = await fsp.readFile(filePath, 'utf8')
+          raw = await fsp.readFile(filePath, "utf8");
         } catch (_) {
-          continue
+          continue;
         }
-        records.push(...parseStackLock(raw, filePath))
-      } else if (file === 'cabal.project.freeze') {
-        let raw
+        records.push(...parseStackLock(raw, filePath));
+      } else if (file === "cabal.project.freeze") {
+        let raw;
         try {
-          raw = await fsp.readFile(filePath, 'utf8')
+          raw = await fsp.readFile(filePath, "utf8");
         } catch (_) {
-          continue
+          continue;
         }
-        records.push(...parseCabalFreeze(raw, filePath))
+        records.push(...parseCabalFreeze(raw, filePath));
       }
     }
 
-    totalEntries += records.length
+    totalEntries += records.length;
     for (const record of records) {
-      const existing = packageMap.get(record.key)
+      const existing = packageMap.get(record.key);
       if (!existing) {
-        record.paths = [dir]
-        packageMap.set(record.key, record)
+        record.paths = [dir];
+        packageMap.set(record.key, record);
       } else {
-        existing.occurrences.push(...record.occurrences)
-        existing.paths.push(dir)
+        existing.occurrences.push(...record.occurrences);
+        existing.paths.push(dir);
       }
     }
-  })
+  });
 
   log(
-    'info',
+    "info",
     `Harvested ${totalEntries.toLocaleString()} Haskell dependency entries -> ${packageMap.size.toLocaleString()} unique combinations`,
-    options
-  )
-  return packageMap
+    options,
+  );
+  return packageMap;
 }
 
 module.exports = {
   parseStackLock,
   parseCabalFreeze,
-  collectHaskellPackages
-}
+  collectHaskellPackages,
+};

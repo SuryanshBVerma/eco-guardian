@@ -1,109 +1,109 @@
-'use strict'
+"use strict";
 
-const fsp = require('fs/promises')
-const path = require('path')
+const fsp = require("fs/promises");
+const path = require("path");
 const {
   PACKAGE_READ_CONCURRENCY,
-  RUST_MANIFEST_NAMES
-} = require('../config/constants')
-const { asyncPool } = require('../shared/async')
-const { log } = require('../cli/output')
-const { discoverManifestFiles } = require('./discovery')
+  RUST_MANIFEST_NAMES,
+} = require("../config/constants");
+const { asyncPool } = require("../shared/async");
+const { log } = require("../cli/output");
+const { discoverManifestFiles } = require("./discovery");
 
-function parseCargoLock (content, filePath) {
-  const records = []
-  const blocks = content.split(/\[\[package\]\]/)
+function parseCargoLock(content, filePath) {
+  const records = [];
+  const blocks = content.split(/\[\[package\]\]/);
 
   for (const block of blocks) {
-    if (!block.trim()) continue
-    const nameMatch = block.match(/^name\s*=\s*"([^"]+)"/m)
-    const versionMatch = block.match(/^version\s*=\s*"([^"]+)"/m)
+    if (!block.trim()) continue;
+    const nameMatch = block.match(/^name\s*=\s*"([^"]+)"/m);
+    const versionMatch = block.match(/^version\s*=\s*"([^"]+)"/m);
     if (nameMatch && versionMatch) {
       records.push(
-        createRustRecord(nameMatch[1], versionMatch[1], filePath, 'Cargo.lock')
-      )
+        createRustRecord(nameMatch[1], versionMatch[1], filePath, "Cargo.lock"),
+      );
     }
   }
-  return records
+  return records;
 }
 
-function createRustRecord (name, version, filePath, rawSource) {
+function createRustRecord(name, version, filePath, rawSource) {
   return {
     key: `rust|${name}|${version}`,
-    ecosystem: 'rust',
+    ecosystem: "rust",
     name,
     version,
-    osvEcosystem: 'crates.io',
+    osvEcosystem: "crates.io",
     paths: [],
     occurrences: [
       {
         project: path.dirname(filePath),
         manifest_path: filePath,
-        dependency_type: 'direct',
-        raw_source: rawSource
-      }
-    ]
-  }
+        dependency_type: "direct",
+        raw_source: rawSource,
+      },
+    ],
+  };
 }
 
-async function collectRustPackages (roots, options, state) {
-  const packageMap = new Map()
-  const counters = { found: 0, skippedPermissions: 0 }
+async function collectRustPackages(roots, options, state) {
+  const packageMap = new Map();
+  const counters = { found: 0, skippedPermissions: 0 };
 
   const manifestDirs = await discoverManifestFiles(
     roots,
     RUST_MANIFEST_NAMES,
     options,
     counters,
-    'Rust manifests'
-  )
+    "Rust manifests",
+  );
 
-  let totalEntries = 0
+  let totalEntries = 0;
 
   await asyncPool(PACKAGE_READ_CONCURRENCY, manifestDirs, async (dir) => {
-    let files
+    let files;
     try {
-      files = await fsp.readdir(dir)
+      files = await fsp.readdir(dir);
     } catch (_) {
-      return
+      return;
     }
 
-    const records = []
+    const records = [];
     for (const file of files) {
-      const filePath = path.join(dir, file)
-      if (file === 'Cargo.lock') {
-        let raw
+      const filePath = path.join(dir, file);
+      if (file === "Cargo.lock") {
+        let raw;
         try {
-          raw = await fsp.readFile(filePath, 'utf8')
+          raw = await fsp.readFile(filePath, "utf8");
         } catch (_) {
-          continue
+          continue;
         }
-        records.push(...parseCargoLock(raw, filePath))
+        records.push(...parseCargoLock(raw, filePath));
       }
     }
 
-    totalEntries += records.length
+    totalEntries += records.length;
     for (const record of records) {
-      const existing = packageMap.get(record.key)
+      const existing = packageMap.get(record.key);
       if (!existing) {
-        record.paths = [dir]
-        packageMap.set(record.key, record)
+        record.paths = [dir];
+        packageMap.set(record.key, record);
       } else {
-        existing.occurrences.push(...record.occurrences)
-        existing.paths.push(dir)
+        existing.occurrences.push(...record.occurrences);
+        existing.paths.push(dir);
       }
     }
-  })
+  });
 
   log(
-    'info',
+    "info",
     `Harvested ${totalEntries.toLocaleString()} Rust dependency entries -> ${packageMap.size.toLocaleString()} unique combinations`,
-    options
-  )
-  return packageMap
+    options,
+  );
+  return packageMap;
 }
 
 module.exports = {
   parseCargoLock,
-  collectRustPackages
-}
+  collectRustPackages,
+};

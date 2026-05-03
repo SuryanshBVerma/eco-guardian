@@ -1,113 +1,113 @@
-'use strict'
+"use strict";
 
-const fsp = require('fs/promises')
-const path = require('path')
+const fsp = require("fs/promises");
+const path = require("path");
 const {
   PACKAGE_READ_CONCURRENCY,
-  ELIXIR_MANIFEST_NAMES
-} = require('../config/constants')
-const { asyncPool } = require('../shared/async')
-const { log } = require('../cli/output')
-const { discoverManifestFiles } = require('./discovery')
+  ELIXIR_MANIFEST_NAMES,
+} = require("../config/constants");
+const { asyncPool } = require("../shared/async");
+const { log } = require("../cli/output");
+const { discoverManifestFiles } = require("./discovery");
 
-function parseMixLock (content, filePath) {
-  const records = []
+function parseMixLock(content, filePath) {
+  const records = [];
 
   // mix.lock uses Erlang term format. Two common patterns:
   //   "package_name": {:hex, :app, "1.2.3", ...}
   //   "package_name": {[:hex, :app, "1.2.3", ...]}
   // Newer Elixir uses %{"package_name" => {:hex, :app, "1.2.3", ...}}
   const regex =
-    /"([^"]+)"\s*(?::|=>)\s*(?:%\{[^}]*\})?\s*(?:\{|\[)\s*(?::hex|:git),\s*:([^,\s]+),\s*"([^"]+)"/g
-  let match
+    /"([^"]+)"\s*(?::|=>)\s*(?:%\{[^}]*\})?\s*(?:\{|\[)\s*(?::hex|:git),\s*:([^,\s]+),\s*"([^"]+)"/g;
+  let match;
   while ((match = regex.exec(content)) !== null) {
-    const name = match[1]
-    const app = match[2]
-    const version = match[3]
+    const name = match[1];
+    const app = match[2];
+    const version = match[3];
     // Use the app name when it differs from the package name (typical in Hex)
-    const pkgName = app && app !== 'nil' ? app : name
-    records.push(createElixirRecord(pkgName, version, filePath, 'mix.lock'))
+    const pkgName = app && app !== "nil" ? app : name;
+    records.push(createElixirRecord(pkgName, version, filePath, "mix.lock"));
   }
-  return records
+  return records;
 }
 
-function createElixirRecord (name, version, filePath, rawSource) {
+function createElixirRecord(name, version, filePath, rawSource) {
   return {
     key: `elixir|${name}|${version}`,
-    ecosystem: 'elixir',
+    ecosystem: "elixir",
     name,
     version,
-    osvEcosystem: 'Hex',
+    osvEcosystem: "Hex",
     paths: [],
     occurrences: [
       {
         project: path.dirname(filePath),
         manifest_path: filePath,
-        dependency_type: 'direct',
-        raw_source: rawSource
-      }
-    ]
-  }
+        dependency_type: "direct",
+        raw_source: rawSource,
+      },
+    ],
+  };
 }
 
-async function collectElixirPackages (roots, options, state) {
-  const packageMap = new Map()
-  const counters = { found: 0, skippedPermissions: 0 }
+async function collectElixirPackages(roots, options, state) {
+  const packageMap = new Map();
+  const counters = { found: 0, skippedPermissions: 0 };
 
   const manifestDirs = await discoverManifestFiles(
     roots,
     ELIXIR_MANIFEST_NAMES,
     options,
     counters,
-    'Elixir manifests'
-  )
+    "Elixir manifests",
+  );
 
-  let totalEntries = 0
+  let totalEntries = 0;
 
   await asyncPool(PACKAGE_READ_CONCURRENCY, manifestDirs, async (dir) => {
-    let files
+    let files;
     try {
-      files = await fsp.readdir(dir)
+      files = await fsp.readdir(dir);
     } catch (_) {
-      return
+      return;
     }
 
-    const records = []
+    const records = [];
     for (const file of files) {
-      const filePath = path.join(dir, file)
-      if (file === 'mix.lock') {
-        let raw
+      const filePath = path.join(dir, file);
+      if (file === "mix.lock") {
+        let raw;
         try {
-          raw = await fsp.readFile(filePath, 'utf8')
+          raw = await fsp.readFile(filePath, "utf8");
         } catch (_) {
-          continue
+          continue;
         }
-        records.push(...parseMixLock(raw, filePath))
+        records.push(...parseMixLock(raw, filePath));
       }
     }
 
-    totalEntries += records.length
+    totalEntries += records.length;
     for (const record of records) {
-      const existing = packageMap.get(record.key)
+      const existing = packageMap.get(record.key);
       if (!existing) {
-        record.paths = [dir]
-        packageMap.set(record.key, record)
+        record.paths = [dir];
+        packageMap.set(record.key, record);
       } else {
-        existing.occurrences.push(...record.occurrences)
-        existing.paths.push(dir)
+        existing.occurrences.push(...record.occurrences);
+        existing.paths.push(dir);
       }
     }
-  })
+  });
 
   log(
-    'info',
+    "info",
     `Harvested ${totalEntries.toLocaleString()} Elixir dependency entries -> ${packageMap.size.toLocaleString()} unique combinations`,
-    options
-  )
-  return packageMap
+    options,
+  );
+  return packageMap;
 }
 
 module.exports = {
   parseMixLock,
-  collectElixirPackages
-}
+  collectElixirPackages,
+};
