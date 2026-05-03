@@ -2,6 +2,7 @@
 
 const fsp = require('fs/promises')
 const path = require('path')
+const { getFindingConfidence } = require('./common')
 
 function csvCell (value) {
   const text = String(value == null ? '' : value)
@@ -24,7 +25,9 @@ async function writeCsvReport (findings, options) {
       'fixed_version',
       'locations',
       'resolution_mode',
-      'fix_command'
+      'fix_command',
+      'source',
+      'confidence'
     ].join(',')
   ]
 
@@ -41,7 +44,9 @@ async function writeCsvReport (findings, options) {
         csvCell(finding.fixed_version),
         csvCell((finding.found_in || []).length),
         csvCell(finding.resolution_mode),
-        csvCell(finding.fix_command)
+        csvCell(finding.fix_command),
+        csvCell(finding.source || 'osv'),
+        csvCell(getFindingConfidence(finding))
       ].join(',')
     )
   }

@@ -4,7 +4,11 @@ const os = require('os')
 const fsp = require('fs/promises')
 const path = require('path')
 const { VERSION } = require('../config/constants')
-const { summarizeSeverities, escapeHtml } = require('./common')
+const {
+  summarizeSeverities,
+  escapeHtml,
+  formatFindingProvenance
+} = require('./common')
 
 function severityRank (value) {
   const key = String(value || '').toLowerCase()
@@ -74,10 +78,7 @@ function renderFindingItem (finding) {
   const ref =
     (finding.references && finding.references[0]) ||
     `https://osv.dev/vulnerability/${finding.advisory_id}`
-  const source = String(finding.source || 'osv')
-  const sourceSuffix = finding.match_confidence
-    ? ` (confidence: ${escapeHtml(finding.match_confidence)})`
-    : ''
+  const provenance = formatFindingProvenance(finding)
   const remediation = escapeHtml(
     finding.remediation_hint ||
       (finding.fixed_version
@@ -98,7 +99,7 @@ function renderFindingItem (finding) {
             </div>
             <div class="finding-body">
                 <div class="finding-line"><strong>Issue:</strong> ${escapeHtml(finding.title || finding.advisory_id || '')}</div>
-                <div class="finding-line"><strong>Origin:</strong> Source ${escapeHtml(source)}${sourceSuffix}; Path ${renderPathText(finding.resolved_path)}; Locations ${locationCount}; ${renderLocationText(finding)}</div>
+                <div class="finding-line"><strong>Origin:</strong> ${escapeHtml(provenance)}; Path ${renderPathText(finding.resolved_path)}; Locations ${locationCount}; ${renderLocationText(finding)}</div>
                 <div class="finding-line"><strong>Fix:</strong> ${finding.fixed_version ? `Upgrade to ${escapeHtml(finding.fixed_version)}. ` : ''}${remediation}</div>
                 <div class="finding-line"><a href="${escapeHtml(ref)}" target="_blank" rel="noreferrer">Advisory reference</a></div>
                 <div class="finding-line">${renderFixText(finding)}</div>

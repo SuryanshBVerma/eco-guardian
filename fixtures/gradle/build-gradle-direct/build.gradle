@@ -1,0 +1,5 @@
+dependencies {
+  implementation 'org.slf4j:slf4j-api:1.7.36'
+  testImplementation "junit:junit:4.12"
+  runtimeOnly group: 'org.apache.commons', name: 'commons-lang3', version: '3.8.1'
+}

@@ -331,7 +331,7 @@ async function queryVulnerabilities (packageMap, options) {
         const label = `[${idx}/${nvdTotal}] `
         diagnostics.nvdRequests += 1
 
-        const cves = await queryNvdByCpe(
+        const matches = await queryNvdByCpe(
           evidence.artifactId,
           evidence.version,
           evidence.groupId,
@@ -340,9 +340,10 @@ async function queryVulnerabilities (packageMap, options) {
           throttle,
           label
         )
-        const nvdAdvisories = cves.map((cve) =>
-          normalizeNvdCve(cve, { confidence: 'high' })
-        )
+        const nvdAdvisories = (matches || []).map((match) => {
+          if (match && match.cve) return normalizeNvdCve(match.cve, match)
+          return normalizeNvdCve(match, { confidence: 'unknown' })
+        })
 
         if (nvdAdvisories.length > 0) {
           const existing = results[pkg.key] || {

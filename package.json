@@ -8,8 +8,23 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/boredom1234/eco-guardian"
+    "url": "git+https://github.com/boredom1234/eco-guardian.git"
   },
+  "homepage": "https://github.com/boredom1234/eco-guardian#readme",
+  "bugs": {
+    "url": "https://github.com/boredom1234/eco-guardian/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "eco-guardian.js",
+    "src/",
+    "README.md",
+    "LICENSE",
+    "CONTRIBUTING.md",
+    "SCHEDULER_GUIDE.md"
+  ],
   "keywords": [
     "npm",
     "maven",
@@ -37,9 +52,10 @@
   ],
   "scripts": {
     "start": "node eco-guardian.js",
-    "test": "node test.js && node test-ui.js && node test-resolvers.js && node test-gradle.js && node test-gradle-static.js && node test-coverage.js && node test-watch.js",
+    "test": "node test.js && node test-ui.js && node test-resolvers.js && node test-gradle.js && node test-gradle-static.js && node test-fixtures.js && node test-coverage.js && node test-watch.js",
     "coverage": "c8 npm test",
-    "coverage:check": "c8 --check-coverage --lines 65 --functions 65 --branches 55 --statements 65 npm test"
+    "coverage:check": "c8 --check-coverage --lines 65 --functions 65 --branches 55 --statements 65 npm test",
+    "pack:check": "npm pack --dry-run"
   },
   "c8": {
     "all": false,

@@ -16,7 +16,8 @@ function parseGoMod (content, filePath) {
 
   let inRequireBlock = false
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
     const trimmed = line.trim()
     if (!trimmed || trimmed.startsWith('//')) continue
 
@@ -39,7 +40,8 @@ function parseGoMod (content, filePath) {
             match[1],
             match[2],
             filePath,
-            trimmed.includes('// indirect') ? 'transitive' : 'direct'
+            trimmed.includes('// indirect') ? 'transitive' : 'direct',
+            i + 1
           )
         )
       }
@@ -52,7 +54,8 @@ function parseGoMod (content, filePath) {
             match[1],
             match[2],
             filePath,
-            trimmed.includes('// indirect') ? 'transitive' : 'direct'
+            trimmed.includes('// indirect') ? 'transitive' : 'direct',
+            i + 1
           )
         )
       }
@@ -62,7 +65,7 @@ function parseGoMod (content, filePath) {
   return records
 }
 
-function createGoRecord (name, version, filePath, type = 'direct') {
+function createGoRecord (name, version, filePath, type = 'direct', line) {
   return {
     key: `Go|${name}|${version}`,
     ecosystem: 'Go',
@@ -75,7 +78,8 @@ function createGoRecord (name, version, filePath, type = 'direct') {
         project: path.dirname(filePath),
         manifest_path: filePath,
         dependency_type: type,
-        raw_source: 'go.mod'
+        raw_source: 'go.mod',
+        line: Number.isInteger(line) ? line : null
       }
     ]
   }

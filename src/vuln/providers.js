@@ -292,6 +292,12 @@ async function queryNvdByCpe (
   const allCves = []
   const seenIds = new Set()
 
+  const pushMatch = (cve, confidence, reason) => {
+    if (!cve || !cve.id || seenIds.has(cve.id)) return
+    seenIds.add(cve.id)
+    allCves.push({ cve, confidence, reason })
+  }
+
   // Pass 1: Precise CPE Match (Multiple candidates)
   for (const product of productNames) {
     // Try wildcard vendor
@@ -322,10 +328,7 @@ async function queryNvdByCpe (
     }
 
     for (const cve of cves) {
-      if (cve && cve.id && !seenIds.has(cve.id)) {
-        seenIds.add(cve.id)
-        allCves.push(cve)
-      }
+      pushMatch(cve, 'high', 'cpe')
     }
   }
 
@@ -342,11 +345,8 @@ async function queryNvdByCpe (
       throttle
     )
     for (const cve of cves) {
-      if (cve && cve.id && !seenIds.has(cve.id)) {
-        if (_cveMentionsVersion(cve, cleanV)) {
-          seenIds.add(cve.id)
-          allCves.push(cve)
-        }
+      if (_cveMentionsVersion(cve, cleanV)) {
+        pushMatch(cve, 'medium', 'keyword-version-match')
       }
     }
   }

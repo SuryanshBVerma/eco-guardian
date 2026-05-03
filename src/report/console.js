@@ -2,7 +2,11 @@
 
 const { SEVERITY_ORDER, COLORS } = require('../config/constants')
 const { colorize } = require('../cli/output')
-const { summarizeSeverities } = require('./common')
+const {
+  summarizeSeverities,
+  getFindingConfidence,
+  formatFindingProvenance
+} = require('./common')
 
 function printSummary (
   totalPackages,
@@ -138,6 +142,7 @@ function renderFindingsTable (findings) {
     { key: 'ecosystem', label: 'ECOSYSTEM' },
     { key: 'package', label: 'PACKAGE' },
     { key: 'advisory', label: 'ADVISORY' },
+    { key: 'confidence', label: 'CONF' },
     { key: 'projects', label: 'PROJECTS' },
     { key: 'locations', label: 'LOCATIONS' },
     { key: 'fix', label: 'FIX' }
@@ -148,6 +153,7 @@ function renderFindingsTable (findings) {
     ecosystem: finding.ecosystem || 'npm',
     package: `${finding.package}@${finding.version}`,
     advisory: finding.advisory_id || 'N/A',
+    confidence: getFindingConfidence(finding),
     projects: String(uniqueProjectCount(finding)),
     locations: String((finding.found_in || []).length),
     fix:
@@ -192,11 +198,7 @@ function printFindingsDetailed (findings, options) {
     process.stdout.write(
       `|- CVE: ${finding.cve || 'N/A'} | ${finding.advisory_id} | CVSS: ${finding.cvss == null ? 'N/A' : finding.cvss}\n`
     )
-    if (finding.source && finding.source !== 'osv') {
-      process.stdout.write(
-        `|- Source: ${finding.source}${finding.match_confidence ? ` (confidence: ${finding.match_confidence})` : ''}\n`
-      )
-    }
+    process.stdout.write(`|- Source: ${formatFindingProvenance(finding)}\n`)
     process.stdout.write(`|- ${finding.title}\n`)
     process.stdout.write(`|- Found in ${finding.found_in.length} locations:\n`)
     for (const entry of finding.found_in) {

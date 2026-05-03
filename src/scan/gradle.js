@@ -48,7 +48,8 @@ async function collectGradlePackages (roots, options, state) {
                 project: path.basename(dir),
                 manifest_path: filePath,
                 dependency_type: 'direct',
-                raw_source: fileName
+                raw_source: fileName,
+                line: Number.isInteger(l.line) ? l.line : null
               }
             ]
           }))
@@ -67,7 +68,8 @@ async function collectGradlePackages (roots, options, state) {
                     project: path.basename(dir),
                     manifest_path: filePath,
                     dependency_type: 'direct',
-                    raw_source: fileName
+                    raw_source: fileName,
+                    line: Number.isInteger(p.line) ? p.line : null
                   }
                 ]
               }

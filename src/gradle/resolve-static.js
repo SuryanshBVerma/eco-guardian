@@ -136,7 +136,8 @@ async function resolveFromLockfiles (context, packageMap, root, options) {
       pkg.occurrences.push({
         project: path.basename(root),
         manifest_path: path.join(root, lockfileName),
-        dependency_type: 'direct' // Locked are treated as pinned/direct in inventory
+        dependency_type: 'direct', // Locked are treated as pinned/direct in inventory
+        line: Number.isInteger(record.line) ? record.line : null
       })
       packageMap.set(pkg.key, pkg)
     }
@@ -199,7 +200,8 @@ async function resolveFromMetadata (context, packageMap, root, options) {
       pkg.occurrences.push({
         project: path.basename(root),
         manifest_path: path.join(root, dep.source || 'build.gradle'),
-        dependency_type: depth === 1 ? 'direct' : 'transitive'
+        dependency_type: depth === 1 ? 'direct' : 'transitive',
+        line: Number.isInteger(dep.line) ? dep.line : null
       })
       packageMap.set(pkgKey, pkg)
 

@@ -138,12 +138,14 @@ async function enrichNpmLocations (paths, packageName, globalRoot) {
 
     let dependencyType = 'transitive'
     let parent = null
+    let manifestPath = null
 
     if (project) {
       const manifest = await readJsonSafe(path.join(project, 'package.json'))
       dependencyType = packageInDependencies(manifest, packageName)
         ? 'direct'
         : 'transitive'
+      manifestPath = path.join(project, 'package.json')
       if (dependencyType === 'transitive') {
         const lockPath = path.join(project, 'package-lock.json')
         const yarnPath = path.join(project, 'yarn.lock')
@@ -152,11 +154,13 @@ async function enrichNpmLocations (paths, packageName, globalRoot) {
             await readJsonSafe(lockPath),
             packageName
           )
+          manifestPath = lockPath
         } else if (await fileExists(yarnPath)) {
           parent = parseYarnLockForParent(
             await fsp.readFile(yarnPath, 'utf8'),
             packageName
           )
+          manifestPath = yarnPath
         }
       }
     }
@@ -164,6 +168,7 @@ async function enrichNpmLocations (paths, packageName, globalRoot) {
     entries.push({
       path: pkgPath,
       project: project || '(unknown project)',
+      manifest_path: manifestPath,
       dependency_type: isGlobal ? 'global' : dependencyType,
       parent
     })

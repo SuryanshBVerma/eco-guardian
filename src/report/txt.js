@@ -2,7 +2,7 @@
 
 const fsp = require('fs/promises')
 const path = require('path')
-const { summarizeSeverities } = require('./common')
+const { summarizeSeverities, formatFindingProvenance } = require('./common')
 
 async function writeTxtReport (
   findings,
@@ -58,11 +58,7 @@ async function writeTxtReport (
       `${index + 1}. ${finding.severity} | ${finding.ecosystem || 'npm'} | ${finding.package}@${finding.version} | ${finding.advisory_id || 'N/A'}`
     )
     lines.push(`   Title: ${finding.title || finding.advisory_id || ''}`)
-    if (finding.source && finding.source !== 'osv') {
-      lines.push(
-        `   Source: ${finding.source}${finding.match_confidence ? ` (confidence: ${finding.match_confidence})` : ''}`
-      )
-    }
+    lines.push(`   Source: ${formatFindingProvenance(finding)}`)
     lines.push(`   Locations: ${(finding.found_in || []).length}`)
     for (const entry of finding.found_in || []) {
       lines.push(

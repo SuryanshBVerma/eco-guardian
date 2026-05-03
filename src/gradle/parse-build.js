@@ -5,6 +5,11 @@ function containsVariable (str) {
   return str.includes('${') || (str.includes('$') && /[a-zA-Z]/.test(str))
 }
 
+function lineNumberForIndex (content, index) {
+  if (index <= 0) return 1
+  return content.slice(0, index).split(/\r?\n/).length
+}
+
 /**
  * Enhanced regex-based parser for build.gradle and build.gradle.kts.
  * Extracts dependencies and their configurations.
@@ -20,6 +25,7 @@ function parseGradleBuild (content, filePath) {
   while ((match = literalRegex.exec(content)) !== null) {
     const config = match[1]
     const full = match[3]
+    const line = lineNumberForIndex(content, match.index)
 
     // Ignore common non-dependency keywords to reduce noise
     const ignoredConfigs = [
@@ -48,7 +54,8 @@ function parseGradleBuild (content, filePath) {
         version: v,
         configuration: config,
         type: 'direct',
-        source: path.basename(filePath)
+        source: path.basename(filePath),
+        line
       })
     }
   }
@@ -63,6 +70,7 @@ function parseGradleBuild (content, filePath) {
     const g = match[3]
     const a = match[5]
     const v = match[7]
+    const line = lineNumberForIndex(content, match.index)
 
     // Skip if contains interpolation variables we can't resolve yet
     if (containsVariable(g) || containsVariable(a) || containsVariable(v)) {
@@ -75,7 +83,8 @@ function parseGradleBuild (content, filePath) {
       version: v,
       configuration: config,
       type: 'direct',
-      source: path.basename(filePath)
+      source: path.basename(filePath),
+      line
     })
   }
 
@@ -85,11 +94,13 @@ function parseGradleBuild (content, filePath) {
   while ((match = aliasRegex.exec(content)) !== null) {
     const config = match[1]
     const alias = match[2]
+    const line = lineNumberForIndex(content, match.index)
     dependencies.push({
       alias,
       configuration: config,
       type: 'direct',
-      source: path.basename(filePath)
+      source: path.basename(filePath),
+      line
     })
   }
 
@@ -102,6 +113,7 @@ function parseGradleBuild (content, filePath) {
     const g = match[4]
     const a = match[5]
     const v = match[6]
+    const line = lineNumberForIndex(content, match.index)
     dependencies.push({
       group: g,
       name: a,
@@ -110,7 +122,8 @@ function parseGradleBuild (content, filePath) {
       isPlatform: true,
       platformType, // platform or enforcedPlatform
       type: 'direct',
-      source: path.basename(filePath)
+      source: path.basename(filePath),
+      line
     })
   }
 

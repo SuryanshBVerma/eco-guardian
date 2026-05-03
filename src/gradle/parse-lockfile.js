@@ -9,7 +9,8 @@ function parseGradleLockfile (content, filePath) {
   const records = []
   const lines = content.split(/\r?\n/)
 
-  for (let line of lines) {
+  for (let i = 0; i < lines.length; i += 1) {
+    let line = lines[i]
     line = line.trim()
     if (!line || line.startsWith('#') || line === 'empty=') continue
 
@@ -26,7 +27,8 @@ function parseGradleLockfile (content, filePath) {
         name: a,
         version: v,
         configurations: configs,
-        source: path.basename(filePath)
+        source: path.basename(filePath),
+        line: i + 1
       })
     }
   }

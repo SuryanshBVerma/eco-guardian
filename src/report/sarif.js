@@ -3,6 +3,8 @@
 const fsp = require('fs/promises')
 const path = require('path')
 const { VERSION } = require('../config/constants')
+const { getFindingConfidence } = require('./common')
+const { resolveSarifLocation } = require('./location')
 
 async function writeSarifReport (
   findings,
@@ -35,37 +37,43 @@ async function writeSarifReport (
     }
   }
 
-  const results = findings.map((f) => {
-    const locations = (f.found_in || []).map((loc) => {
-      const uri = loc.manifest_path || loc.project || 'unknown'
+  const results = await Promise.all(
+    (findings || []).map(async (f) => {
+      const locations = await Promise.all(
+        (f.found_in || []).map(async (loc) => {
+          const uri = loc.manifest_path || loc.project || 'unknown'
+          const region = await resolveSarifLocation(loc, f)
+          return {
+            physicalLocation: {
+              artifactLocation: { uri, uriBaseId: 'PROJECTROOT' },
+              region
+            }
+          }
+        })
+      )
+
       return {
-        physicalLocation: {
-          artifactLocation: { uri, uriBaseId: 'PROJECTROOT' },
-          region: { startLine: 1 } // Placeholder as we don't have exact line numbers yet
+        ruleId: f.advisory_id,
+        message: {
+          text: `Vulnerability in ${f.package}@${f.version}. ${f.remediation_hint || 'Manual review required.'}`
+        },
+        level:
+          f.severity === 'critical' || f.severity === 'high'
+            ? 'error'
+            : 'warning',
+        locations,
+        properties: {
+          ecosystem: f.ecosystem,
+          package: f.package,
+          version: f.version,
+          fixed_version: f.fixed_version,
+          source: f.source || 'osv',
+          match_confidence: getFindingConfidence(f),
+          resolution_mode: f.resolution_mode || 'inventory'
         }
       }
     })
-
-    return {
-      ruleId: f.advisory_id,
-      message: {
-        text: `Vulnerability in ${f.package}@${f.version}. ${f.remediation_hint || 'Manual review required.'}`
-      },
-      level:
-        f.severity === 'critical' || f.severity === 'high'
-          ? 'error'
-          : 'warning',
-      locations,
-      properties: {
-        ecosystem: f.ecosystem,
-        package: f.package,
-        version: f.version,
-        fixed_version: f.fixed_version,
-        source: f.source || 'osv',
-        match_confidence: f.match_confidence || null
-      }
-    }
-  })
+  )
 
   const sarif = {
     version: '2.1.0',

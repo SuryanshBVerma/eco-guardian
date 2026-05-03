@@ -1,5 +1,7 @@
 # eco-guardian
 
+![CI](https://github.com/boredom1234/eco-guardian/actions/workflows/ci.yml/badge.svg)
+
 eco-guardian is a Node.js CLI vulnerability scanner for local dependency inventories across 16 ecosystems:
 
 - npm, Maven, Gradle, NuGet, VSCode extensions, Python, Go
@@ -15,7 +17,7 @@ It discovers dependency manifests locally, queries OSV (plus npm advisory cross-
 npx github:boredom1234/eco-guardian
 ```
 
-### Run from source
+npx eco-guardian
 
 ```bash
 npm install
@@ -129,6 +131,22 @@ node eco-guardian.js --ui
 - Maven POM parsing resolves `project.*` built-in properties (`${project.version}`, `${project.groupId}`, `${project.artifactId}`) and `${parent.version}` from the parent POM reference.
 - XML comments and CDATA sections in POM files are safely stripped before parsing.
 - Automated fix command generation does not cover Gradle, VSCode, Conan, Haskell, or Swift findings (these ecosystems have no single-package upgrade CLI or use manual pinning).
+
+## Ecosystem maturity
+
+| Level        | Ecosystems                               | Notes                                     |
+| ------------ | ---------------------------------------- | ----------------------------------------- |
+| Stable       | npm, Maven, Gradle, NuGet                | Best-covered scanner paths and tests      |
+| Beta         | Python, Go, Ruby, Rust, PHP, Dart        | Useful coverage, still expanding fixtures |
+| Experimental | VSCode, Elixir, Conan, Haskell, Swift, R | Best-effort manifest/lock parsing         |
+
+## Accuracy and limitations
+
+- Graph resolution is preferred when available.
+- Inventory scans may miss transitive context.
+- NVD enrichment is heuristic for Java ecosystems (CPE + keyword filtering).
+- SARIF locations are best-effort when line numbers are not available.
+- Fix commands are recommendations; review before applying.
 
 ## UI (Command Builder)
 

@@ -14,7 +14,8 @@ function parseRequirementsTxt (content, filePath) {
   const records = []
   const lines = content.split(/\r?\n/)
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
     const trimmed = line.split('#')[0].trim()
     if (!trimmed) continue
 
@@ -22,7 +23,13 @@ function parseRequirementsTxt (content, filePath) {
     const match = trimmed.match(/^([^#\s><=!]+)==([^#\s]+)/)
     if (match) {
       records.push(
-        createPythonRecord(match[1], match[2], filePath, 'requirements.txt')
+        createPythonRecord(
+          match[1],
+          match[2],
+          filePath,
+          'requirements.txt',
+          i + 1
+        )
       )
     }
   }
@@ -78,7 +85,7 @@ function parsePoetryLock (content, filePath) {
   return records
 }
 
-function createPythonRecord (name, version, filePath, rawSource) {
+function createPythonRecord (name, version, filePath, rawSource, line) {
   return {
     key: `PyPI|${name}|${version}`,
     ecosystem: 'python',
@@ -91,7 +98,8 @@ function createPythonRecord (name, version, filePath, rawSource) {
         project: path.dirname(filePath),
         manifest_path: filePath,
         dependency_type: 'direct', // Simplification for requirements/lock
-        raw_source: rawSource
+        raw_source: rawSource,
+        line: Number.isInteger(line) ? line : null
       }
     ]
   }
