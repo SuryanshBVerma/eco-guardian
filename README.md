@@ -17,7 +17,13 @@ It discovers dependency manifests locally, queries OSV (plus npm advisory cross-
 npx github:boredom1234/eco-guardian
 ```
 
+You can also invoke it directly if you have the package available via `npx`:
+
+```bash
 npx eco-guardian
+```
+
+### Run from source
 
 ```bash
 npm install
@@ -195,6 +201,7 @@ npm start
 npm test
 npm run coverage
 npm run coverage:check
+npm run pack:check
 ```
 
 Current `npm test` pipeline:
@@ -204,6 +211,7 @@ Current `npm test` pipeline:
 - `node test-resolvers.js`
 - `node test-gradle.js`
 - `node test-gradle-static.js`
+- `node test-fixtures.js`
 - `node test-coverage.js`
 - `node test-watch.js`
 
