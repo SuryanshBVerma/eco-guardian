@@ -2762,10 +2762,10 @@ async function testWatchErrorHandler () {
         {}
       )
       // Give bootstrap time to discover the file and set up the watcher
-      await new Promise((r) => originalSetTimeout(r, 100))
+      await new Promise((resolve) => originalSetTimeout(resolve, 100))
       // Emit an error on the mock watcher — our handler should catch it
       mockWatcher.emit('error', new Error('mock watch limit'))
-      await new Promise((r) => originalSetTimeout(r, 50))
+      await new Promise((resolve) => originalSetTimeout(resolve, 50))
     })
     assert(true, 'fs.watch error should be handled gracefully')
   } catch (err) {

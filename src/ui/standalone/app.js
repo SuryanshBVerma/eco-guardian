@@ -388,18 +388,18 @@
 
   function normalizeEcosystems (value) {
     if (Array.isArray(value)) {
-      var list = value
+      const arr = value
         .map(function (item) {
           return String(item).toLowerCase()
         })
         .filter(Boolean)
-      if (list.length === 1 && list[0] === 'scan-all') {
+      if (arr.length === 1 && arr[0] === 'scan-all') {
         return SUPPORTED_ECOSYSTEMS.slice()
       }
-      return list
+      return arr
     }
     if (typeof value === 'string') {
-      var list = value
+      const list = value
         .split(',')
         .map(function (item) {
           return item.trim().toLowerCase()
