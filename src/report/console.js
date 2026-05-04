@@ -1,14 +1,14 @@
-"use strict";
+'use strict'
 
-const { SEVERITY_ORDER, COLORS } = require("../config/constants");
-const { colorize } = require("../cli/output");
+const { SEVERITY_ORDER, COLORS } = require('../config/constants')
+const { colorize } = require('../cli/output')
 const {
   summarizeSeverities,
   getFindingConfidence,
-  formatFindingProvenance,
-} = require("./common");
+  formatFindingProvenance
+} = require('./common')
 
-function printSummary(
+function printSummary (
   totalPackages,
   findings,
   options,
@@ -16,233 +16,233 @@ function printSummary(
   resolutionSummary = [],
   suppressedCount = 0,
   policy = null,
-  queryDiagnostics = null,
+  queryDiagnostics = null
 ) {
-  if (options.json) return;
-  const sev = summarizeSeverities(findings);
+  if (options.json) return
+  const sev = summarizeSeverities(findings)
   const vulnerablePackages = new Set(
-    findings.map((f) => `${f.ecosystem}|${f.package}|${f.version}`),
-  ).size;
-  const clean = Math.max(0, totalPackages - vulnerablePackages);
-  const line = "=".repeat(55);
-  process.stdout.write(`${line}\n`);
-  process.stdout.write("eco-guardian scan complete\n");
+    findings.map((f) => `${f.ecosystem}|${f.package}|${f.version}`)
+  ).size
+  const clean = Math.max(0, totalPackages - vulnerablePackages)
+  const line = '='.repeat(55)
+  process.stdout.write(`${line}\n`)
+  process.stdout.write('eco-guardian scan complete\n')
   process.stdout.write(
-    `Packages scanned:  ${totalPackages.toLocaleString()} unique across selected ecosystems\n`,
-  );
+    `Packages scanned:  ${totalPackages.toLocaleString()} unique across selected ecosystems\n`
+  )
   process.stdout.write(
-    `Findings:          ${findings.length} advisories found (${sev.critical} CRITICAL, ${sev.high} HIGH, ${sev.moderate} MODERATE)\n`,
-  );
-  process.stdout.write(`Vulnerable pkgs:   ${vulnerablePackages}\n`);
-  process.stdout.write(`Clean packages:    ${clean.toLocaleString()}\n`);
+    `Findings:          ${findings.length} advisories found (${sev.critical} CRITICAL, ${sev.high} HIGH, ${sev.moderate} MODERATE)\n`
+  )
+  process.stdout.write(`Vulnerable pkgs:   ${vulnerablePackages}\n`)
+  process.stdout.write(`Clean packages:    ${clean.toLocaleString()}\n`)
 
-  const nvdMode = String(options.nvdMode || "auto").toLowerCase();
-  if (nvdMode !== "off") {
-    process.stdout.write(`NVD enrichment:   ${nvdMode} (Java ecosystems)\n`);
+  const nvdMode = String(options.nvdMode || 'auto').toLowerCase()
+  if (nvdMode !== 'off') {
+    process.stdout.write(`NVD enrichment:   ${nvdMode} (Java ecosystems)\n`)
   }
 
   if (options.graphResolution && resolutionSummary.length > 0) {
-    process.stdout.write("Graph resolution:\n");
+    process.stdout.write('Graph resolution:\n')
     for (const item of resolutionSummary) {
-      const reason = item.reason ? ` (fallback: ${item.reason})` : "";
-      process.stdout.write(`  - ${item.ecosystem}: ${item.mode}${reason}\n`);
+      const reason = item.reason ? ` (fallback: ${item.reason})` : ''
+      process.stdout.write(`  - ${item.ecosystem}: ${item.mode}${reason}\n`)
     }
   } else if (options.graphResolution) {
-    process.stdout.write("Graph resolution: enabled\n");
+    process.stdout.write('Graph resolution: enabled\n')
   }
 
   if (suppressedCount > 0) {
-    process.stdout.write(`Suppressed by baseline: ${suppressedCount}\n`);
+    process.stdout.write(`Suppressed by baseline: ${suppressedCount}\n`)
   }
 
   if (policy && policy.enabled) {
     process.stdout.write(
-      `Policy:            ${policy.passed ? "PASS" : "FAIL"}${policy.violations.length > 0 ? ` (${policy.violations.join(", ")})` : ""}\n`,
-    );
+      `Policy:            ${policy.passed ? 'PASS' : 'FAIL'}${policy.violations.length > 0 ? ` (${policy.violations.join(', ')})` : ''}\n`
+    )
   }
 
   if (queryDiagnostics) {
     process.stdout.write(
-      `Provider retries:  ${queryDiagnostics.retries || 0}\n`,
-    );
+      `Provider retries:  ${queryDiagnostics.retries || 0}\n`
+    )
     if (queryDiagnostics.partialProviderFailure) {
-      process.stdout.write("Provider status:   partial failures detected\n");
+      process.stdout.write('Provider status:   partial failures detected\n')
     }
     if (queryDiagnostics.nvdRequests > 0) {
       process.stdout.write(
-        `NVD requests:      ${queryDiagnostics.nvdRequests}\n`,
-      );
+        `NVD requests:      ${queryDiagnostics.nvdRequests}\n`
+      )
     }
     if (queryDiagnostics.nvdErrors > 0) {
       process.stdout.write(
-        `NVD errors:        ${queryDiagnostics.nvdErrors}\n`,
-      );
+        `NVD errors:        ${queryDiagnostics.nvdErrors}\n`
+      )
     }
   }
 
   if (metrics) {
-    process.stdout.write(`Peak RAM:          ${metrics.peakRssMb} MB\n`);
-    process.stdout.write(`Avg CPU:           ${metrics.avgCpuPercent}%\n`);
-    process.stdout.write(`Scan Duration:     ${metrics.durationS}s\n`);
+    process.stdout.write(`Peak RAM:          ${metrics.peakRssMb} MB\n`)
+    process.stdout.write(`Avg CPU:           ${metrics.avgCpuPercent}%\n`)
+    process.stdout.write(`Scan Duration:     ${metrics.durationS}s\n`)
   }
 
   if (findings.length === 0 && totalPackages > 500) {
-    const { log } = require("../cli/output");
+    const { log } = require('../cli/output')
     log(
-      "vigil",
-      "Your forest is vast, yet strangely silent. I suspect a trap.",
-      options,
-    );
+      'vigil',
+      'Your forest is vast, yet strangely silent. I suspect a trap.',
+      options
+    )
   }
 
-  process.stdout.write(`${line}\n`);
+  process.stdout.write(`${line}\n`)
 }
 
-function padCell(value, width) {
-  const text = String(value == null ? "" : value);
-  if (text.length >= width) return text;
-  return `${text}${" ".repeat(width - text.length)}`;
+function padCell (value, width) {
+  const text = String(value == null ? '' : value)
+  if (text.length >= width) return text
+  return `${text}${' '.repeat(width - text.length)}`
 }
 
-function severityRank(value) {
-  const key = String(value || "").toLowerCase();
-  return SEVERITY_ORDER[key] || 0;
+function severityRank (value) {
+  const key = String(value || '').toLowerCase()
+  return SEVERITY_ORDER[key] || 0
 }
 
-function colorForSeverity(value) {
-  const key = String(value || "").toLowerCase();
-  if (key === "critical") return COLORS.red;
-  if (key === "high") return COLORS.yellow;
-  if (key === "moderate") return COLORS.cyan;
-  if (key === "low") return COLORS.green;
-  return COLORS.gray;
+function colorForSeverity (value) {
+  const key = String(value || '').toLowerCase()
+  if (key === 'critical') return COLORS.red
+  if (key === 'high') return COLORS.yellow
+  if (key === 'moderate') return COLORS.cyan
+  if (key === 'low') return COLORS.green
+  return COLORS.gray
 }
 
-function colorSeverity(value, text) {
-  return colorize(colorForSeverity(value), text);
+function colorSeverity (value, text) {
+  return colorize(colorForSeverity(value), text)
 }
 
-function uniqueProjectCount(finding) {
-  const seen = new Set();
+function uniqueProjectCount (finding) {
+  const seen = new Set()
   for (const item of finding.found_in || []) {
-    if (item && item.project) seen.add(item.project);
+    if (item && item.project) seen.add(item.project)
   }
-  return seen.size;
+  return seen.size
 }
 
-function renderFindingsTable(findings) {
+function renderFindingsTable (findings) {
   const sorted = findings.slice().sort((a, b) => {
-    const sev = severityRank(b.severity) - severityRank(a.severity);
-    if (sev !== 0) return sev;
-    return String(a.package).localeCompare(String(b.package));
-  });
+    const sev = severityRank(b.severity) - severityRank(a.severity)
+    if (sev !== 0) return sev
+    return String(a.package).localeCompare(String(b.package))
+  })
 
   const cols = [
-    { key: "severity", label: "SEVERITY" },
-    { key: "ecosystem", label: "ECOSYSTEM" },
-    { key: "package", label: "PACKAGE" },
-    { key: "advisory", label: "ADVISORY" },
-    { key: "confidence", label: "CONF" },
-    { key: "projects", label: "PROJECTS" },
-    { key: "locations", label: "LOCATIONS" },
-    { key: "fix", label: "FIX" },
-  ];
+    { key: 'severity', label: 'SEVERITY' },
+    { key: 'ecosystem', label: 'ECOSYSTEM' },
+    { key: 'package', label: 'PACKAGE' },
+    { key: 'advisory', label: 'ADVISORY' },
+    { key: 'confidence', label: 'CONF' },
+    { key: 'projects', label: 'PROJECTS' },
+    { key: 'locations', label: 'LOCATIONS' },
+    { key: 'fix', label: 'FIX' }
+  ]
 
   const rows = sorted.map((finding) => ({
-    severity: finding.severity || "N/A",
-    ecosystem: finding.ecosystem || "npm",
+    severity: finding.severity || 'N/A',
+    ecosystem: finding.ecosystem || 'npm',
     package: `${finding.package}@${finding.version}`,
-    advisory: finding.advisory_id || "N/A",
+    advisory: finding.advisory_id || 'N/A',
     confidence: getFindingConfidence(finding),
     projects: String(uniqueProjectCount(finding)),
     locations: String((finding.found_in || []).length),
     fix:
       finding.fix_command ||
       finding.remediation_hint ||
-      "Manual review required",
-  }));
+      'Manual review required'
+  }))
 
-  const widths = {};
+  const widths = {}
   for (const col of cols) {
-    widths[col.key] = col.label.length;
+    widths[col.key] = col.label.length
   }
   for (const row of rows) {
     for (const col of cols) {
-      const value = String(row[col.key] == null ? "" : row[col.key]);
-      if (value.length > widths[col.key]) widths[col.key] = value.length;
+      const value = String(row[col.key] == null ? '' : row[col.key])
+      if (value.length > widths[col.key]) widths[col.key] = value.length
     }
   }
 
-  const header = `| ${cols.map((c) => padCell(c.label, widths[c.key])).join(" | ")} |`;
-  const divider = `+-${cols.map((c) => "-".repeat(widths[c.key])).join("-+-")}-+`;
-  const lines = [divider, header, divider];
+  const header = `| ${cols.map((c) => padCell(c.label, widths[c.key])).join(' | ')} |`
+  const divider = `+-${cols.map((c) => '-'.repeat(widths[c.key])).join('-+-')}-+`
+  const lines = [divider, header, divider]
 
   for (const row of rows) {
     const cells = cols.map((c) => {
-      const padded = padCell(row[c.key], widths[c.key]);
-      if (c.key === "severity") return colorSeverity(row.severity, padded);
-      return padded;
-    });
-    lines.push(`| ${cells.join(" | ")} |`);
+      const padded = padCell(row[c.key], widths[c.key])
+      if (c.key === 'severity') return colorSeverity(row.severity, padded)
+      return padded
+    })
+    lines.push(`| ${cells.join(' | ')} |`)
   }
-  lines.push(divider);
-  return lines.join("\n");
+  lines.push(divider)
+  return lines.join('\n')
 }
 
-function printFindingsDetailed(findings, options) {
-  if (options.json) return;
+function printFindingsDetailed (findings, options) {
+  if (options.json) return
   for (const finding of findings) {
     process.stdout.write(
-      `\n ${colorSeverity(finding.severity, finding.severity)}  ${finding.package}@${finding.version}\n`,
-    );
+      `\n ${colorSeverity(finding.severity, finding.severity)}  ${finding.package}@${finding.version}\n`
+    )
     process.stdout.write(
-      `|- CVE: ${finding.cve || "N/A"} | ${finding.advisory_id} | CVSS: ${finding.cvss == null ? "N/A" : finding.cvss}\n`,
-    );
-    process.stdout.write(`|- Source: ${formatFindingProvenance(finding)}\n`);
-    process.stdout.write(`|- ${finding.title}\n`);
-    process.stdout.write(`|- Found in ${finding.found_in.length} locations:\n`);
+      `|- CVE: ${finding.cve || 'N/A'} | ${finding.advisory_id} | CVSS: ${finding.cvss == null ? 'N/A' : finding.cvss}\n`
+    )
+    process.stdout.write(`|- Source: ${formatFindingProvenance(finding)}\n`)
+    process.stdout.write(`|- ${finding.title}\n`)
+    process.stdout.write(`|- Found in ${finding.found_in.length} locations:\n`)
     for (const entry of finding.found_in) {
       const via =
         entry.parent && entry.parent.name
-          ? ` via ${entry.parent.name}${entry.parent.version ? `@${entry.parent.version}` : ""}`
-          : "";
+          ? ` via ${entry.parent.name}${entry.parent.version ? `@${entry.parent.version}` : ''}`
+          : ''
       process.stdout.write(
-        `|   -> ${entry.manifest_path || entry.project} (${entry.dependency_type} dependency${via})\n`,
-      );
+        `|   -> ${entry.manifest_path || entry.project} (${entry.dependency_type} dependency${via})\n`
+      )
     }
     if (finding.resolved_path) {
-      process.stdout.write(`|- Path: ${finding.resolved_path.join(" -> ")}\n`);
+      process.stdout.write(`|- Path: ${finding.resolved_path.join(' -> ')}\n`)
     }
-    if (finding.resolution_mode && finding.resolution_mode !== "inventory") {
-      process.stdout.write(`|- Resolution: ${finding.resolution_mode}\n`);
+    if (finding.resolution_mode && finding.resolution_mode !== 'inventory') {
+      process.stdout.write(`|- Resolution: ${finding.resolution_mode}\n`)
     }
     if (
       Array.isArray(finding.fix_commands) &&
       finding.fix_commands.length > 0
     ) {
-      process.stdout.write("|- Fix commands:\n");
+      process.stdout.write('|- Fix commands:\n')
       for (const cmd of finding.fix_commands) {
-        process.stdout.write(`|   -> ${cmd}\n`);
+        process.stdout.write(`|   -> ${cmd}\n`)
       }
     } else if (finding.remediation_hint) {
-      process.stdout.write(`|- Fix: ${finding.remediation_hint}\n`);
+      process.stdout.write(`|- Fix: ${finding.remediation_hint}\n`)
     } else {
-      process.stdout.write("|- Fix: Manual review required\n");
+      process.stdout.write('|- Fix: Manual review required\n')
     }
     const ref =
       (finding.references && finding.references[0]) ||
-      `https://osv.dev/vulnerability/${finding.advisory_id}`;
-    process.stdout.write(`' - More info: ${ref}\n`);
+      `https://osv.dev/vulnerability/${finding.advisory_id}`
+    process.stdout.write(`' - More info: ${ref}\n`)
   }
 }
 
-function printFindingsHuman(findings, options) {
-  if (options.json) return;
-  process.stdout.write("\nFindings Table\n");
-  process.stdout.write(`${renderFindingsTable(findings)}\n`);
+function printFindingsHuman (findings, options) {
+  if (options.json) return
+  process.stdout.write('\nFindings Table\n')
+  process.stdout.write(`${renderFindingsTable(findings)}\n`)
   if (options.verbose) {
-    process.stdout.write("\nDetailed Findings\n");
-    printFindingsDetailed(findings, options);
+    process.stdout.write('\nDetailed Findings\n')
+    printFindingsDetailed(findings, options)
   }
 }
 
@@ -250,5 +250,5 @@ module.exports = {
   printSummary,
   printFindingsHuman,
   printFindingsDetailed,
-  renderFindingsTable,
-};
+  renderFindingsTable
+}

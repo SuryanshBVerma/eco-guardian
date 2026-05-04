@@ -1,12 +1,12 @@
-"use strict";
+'use strict'
 
-const { enrichNpmLocations } = require("./location");
+const { enrichNpmLocations } = require('./location')
 const {
   pickBestFixedVersion,
   buildFixSteps,
-  fixStepsToDisplayCommands,
-} = require("./fix");
-const { generateRemediationHint } = require("./remediation");
+  fixStepsToDisplayCommands
+} = require('./fix')
+const { generateRemediationHint } = require('./remediation')
 
 /**
  * Builds structured finding objects from harvested packages and vulnerability data.
@@ -17,9 +17,9 @@ const { generateRemediationHint } = require("./remediation");
  * @param {object} state - Runtime state (used for global root path).
  * @returns {Promise<object[]>}
  */
-async function buildFindings(packageMap, vulnerabilityMap, state) {
-  const findings = [];
-  const globalRoot = state.globalRoot || null;
+async function buildFindings (packageMap, vulnerabilityMap, state) {
+  const findings = []
+  const globalRoot = state.globalRoot || null
 
   for (const [key, record] of Object.entries(vulnerabilityMap)) {
     if (
@@ -28,37 +28,37 @@ async function buildFindings(packageMap, vulnerabilityMap, state) {
       !Array.isArray(record.advisories) ||
       record.advisories.length === 0
     ) {
-      continue;
+      continue
     }
-    const pkg = packageMap.get(key);
-    if (!pkg) continue;
+    const pkg = packageMap.get(key)
+    if (!pkg) continue
 
     const foundIn =
-      pkg.ecosystem === "npm" && pkg.resolution_mode !== "graph"
+      pkg.ecosystem === 'npm' && pkg.resolution_mode !== 'graph'
         ? await enrichNpmLocations(pkg.paths, pkg.name, globalRoot)
-        : pkg.occurrences || [];
+        : pkg.occurrences || []
 
-    const fixedVersion = pickBestFixedVersion(record.advisories);
+    const fixedVersion = pickBestFixedVersion(record.advisories)
     const fixSteps = buildFixSteps({
       ecosystem: pkg.ecosystem,
       foundIn,
       packageName: pkg.name,
-      fixedVersion,
-    });
-    const fixCommands = fixStepsToDisplayCommands(fixSteps);
+      fixedVersion
+    })
+    const fixCommands = fixStepsToDisplayCommands(fixSteps)
     const fixCommand =
       fixCommands.length === 0
         ? null
         : fixCommands.length === 1
           ? fixCommands[0]
-          : `${fixCommands[0]} (+${fixCommands.length - 1} more)`;
+          : `${fixCommands[0]} (+${fixCommands.length - 1} more)`
 
     const remediationHint = generateRemediationHint({
       ecosystem: pkg.ecosystem,
       packageName: pkg.name,
       fixedVersion,
-      foundIn,
-    });
+      foundIn
+    })
 
     for (const advisory of record.advisories) {
       findings.push({
@@ -66,11 +66,11 @@ async function buildFindings(packageMap, vulnerabilityMap, state) {
         ecosystem: pkg.ecosystem,
         package: pkg.name,
         version: pkg.version,
-        source: advisory.source || "osv",
+        source: advisory.source || 'osv',
         match_confidence: advisory.match_confidence || null,
-        resolution_mode: pkg.resolution_mode || "inventory",
+        resolution_mode: pkg.resolution_mode || 'inventory',
         resolved_path: pkg.resolved_path || null,
-        depth: typeof pkg.depth === "number" ? pkg.depth : null,
+        depth: typeof pkg.depth === 'number' ? pkg.depth : null,
         fixed_version: fixedVersion,
         remediation_hint: remediationHint,
         severity: advisory.severity,
@@ -82,14 +82,14 @@ async function buildFindings(packageMap, vulnerabilityMap, state) {
         fix_steps: fixSteps,
         fix_commands: fixCommands,
         fix_command: fixCommand,
-        references: advisory.references || [],
-      });
+        references: advisory.references || []
+      })
     }
   }
 
-  return findings;
+  return findings
 }
 
 module.exports = {
-  buildFindings,
-};
+  buildFindings
+}

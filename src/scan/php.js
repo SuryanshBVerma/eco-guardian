@@ -1,115 +1,115 @@
-"use strict";
+'use strict'
 
-const fsp = require("fs/promises");
-const path = require("path");
+const fsp = require('fs/promises')
+const path = require('path')
 const {
   PACKAGE_READ_CONCURRENCY,
-  PHP_MANIFEST_NAMES,
-} = require("../config/constants");
-const { asyncPool } = require("../shared/async");
-const { log } = require("../cli/output");
-const { discoverManifestFiles } = require("./discovery");
+  PHP_MANIFEST_NAMES
+} = require('../config/constants')
+const { asyncPool } = require('../shared/async')
+const { log } = require('../cli/output')
+const { discoverManifestFiles } = require('./discovery')
 
-function parseComposerLock(content, filePath) {
-  const records = [];
-  let data;
+function parseComposerLock (content, filePath) {
+  const records = []
+  let data
   try {
-    data = JSON.parse(content);
+    data = JSON.parse(content)
   } catch (_) {
-    return records;
+    return records
   }
 
-  const sections = data.packages || [];
-  const devSections = data["packages-dev"] || [];
-  const all = [...sections, ...devSections];
+  const sections = data.packages || []
+  const devSections = data['packages-dev'] || []
+  const all = [...sections, ...devSections]
 
   for (const pkg of all) {
     if (pkg.name && pkg.version) {
       records.push(
-        createPhpRecord(pkg.name, pkg.version, filePath, "composer.lock"),
-      );
+        createPhpRecord(pkg.name, pkg.version, filePath, 'composer.lock')
+      )
     }
   }
-  return records;
+  return records
 }
 
-function createPhpRecord(name, version, filePath, rawSource) {
+function createPhpRecord (name, version, filePath, rawSource) {
   return {
     key: `php|${name}|${version}`,
-    ecosystem: "php",
+    ecosystem: 'php',
     name,
     version,
-    osvEcosystem: "Packagist",
+    osvEcosystem: 'Packagist',
     paths: [],
     occurrences: [
       {
         project: path.dirname(filePath),
         manifest_path: filePath,
-        dependency_type: "direct",
-        raw_source: rawSource,
-      },
-    ],
-  };
+        dependency_type: 'direct',
+        raw_source: rawSource
+      }
+    ]
+  }
 }
 
-async function collectPhpPackages(roots, options, state) {
-  const packageMap = new Map();
-  const counters = { found: 0, skippedPermissions: 0 };
+async function collectPhpPackages (roots, options, state) {
+  const packageMap = new Map()
+  const counters = { found: 0, skippedPermissions: 0 }
 
   const manifestDirs = await discoverManifestFiles(
     roots,
     PHP_MANIFEST_NAMES,
     options,
     counters,
-    "PHP manifests",
-  );
+    'PHP manifests'
+  )
 
-  let totalEntries = 0;
+  let totalEntries = 0
 
   await asyncPool(PACKAGE_READ_CONCURRENCY, manifestDirs, async (dir) => {
-    let files;
+    let files
     try {
-      files = await fsp.readdir(dir);
+      files = await fsp.readdir(dir)
     } catch (_) {
-      return;
+      return
     }
 
-    const records = [];
+    const records = []
     for (const file of files) {
-      const filePath = path.join(dir, file);
-      if (file === "composer.lock") {
-        let raw;
+      const filePath = path.join(dir, file)
+      if (file === 'composer.lock') {
+        let raw
         try {
-          raw = await fsp.readFile(filePath, "utf8");
+          raw = await fsp.readFile(filePath, 'utf8')
         } catch (_) {
-          continue;
+          continue
         }
-        records.push(...parseComposerLock(raw, filePath));
+        records.push(...parseComposerLock(raw, filePath))
       }
     }
 
-    totalEntries += records.length;
+    totalEntries += records.length
     for (const record of records) {
-      const existing = packageMap.get(record.key);
+      const existing = packageMap.get(record.key)
       if (!existing) {
-        record.paths = [dir];
-        packageMap.set(record.key, record);
+        record.paths = [dir]
+        packageMap.set(record.key, record)
       } else {
-        existing.occurrences.push(...record.occurrences);
-        existing.paths.push(dir);
+        existing.occurrences.push(...record.occurrences)
+        existing.paths.push(dir)
       }
     }
-  });
+  })
 
   log(
-    "info",
+    'info',
     `Harvested ${totalEntries.toLocaleString()} PHP dependency entries -> ${packageMap.size.toLocaleString()} unique combinations`,
-    options,
-  );
-  return packageMap;
+    options
+  )
+  return packageMap
 }
 
 module.exports = {
   parseComposerLock,
-  collectPhpPackages,
-};
+  collectPhpPackages
+}

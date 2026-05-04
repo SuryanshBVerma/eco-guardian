@@ -1,121 +1,121 @@
-"use strict";
+'use strict'
 
-const fsp = require("fs/promises");
-const path = require("path");
+const fsp = require('fs/promises')
+const path = require('path')
 const {
   PACKAGE_READ_CONCURRENCY,
-  CONAN_MANIFEST_NAMES,
-} = require("../config/constants");
-const { asyncPool } = require("../shared/async");
-const { log } = require("../cli/output");
-const { discoverManifestFiles } = require("./discovery");
+  CONAN_MANIFEST_NAMES
+} = require('../config/constants')
+const { asyncPool } = require('../shared/async')
+const { log } = require('../cli/output')
+const { discoverManifestFiles } = require('./discovery')
 
-function parseConanLock(content, filePath) {
-  const records = [];
-  let data;
+function parseConanLock (content, filePath) {
+  const records = []
+  let data
   try {
-    data = JSON.parse(content);
+    data = JSON.parse(content)
   } catch (_) {
-    return records;
+    return records
   }
 
   // Conan 2.x lock format: { "version": "0.5", "graph_lock": { "nodes": { ... } } }
-  const nodes = (data.graph_lock && data.graph_lock.nodes) || data.nodes || {};
+  const nodes = (data.graph_lock && data.graph_lock.nodes) || data.nodes || {}
 
   for (const [, node] of Object.entries(nodes)) {
-    if (!node || !node.ref) continue;
+    if (!node || !node.ref) continue
     // ref format: "pkg/1.2.3" or "pkg/1.2.3@user/channel"
-    const ref = node.ref;
-    const atIdx = ref.indexOf("@");
-    const cleanRef = atIdx !== -1 ? ref.substring(0, atIdx) : ref;
-    const slashIdx = cleanRef.lastIndexOf("/");
-    if (slashIdx === -1) continue;
-    const name = cleanRef.substring(0, slashIdx);
-    const version = cleanRef.substring(slashIdx + 1);
+    const ref = node.ref
+    const atIdx = ref.indexOf('@')
+    const cleanRef = atIdx !== -1 ? ref.substring(0, atIdx) : ref
+    const slashIdx = cleanRef.lastIndexOf('/')
+    if (slashIdx === -1) continue
+    const name = cleanRef.substring(0, slashIdx)
+    const version = cleanRef.substring(slashIdx + 1)
     if (name && version) {
-      records.push(createConanRecord(name, version, filePath, "conan.lock"));
+      records.push(createConanRecord(name, version, filePath, 'conan.lock'))
     }
   }
-  return records;
+  return records
 }
 
-function createConanRecord(name, version, filePath, rawSource) {
+function createConanRecord (name, version, filePath, rawSource) {
   return {
     key: `conan|${name}|${version}`,
-    ecosystem: "conan",
+    ecosystem: 'conan',
     name,
     version,
-    osvEcosystem: "ConanCenter",
+    osvEcosystem: 'ConanCenter',
     paths: [],
     occurrences: [
       {
         project: path.dirname(filePath),
         manifest_path: filePath,
-        dependency_type: "direct",
-        raw_source: rawSource,
-      },
-    ],
-  };
+        dependency_type: 'direct',
+        raw_source: rawSource
+      }
+    ]
+  }
 }
 
-async function collectConanPackages(roots, options, state) {
-  const packageMap = new Map();
-  const counters = { found: 0, skippedPermissions: 0 };
+async function collectConanPackages (roots, options, state) {
+  const packageMap = new Map()
+  const counters = { found: 0, skippedPermissions: 0 }
 
   const manifestDirs = await discoverManifestFiles(
     roots,
     CONAN_MANIFEST_NAMES,
     options,
     counters,
-    "Conan manifests",
-  );
+    'Conan manifests'
+  )
 
-  let totalEntries = 0;
+  let totalEntries = 0
 
   await asyncPool(PACKAGE_READ_CONCURRENCY, manifestDirs, async (dir) => {
-    let files;
+    let files
     try {
-      files = await fsp.readdir(dir);
+      files = await fsp.readdir(dir)
     } catch (_) {
-      return;
+      return
     }
 
-    const records = [];
+    const records = []
     for (const file of files) {
-      const filePath = path.join(dir, file);
-      if (file === "conan.lock") {
-        let raw;
+      const filePath = path.join(dir, file)
+      if (file === 'conan.lock') {
+        let raw
         try {
-          raw = await fsp.readFile(filePath, "utf8");
+          raw = await fsp.readFile(filePath, 'utf8')
         } catch (_) {
-          continue;
+          continue
         }
-        records.push(...parseConanLock(raw, filePath));
+        records.push(...parseConanLock(raw, filePath))
       }
     }
 
-    totalEntries += records.length;
+    totalEntries += records.length
     for (const record of records) {
-      const existing = packageMap.get(record.key);
+      const existing = packageMap.get(record.key)
       if (!existing) {
-        record.paths = [dir];
-        packageMap.set(record.key, record);
+        record.paths = [dir]
+        packageMap.set(record.key, record)
       } else {
-        existing.occurrences.push(...record.occurrences);
-        existing.paths.push(dir);
+        existing.occurrences.push(...record.occurrences)
+        existing.paths.push(dir)
       }
     }
-  });
+  })
 
   log(
-    "info",
+    'info',
     `Harvested ${totalEntries.toLocaleString()} Conan dependency entries -> ${packageMap.size.toLocaleString()} unique combinations`,
-    options,
-  );
-  return packageMap;
+    options
+  )
+  return packageMap
 }
 
 module.exports = {
   parseConanLock,
-  collectConanPackages,
-};
+  collectConanPackages
+}

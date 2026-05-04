@@ -509,6 +509,7 @@ async function testDiscoveryDetails() {
   try {
     // 1. Windows drives discovery via discoverScanRoots
     command.runCommand = async (cmd) => {
+      if (cmd === "powershell.exe") return { ok: true, stdout: "C:\n" };
       if (cmd === "wmic") return { ok: true, stdout: "C:\n" };
       if (cmd === "npm") return { ok: true, stdout: "C:\\npm\n" };
       return { ok: false };
@@ -518,12 +519,7 @@ async function testDiscoveryDetails() {
       {},
     );
 
-    // 2. Native discovery via discoverNodeModules
-    command.runCommand = async (cmd) => {
-      if (cmd === "cmd")
-        return { ok: true, stdout: "C:\\path\\node_modules\n" };
-      return { ok: false };
-    };
+    // 2. Native discovery via discoverNodeModules (walker fallback on Windows)
     await discoverNodeModules(["C:\\path"], { verbose: true }, { found: 0 });
 
     // 3. Global npm root disabled via Env Var
