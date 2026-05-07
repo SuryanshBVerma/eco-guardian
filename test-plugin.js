@@ -381,3 +381,126 @@ test('README lists all expected plugin commands', () => {
     )
   }
 })
+
+// --- plugin CLAUDE.md ---
+
+test('CLAUDE.md exists at plugin root', () => {
+  assert(fs.existsSync(path.join(__dirname, 'claude-plugin', 'CLAUDE.md')))
+})
+
+test('CLAUDE.md documents exit codes and severity ordering', () => {
+  const text = readText('claude-plugin/CLAUDE.md')
+  assert(text.includes('Exit codes'), 'should mention exit codes')
+  assert(text.includes('critical > high > moderate > low'), 'should document severity order')
+  assert(text.includes('SARIF'), 'should mention SARIF')
+})
+
+// --- dependency-manifest-watcher skill ---
+
+test('dependency-manifest-watcher skill exists with correct frontmatter', () => {
+  const text = readText('claude-plugin/skills/dependency-manifest-watcher/SKILL.md')
+  assert(text.startsWith('---\n'), 'skill should start with frontmatter')
+  assert(text.includes('name: dependency-manifest-watcher'), 'skill should declare name')
+  assert(text.includes('description:'), 'skill should have description')
+  assert(text.includes('user-invocable: false'), 'skill should not be user-invocable')
+})
+
+test('dependency-manifest-watcher references eco-guardian:scan', () => {
+  const text = readText('claude-plugin/skills/dependency-manifest-watcher/SKILL.md')
+  assert(text.includes('/eco-guardian:scan'), 'should reference eco-guardian scan command')
+})
+
+// --- agent files ---
+
+test('agent files exist for fix-reviewer and dep-interceptor', () => {
+  assert(
+    fs.existsSync(path.join(__dirname, 'claude-plugin', 'agents', 'fix-reviewer.md')),
+    'fix-reviewer agent should exist'
+  )
+  assert(
+    fs.existsSync(path.join(__dirname, 'claude-plugin', 'agents', 'dep-interceptor.md')),
+    'dep-interceptor agent should exist'
+  )
+})
+
+test('agent fix-reviewer has name, description, and allowed-tools', () => {
+  const text = readText('claude-plugin/agents/fix-reviewer.md')
+  assert(text.startsWith('---\n'), 'agent should start with frontmatter')
+  assert(text.includes('name: fix-reviewer'), 'agent should declare name')
+  assert(text.includes('description:'), 'agent should have description')
+  assert(text.includes('allowed-tools:'), 'agent should declare allowed-tools')
+})
+
+test('agent fix-reviewer references eco-guardian via npx', () => {
+  const text = readText('claude-plugin/agents/fix-reviewer.md')
+  assert(
+    text.includes('npx -y github:boredom1234/eco-guardian'),
+    'fix-reviewer should call eco-guardian via npx'
+  )
+})
+
+test('agent dep-interceptor has name, description, and allowed-tools', () => {
+  const text = readText('claude-plugin/agents/dep-interceptor.md')
+  assert(text.startsWith('---\n'), 'agent should start with frontmatter')
+  assert(text.includes('name: dep-interceptor'), 'agent should declare name')
+  assert(text.includes('description:'), 'agent should have description')
+  assert(text.includes('allowed-tools:'), 'agent should declare allowed-tools')
+})
+
+test('agent dep-interceptor mentions fail-open behavior', () => {
+  const text = readText('claude-plugin/agents/dep-interceptor.md')
+  assert(text.includes('fail') || text.includes('never block'), 'should document fail-open behavior')
+})
+
+// --- hooks ---
+
+test('hooks.json exists and is valid JSON', () => {
+  const hooks = readJson('claude-plugin/hooks/hooks.json')
+  assert(Array.isArray(hooks.PreToolUse), 'should have PreToolUse array')
+  assert(hooks.PreToolUse.length > 0, 'should have at least one hook entry')
+})
+
+test('hooks.json has Bash matcher with command hook', () => {
+  const hooks = readJson('claude-plugin/hooks/hooks.json')
+  const entry = hooks.PreToolUse.find((e) => e.matcher === 'Bash')
+  assert(entry, 'should have a Bash matcher entry')
+  assert(Array.isArray(entry.hooks), 'should have hooks array')
+  assert(entry.hooks[0].type === 'command', 'hook should be type command')
+  assert(
+    entry.hooks[0].command.includes('check-install.js'),
+    'hook should invoke check-install.js'
+  )
+})
+
+test('check-install.js exists', () => {
+  assert(
+    fs.existsSync(path.join(__dirname, 'claude-plugin', 'hooks', 'check-install.js')),
+    'check-install.js should exist'
+  )
+})
+
+test('check-install.js handles at least 3 package managers', () => {
+  const text = readText('claude-plugin/hooks/check-install.js')
+  const pmMatches = text.match(/npm|pip\d?|cargo|gem|go|composer/g) || []
+  const unique = [...new Set(pmMatches.filter((m) => m !== 'go'))]
+  assert(unique.length >= 3, 'should handle at least 3 package managers')
+})
+
+test('check-install.js always exits with code 0', () => {
+  const text = readText('claude-plugin/hooks/check-install.js')
+  const exitCalls = text.match(/process\.exit\((\d+)\)/g) || []
+  for (const call of exitCalls) {
+    assert(call === 'process.exit(0)', `all exit calls should be 0, found: ${call}`)
+  }
+})
+
+test('check-install.js skips flag-like package names', () => {
+  const text = readText('claude-plugin/hooks/check-install.js')
+  assert(text.includes("startsWith('-')"), 'should skip args starting with dash')
+})
+
+test('check-install.js handles JSON parse failure gracefully', () => {
+  const text = readText('claude-plugin/hooks/check-install.js')
+  assert(text.includes('catch'), 'should have try/catch for JSON parse')
+  assert(text.includes('JSON.parse'), 'should parse stdin JSON')
+})
