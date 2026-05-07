@@ -47,7 +47,17 @@ test('plugin manifest is valid', () => {
 })
 
 test('command files exist for all expected commands', () => {
-  const expected = ['scan', 'ci-gate', 'fix-plan', 'why']
+  const expected = [
+    'scan',
+    'ci-gate',
+    'fix-plan',
+    'why',
+    'doctor',
+    'quick-scan',
+    'report',
+    'baseline-create',
+    'baseline-review'
+  ]
   for (const name of expected) {
     const filePath = `claude-plugin/commands/${name}.md`
     assert(fs.existsSync(path.join(__dirname, filePath)), `${filePath} should exist`)
@@ -198,6 +208,176 @@ test('command files include shell injection guard before bash blocks', () => {
     assert(
       text.includes('plain eco-guardian flags only'),
       `${name}.md should ask for plain flags when injection is suspected`
+    )
+  }
+})
+
+// --- expanded tests for v2 plugin enhancement ---
+
+test('doctor.md has two bash blocks and checks environment', () => {
+  const text = readText('claude-plugin/commands/doctor.md')
+  assert(text.includes('node --version'), 'doctor should check node version')
+  assert(text.includes('NVD_API_KEY'), 'doctor should check NVD_API_KEY presence')
+  assert(
+    text.includes('eco-guardian version check exit'),
+    'doctor should check eco-guardian availability'
+  )
+  assert(!text.includes('$NVD_API_KEY'), 'doctor must not echo NVD_API_KEY value')
+  assert(
+    text.includes('test -n "${NVD_API_KEY:-}"'),
+    'doctor should test -n for NVD_API_KEY'
+  )
+})
+
+test('commands avoid dangerous default scan scope', () => {
+  const all = [
+    'scan', 'ci-gate', 'fix-plan', 'why',
+    'doctor', 'quick-scan', 'report', 'baseline-create', 'baseline-review'
+  ]
+  for (const name of all) {
+    const text = readText(`claude-plugin/commands/${name}.md`)
+    const bashBlocks = text.match(/```bash[\s\S]*?```/g) || []
+    for (const block of bashBlocks) {
+      assert(!block.includes('--global'), `${name}.md should not default to --global`)
+      assert(!block.includes('--all-drives'), `${name}.md should not default to --all-drives`)
+      assert(!block.includes('sudo '), `${name}.md should not use sudo`)
+    }
+  }
+})
+
+test('no command injects --fix into executable bash blocks', () => {
+  const all = [
+    'scan', 'ci-gate', 'fix-plan', 'why',
+    'doctor', 'quick-scan', 'report', 'baseline-create', 'baseline-review'
+  ]
+  for (const name of all) {
+    const text = readText(`claude-plugin/commands/${name}.md`)
+    const bashBlocks = text.match(/```bash[\s\S]*?```/g) || []
+    for (const block of bashBlocks) {
+      assert(
+        !block.includes('--fix'),
+        `${name}.md executable bash blocks must not contain --fix`
+      )
+    }
+  }
+})
+
+test('only baseline-create writes a baseline file', () => {
+  const writers = ['scan', 'ci-gate', 'fix-plan', 'why', 'doctor', 'quick-scan', 'report', 'baseline-review']
+  for (const name of writers) {
+    const text = readText(`claude-plugin/commands/${name}.md`)
+    const bashBlocks = text.match(/```bash[\s\S]*?```/g) || []
+    for (const block of bashBlocks) {
+      assert(!block.includes('--write-baseline'), `${name}.md should not write baseline`)
+    }
+  }
+  const bctext = readText('claude-plugin/commands/baseline-create.md')
+  assert(bctext.includes('--write-baseline'), 'baseline-create should write baseline')
+})
+
+test('only report command writes export artifacts in defaults', () => {
+  const nonReporters = ['scan', 'fix-plan', 'why', 'doctor', 'quick-scan', 'baseline-create', 'baseline-review']
+  for (const name of nonReporters) {
+    const text = readText(`claude-plugin/commands/${name}.md`)
+    const bashBlocks = text.match(/```bash[\s\S]*?```/g) || []
+    for (const block of bashBlocks) {
+      assert(!block.includes('--export-html'), `${name}.md should not export-html by default`)
+      assert(!block.includes('--export-json'), `${name}.md should not export-json by default`)
+      assert(!block.includes('--export-sarif'), `${name}.md should not export-sarif by default`)
+    }
+  }
+})
+
+test('new command files have frontmatter with description', () => {
+  const commands = ['doctor', 'quick-scan', 'report', 'baseline-create', 'baseline-review']
+  for (const name of commands) {
+    const text = readText(`claude-plugin/commands/${name}.md`)
+    assert(text.startsWith('---\n'), `${name}.md should start with frontmatter`)
+    assert(text.includes('description:'), `${name}.md should have a description field`)
+    assert(text.includes('allowed-tools:'), `${name}.md should declare allowed-tools`)
+  }
+})
+
+test('new command files reference eco-guardian via npx', () => {
+  const commands = ['doctor', 'quick-scan', 'report', 'baseline-create', 'baseline-review']
+  for (const name of commands) {
+    const text = readText(`claude-plugin/commands/${name}.md`)
+    assert(
+      text.includes('npx -y github:boredom1234/eco-guardian'),
+      `${name}.md should call eco-guardian via npx`
+    )
+  }
+})
+
+test('new command files handle exit codes and always exit 0', () => {
+  const commands = ['quick-scan', 'report', 'baseline-create', 'baseline-review']
+  for (const name of commands) {
+    const text = readText(`claude-plugin/commands/${name}.md`)
+    assert(text.includes('eco-guardian exit code: $status'), `${name}.md should echo exit code`)
+    assert(text.includes('exit 0'), `${name}.md should end bash blocks with exit 0`)
+    assert(text.includes('status=$?'), `${name}.md should capture exit code`)
+  }
+})
+
+test('new command files have argument-hint in frontmatter', () => {
+  const commands = ['quick-scan', 'report', 'baseline-create', 'baseline-review']
+  for (const name of commands) {
+    const text = readText(`claude-plugin/commands/${name}.md`)
+    assert(text.includes('argument-hint:'), `${name}.md should have an argument-hint field`)
+  }
+})
+
+test('new command files include shell injection guard before bash blocks', () => {
+  const commands = ['quick-scan', 'report', 'baseline-create', 'baseline-review']
+  for (const name of commands) {
+    const text = readText(`claude-plugin/commands/${name}.md`)
+    assert(
+      text.includes('shell control operators'),
+      `${name}.md should warn about shell control operators`
+    )
+    assert(
+      text.includes('plain eco-guardian flags only'),
+      `${name}.md should ask for plain flags when injection is suspected`
+    )
+  }
+})
+
+test('all command files end with a newline (expanded)', () => {
+  const commands = ['scan', 'ci-gate', 'fix-plan', 'why', 'doctor', 'quick-scan', 'report', 'baseline-create', 'baseline-review']
+  for (const name of commands) {
+    const text = readText(`claude-plugin/commands/${name}.md`)
+    assert(text.endsWith('\n'), `${name}.md should end with a trailing newline`)
+  }
+})
+
+test('vulnerability triage skill exists and is instruction-only', () => {
+  const text = readText('claude-plugin/skills/vulnerability-triage/SKILL.md')
+  assert(text.startsWith('---\n'), 'skill should start with frontmatter')
+  assert(text.includes('name: vulnerability-triage'), 'skill should declare name')
+  assert(text.includes('description:'), 'skill should have description')
+  assert(!text.includes('allowed-tools:'), 'skill should not declare allowed-tools (instruction-only)')
+  assert(text.includes('Prioritization'), 'skill should include prioritization guidance')
+  assert(text.includes('exit codes:'), 'skill should document exit codes')
+  assert(text.includes('Baseline awareness'), 'skill should document baseline behavior')
+})
+
+test('README lists all expected plugin commands', () => {
+  const readme = readText('README.md')
+  const expectedCommands = [
+    'scan',
+    'ci-gate',
+    'fix-plan',
+    'why',
+    'doctor',
+    'quick-scan',
+    'report',
+    'baseline-create',
+    'baseline-review'
+  ]
+  for (const name of expectedCommands) {
+    assert(
+      readme.includes(`/eco-guardian:${name}`),
+      `README should mention /eco-guardian:${name}`
     )
   }
 })

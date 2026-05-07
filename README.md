@@ -271,7 +271,24 @@ Restart Claude Code if prompted.
 /eco-guardian:ci-gate
 /eco-guardian:fix-plan
 /eco-guardian:why lodash
+/eco-guardian:doctor
+/eco-guardian:quick-scan
+/eco-guardian:report
+/eco-guardian:baseline-create
+/eco-guardian:baseline-review
 ```
+
+| Command | Purpose |
+| ------- | ------- |
+| `/eco-guardian:scan` | Full dependency scan across all ecosystems. |
+| `/eco-guardian:ci-gate` | Policy-gated scan with SARIF export for CI pipelines. |
+| `/eco-guardian:fix-plan` | Generate a safe remediation plan (no auto-fix). |
+| `/eco-guardian:why <package>` | Explain why a package appears in the dependency graph. |
+| `/eco-guardian:doctor` | Check Node, npm, npx, ripgrep, eco-guardian, and NVD API key presence. |
+| `/eco-guardian:quick-scan` | Fast high-severity npm scan of the current project. |
+| `/eco-guardian:report` | Generate HTML, JSON, and SARIF reports. |
+| `/eco-guardian:baseline-create` | Create `.eco-guardian-baseline.json` intentionally. |
+| `/eco-guardian:baseline-review` | Review findings with an existing baseline applied. |
 
 ### Local plugin development
 
