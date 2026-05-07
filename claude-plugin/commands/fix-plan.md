@@ -1,6 +1,7 @@
 ---
 description: Generate a safe remediation plan for eco-guardian findings.
 allowed-tools: Bash(npx:*)
+argument-hint: [eco-guardian flags]
 ---
 
 # Eco Guardian Fix Plan
@@ -13,22 +14,18 @@ User arguments:
 $ARGUMENTS
 ```
 
+Before running Bash, inspect `$ARGUMENTS`. If it contains shell control operators such as `;`, `&&`, `||`, `|`, backticks, `$(`, `<`, or `>`, do not run it. Ask the user to provide plain eco-guardian flags only.
+
 Default behavior:
 
 ```bash
-set +e
-npx -y github:boredom1234/eco-guardian --path . --ecosystems scan-all --json --banner off
-status=$?
-echo "eco-guardian exit code: $status"
+npx -y github:boredom1234/eco-guardian --path . --ecosystems scan-all --json --banner off; status=$?; echo "eco-guardian exit code: $status"; exit 0
 ```
 
 If the user provided arguments, include them instead of the defaults:
 
 ```bash
-set +e
-npx -y github:boredom1234/eco-guardian $ARGUMENTS
-status=$?
-echo "eco-guardian exit code: $status"
+npx -y github:boredom1234/eco-guardian $ARGUMENTS; status=$?; echo "eco-guardian exit code: $status"; exit 0
 ```
 
 Produce a human-readable fix plan:

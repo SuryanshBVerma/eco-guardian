@@ -75,14 +75,18 @@ test('command files reference eco-guardian via npx', () => {
   }
 })
 
-test('command files handle exit codes with set +e', () => {
+test('command files handle exit codes and always exit 0', () => {
   const commands = ['scan', 'ci-gate', 'fix-plan', 'why']
   for (const name of commands) {
     const text = readText(`claude-plugin/commands/${name}.md`)
-    assert(text.includes('set +e'), `${name}.md should use set +e`)
     assert(
       text.includes('eco-guardian exit code: $status'),
       `${name}.md should echo the exit code`
+    )
+    assert(text.includes('exit 0'), `${name}.md should end bash blocks with exit 0`)
+    assert(
+      text.includes('status=$?'),
+      `${name}.md should capture exit code with status=$?`
     )
   }
 })
@@ -169,5 +173,31 @@ test('all command files end with a newline', () => {
   for (const name of commands) {
     const text = readText(`claude-plugin/commands/${name}.md`)
     assert(text.endsWith('\n'), `${name}.md should end with a trailing newline`)
+  }
+})
+
+test('command files have argument-hint in frontmatter', () => {
+  const commands = ['scan', 'ci-gate', 'fix-plan', 'why']
+  for (const name of commands) {
+    const text = readText(`claude-plugin/commands/${name}.md`)
+    assert(
+      text.includes('argument-hint:'),
+      `${name}.md should have an argument-hint field`
+    )
+  }
+})
+
+test('command files include shell injection guard before bash blocks', () => {
+  const commands = ['scan', 'ci-gate', 'fix-plan', 'why']
+  for (const name of commands) {
+    const text = readText(`claude-plugin/commands/${name}.md`)
+    assert(
+      text.includes('shell control operators'),
+      `${name}.md should warn about shell control operators`
+    )
+    assert(
+      text.includes('plain eco-guardian flags only'),
+      `${name}.md should ask for plain flags when injection is suspected`
+    )
   }
 })

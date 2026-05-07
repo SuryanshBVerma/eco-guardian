@@ -1,6 +1,7 @@
 ---
 description: Run eco-guardian as a policy gate and generate SARIF output.
 allowed-tools: Bash(npx:*)
+argument-hint: [eco-guardian policy flags]
 ---
 
 # Eco Guardian CI Gate
@@ -13,22 +14,18 @@ User arguments:
 $ARGUMENTS
 ```
 
+Before running Bash, inspect `$ARGUMENTS`. If it contains shell control operators such as `;`, `&&`, `||`, `|`, backticks, `$(`, `<`, or `>`, do not run it. Ask the user to provide plain eco-guardian flags only.
+
 If arguments are provided, pass them through:
 
 ```bash
-set +e
-npx -y github:boredom1234/eco-guardian $ARGUMENTS
-status=$?
-echo "eco-guardian exit code: $status"
+npx -y github:boredom1234/eco-guardian $ARGUMENTS; status=$?; echo "eco-guardian exit code: $status"; exit 0
 ```
 
 If no arguments are provided, use this safe default:
 
 ```bash
-set +e
-npx -y github:boredom1234/eco-guardian --path . --ecosystems scan-all --fail-on-severity high --max-critical 0 --export-sarif eco-guardian.sarif --banner off
-status=$?
-echo "eco-guardian exit code: $status"
+npx -y github:boredom1234/eco-guardian --path . --ecosystems scan-all --fail-on-severity high --max-critical 0 --export-sarif eco-guardian.sarif --banner off; status=$?; echo "eco-guardian exit code: $status"; exit 0
 ```
 
 Summarize:

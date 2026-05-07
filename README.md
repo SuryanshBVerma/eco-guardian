@@ -224,6 +224,7 @@ Current `npm test` pipeline:
 - `node test-fixtures.js`
 - `node test-coverage.js`
 - `node test-watch.js`
+- `node test-plugin.js`
 
 `test-ripgrep.js` exists in the repository but is not included in the default `npm test` script.
 
@@ -273,6 +274,12 @@ Restart Claude Code if prompted.
 ```
 
 ### Local plugin development
+
+To test the plugin directly:
+
+```bash
+claude --plugin-dir ./claude-plugin
+```
 
 From the repository root:
 

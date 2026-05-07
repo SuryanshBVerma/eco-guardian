@@ -1,6 +1,7 @@
 ---
 description: Scan the current project or a provided path for vulnerable dependencies with eco-guardian.
 allowed-tools: Bash(npx:*)
+argument-hint: [eco-guardian flags]
 ---
 
 # Eco Guardian Scan
@@ -13,22 +14,18 @@ User arguments:
 $ARGUMENTS
 ```
 
+Before running Bash, inspect `$ARGUMENTS`. If it contains shell control operators such as `;`, `&&`, `||`, `|`, backticks, `$(`, `<`, or `>`, do not run it. Ask the user to provide plain eco-guardian flags only.
+
 If arguments are provided, run:
 
 ```bash
-set +e
-npx -y github:boredom1234/eco-guardian $ARGUMENTS
-status=$?
-echo "eco-guardian exit code: $status"
+npx -y github:boredom1234/eco-guardian $ARGUMENTS; status=$?; echo "eco-guardian exit code: $status"; exit 0
 ```
 
 If no arguments are provided, run:
 
 ```bash
-set +e
-npx -y github:boredom1234/eco-guardian --path . --ecosystems scan-all --banner off
-status=$?
-echo "eco-guardian exit code: $status"
+npx -y github:boredom1234/eco-guardian --path . --ecosystems scan-all --banner off; status=$?; echo "eco-guardian exit code: $status"; exit 0
 ```
 
 After the command finishes, summarize the result for the user:
