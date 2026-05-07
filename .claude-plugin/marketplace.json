@@ -1,0 +1,27 @@
+{
+  "name": "eco-guardian-marketplace",
+  "owner": {
+    "name": "boredom1234",
+    "url": "https://github.com/boredom1234"
+  },
+  "metadata": {
+    "description": "Claude Code plugin marketplace for eco-guardian.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "eco-guardian",
+      "source": "./claude-plugin",
+      "description": "Run eco-guardian dependency vulnerability scans from Claude Code.",
+      "version": "1.0.0",
+      "category": "security",
+      "tags": [
+        "security",
+        "dependencies",
+        "vulnerability-scanning",
+        "osv",
+        "nvd"
+      ]
+    }
+  ]
+}

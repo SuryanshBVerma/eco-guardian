@@ -179,7 +179,11 @@ function buildCommand (inputState = {}, options = {}) {
     !(state.ecosystems.length === 1 && state.ecosystems[0] === 'npm')
   ) {
     parts.push('--ecosystems')
-    parts.push(shellQuote(state.ecosystems.join(','), platform))
+    if (state.ecosystems.length === SUPPORTED_ECOSYSTEMS.length) {
+      parts.push('scan-all')
+    } else {
+      parts.push(shellQuote(state.ecosystems.join(','), platform))
+    }
   }
   if (state.graphResolution) parts.push('--graph-resolution')
   if (

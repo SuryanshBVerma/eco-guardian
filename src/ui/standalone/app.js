@@ -538,12 +538,13 @@
       pushFlag(parts, '--path', s.path, platform)
     }
     if (s.globalOnly) parts.push('--global-only')
-    if (
-      s.ecosystems.length > 0 &&
-      !(s.ecosystems.length === 1 && s.ecosystems[0] === 'npm')
-    ) {
+    if (s.ecosystems.length > 0 && !(s.ecosystems.length === 1 && s.ecosystems[0] === 'npm')) {
       parts.push('--ecosystems')
-      parts.push(shellQuote(s.ecosystems.join(','), platform))
+      if (s.ecosystems.length === SUPPORTED_ECOSYSTEMS.length) {
+        parts.push('scan-all')
+      } else {
+        parts.push(shellQuote(s.ecosystems.join(','), platform))
+      }
     }
     if (s.graphResolution) parts.push('--graph-resolution')
     if (

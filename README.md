@@ -247,6 +247,60 @@ Environment variables:
 - Scheduler examples are in [SCHEDULER_GUIDE.md](SCHEDULER_GUIDE.md).
 - Contributor guidance is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Claude Code Plugin
+
+eco-guardian can also be installed as a Claude Code plugin.
+
+### Install from this GitHub repo
+
+In Claude Code:
+
+```text
+/plugin marketplace add boredom1234/eco-guardian
+/plugin install eco-guardian@eco-guardian-marketplace
+```
+
+Restart Claude Code if prompted.
+
+### Commands
+
+```text
+/eco-guardian:scan
+/eco-guardian:scan --path . --ecosystems npm,python --severity high
+/eco-guardian:ci-gate
+/eco-guardian:fix-plan
+/eco-guardian:why lodash
+```
+
+### Local plugin development
+
+From the repository root:
+
+```bash
+claude
+```
+
+Then in Claude Code:
+
+```text
+/plugin marketplace add .
+/plugin install eco-guardian@eco-guardian-marketplace
+```
+
+Validate plugin metadata:
+
+```bash
+claude plugin validate .
+```
+
+The plugin commands invoke:
+
+```bash
+npx -y github:boredom1234/eco-guardian
+```
+
+The first run requires network access so `npx` can fetch the CLI.
+
 ## License
 
 MIT

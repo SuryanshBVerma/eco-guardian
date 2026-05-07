@@ -52,7 +52,7 @@
   ],
   "scripts": {
     "start": "node eco-guardian.js",
-    "test": "node test.js && node test-ui.js && node test-resolvers.js && node test-gradle.js && node test-gradle-static.js && node test-fixtures.js && node test-coverage.js && node test-watch.js",
+    "test": "node test.js && node test-ui.js && node test-resolvers.js && node test-gradle.js && node test-gradle-static.js && node test-fixtures.js && node test-coverage.js && node test-watch.js && node test-plugin.js",
     "coverage": "c8 npm test",
     "coverage:check": "c8 --check-coverage --lines 75 --functions 70 --branches 65 --statements 75 npm test",
     "pack:check": "npm pack --dry-run"
