@@ -466,7 +466,7 @@ async function runScan (options, state = {}) {
         return {
           findings: [],
           packageCount: 0,
-          policy: null,
+          policy: evaluatePolicy([], options),
           queryDiagnostics: null,
           exitCode: 0
         }
