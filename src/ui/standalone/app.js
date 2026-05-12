@@ -431,6 +431,14 @@
     s.globalOnly = Boolean(s.globalOnly)
     s.ecosystems = normalizeEcosystems(s.ecosystems)
     s.library = s.library == null ? null : String(s.library)
+    if (
+      !s.library &&
+      s.libraryTarget &&
+      s.libraryTarget.ecosystem &&
+      s.libraryTarget.name
+    ) {
+      s.library = s.libraryTarget.ecosystem + ':' + s.libraryTarget.name
+    }
     s.graphResolution = Boolean(s.graphResolution)
     s.gradleTask = s.gradleTask == null ? null : String(s.gradleTask)
     s.dependencyCheckMode = Boolean(s.dependencyCheckMode)
