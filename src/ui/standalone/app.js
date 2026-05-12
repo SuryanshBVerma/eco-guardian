@@ -58,6 +58,14 @@
             help: 'Matches --ecosystems <list>.'
           },
           {
+            key: 'library',
+            label: 'Focus library',
+            type: 'text',
+            placeholder: 'npm:lodash',
+            help:
+              'Matches --library <ecosystem>:<name>. When set, scan is focused to that one library.'
+          },
+          {
             key: 'global',
             label: 'Include / root on Unix-like systems',
             type: 'boolean',
@@ -422,6 +430,7 @@
     s.path = s.path == null ? '' : String(s.path)
     s.globalOnly = Boolean(s.globalOnly)
     s.ecosystems = normalizeEcosystems(s.ecosystems)
+    s.library = s.library == null ? null : String(s.library)
     s.graphResolution = Boolean(s.graphResolution)
     s.gradleTask = s.gradleTask == null ? null : String(s.gradleTask)
     s.dependencyCheckMode = Boolean(s.dependencyCheckMode)
@@ -546,6 +555,7 @@
         parts.push(shellQuote(s.ecosystems.join(','), platform))
       }
     }
+    pushFlag(parts, '--library', s.library, platform)
     if (s.graphResolution) parts.push('--graph-resolution')
     if (
       s.gradleTask &&
@@ -649,6 +659,19 @@
     }
     if (['on', 'off'].indexOf(s.banner) === -1) {
       errors.push('Invalid banner mode.')
+    }
+
+    if (s.library) {
+      const raw = String(s.library).trim()
+      const idx = raw.indexOf(':')
+      if (idx <= 0 || idx === raw.length - 1) {
+        errors.push('Invalid library format. Use <ecosystem>:<name>.')
+      } else {
+        const eco = raw.slice(0, idx).trim().toLowerCase()
+        if (SUPPORTED_ECOSYSTEMS.indexOf(eco) === -1) {
+          errors.push('Unsupported ecosystem in library: ' + eco)
+        }
+      }
     }
     const intChecks = [
       ['maxCritical', s.maxCritical],

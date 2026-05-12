@@ -36,6 +36,13 @@ const UI_MANIFEST = {
           help: 'Matches --ecosystems <list>.'
         },
         {
+          key: 'library',
+          label: 'Focus library',
+          type: 'text',
+          placeholder: 'npm:lodash',
+          help: 'Matches --library <ecosystem>:<name>. When set, scan is focused to that one library.'
+        },
+        {
           key: 'global',
           label: 'Include / root on Unix-like systems',
           type: 'boolean',

@@ -65,6 +65,7 @@ async function testCommandBuilder() {
   const command = buildCommand({
     path: "C:\\demo path",
     ecosystems: ["npm", "gradle"],
+    library: "npm:lodash",
     graphResolution: true,
     gradleTask: ":app:dependencies",
     dependencyCheckMode: true,
@@ -82,6 +83,7 @@ async function testCommandBuilder() {
     "node eco-guardian.js",
     `--path ${shellQuote("C:\\demo path")}`,
     `--ecosystems ${shellQuote("npm,gradle")}`,
+    `--library ${shellQuote("npm:lodash")}`,
     "--graph-resolution",
     `--gradle-task ${shellQuote(":app:dependencies")}`,
     "--dependency-check-mode",
