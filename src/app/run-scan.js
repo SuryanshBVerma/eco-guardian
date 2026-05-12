@@ -48,7 +48,7 @@ const { evaluatePolicy } = require('../policy/gates')
 const musing = require('../cli/musing')
 
 function filterPackageMapByLibraryTarget (packageMap, target) {
-  const { OSV_ECOSYSTEM_MAP } = require('../config/constants')
+  if (!target || !target.ecosystem || !target.name) return packageMap
   if (!target || !target.ecosystem || !target.name) return packageMap
 
   const targetEcosystem = String(target.ecosystem).toLowerCase().trim()
