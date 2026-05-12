@@ -42,10 +42,48 @@ const { writeSarifReport } = require('../report/sarif')
 const { resolveEcosystemPackages } = require('../resolve')
 const {
   DEFAULT_BASELINE_FILE,
+  OSV_ECOSYSTEM_MAP,
   POLICY_FAIL_EXIT_CODE
 } = require('../config/constants')
 const { evaluatePolicy } = require('../policy/gates')
 const musing = require('../cli/musing')
+
+function filterPackageMapByLibraryTarget (packageMap, target) {
+  if (!target || !target.ecosystem || !target.name) return packageMap
+
+  const targetEcosystem = String(target.ecosystem).toLowerCase().trim()
+  const targetOsvEcosystem = String(
+    OSV_ECOSYSTEM_MAP[targetEcosystem] || targetEcosystem
+  )
+    .toLowerCase()
+    .trim()
+  const targetName = String(target.name).toLowerCase().trim()
+
+  const filtered = new Map()
+  for (const [key, pkg] of packageMap.entries()) {
+    const name = String(pkg && pkg.name ? pkg.name : '')
+      .toLowerCase()
+      .trim()
+    if (name !== targetName) continue
+
+    const eco = String(pkg && pkg.ecosystem ? pkg.ecosystem : '')
+      .toLowerCase()
+      .trim()
+    const osvEco = String(pkg && pkg.osvEcosystem ? pkg.osvEcosystem : '')
+      .toLowerCase()
+      .trim()
+
+    if (
+      eco === targetEcosystem ||
+      eco === targetOsvEcosystem ||
+      osvEco === targetOsvEcosystem
+    ) {
+      filtered.set(key, pkg)
+    }
+  }
+
+  return filtered
+}
 
 /**
  * Discovers and harvests packages across all requested ecosystems.
@@ -370,6 +408,10 @@ async function runScan (options, state = {}) {
   if (!options.json) musing.start()
 
   try {
+    if (options.libraryTarget && options.libraryTarget.ecosystem) {
+      options.ecosystems = [String(options.libraryTarget.ecosystem).toLowerCase()]
+    }
+
     if (!options.json) {
       const rgActive = await isRipgrepAvailable()
       log(
@@ -402,6 +444,36 @@ async function runScan (options, state = {}) {
     const collection = await collectPackageMap(options, state)
     const metrics = options.benchmark ? monitor.stop() : null
     if (options.benchmark) monitorStopped = true
+
+    if (options.libraryTarget) {
+      const focused = filterPackageMapByLibraryTarget(
+        collection.packageMap,
+        options.libraryTarget
+      )
+      if (focused.size === 0) {
+        if (options.json) {
+          process.stdout.write('[]\n')
+          process.stderr.write(
+            `[INFO] Target library not found: ${options.libraryTarget.ecosystem}:${options.libraryTarget.name}\n`
+          )
+        } else {
+          log(
+            'info',
+            `Target library not found: ${options.libraryTarget.ecosystem}:${options.libraryTarget.name}`,
+            options
+          )
+        }
+        return {
+          findings: [],
+          packageCount: 0,
+          policy: evaluatePolicy([], options),
+          queryDiagnostics: null,
+          exitCode: 0
+        }
+      }
+
+      collection.packageMap = focused
+    }
 
     return analyzePackageMap(collection.packageMap, options, state, {
       ...collection,

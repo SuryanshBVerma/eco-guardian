@@ -47,6 +47,15 @@ function normalizeState (input = {}) {
   state.path = state.path == null ? '' : String(state.path)
   state.globalOnly = Boolean(state.globalOnly)
   state.ecosystems = normalizeEcosystems(state.ecosystems)
+  state.library = state.library == null ? null : String(state.library)
+  if (
+    !state.library &&
+    state.libraryTarget &&
+    state.libraryTarget.ecosystem &&
+    state.libraryTarget.name
+  ) {
+    state.library = `${state.libraryTarget.ecosystem}:${state.libraryTarget.name}`
+  }
   state.graphResolution = Boolean(state.graphResolution)
   state.gradleTask = state.gradleTask == null ? null : String(state.gradleTask)
   state.dependencyCheckMode = Boolean(state.dependencyCheckMode)
@@ -185,6 +194,7 @@ function buildCommand (inputState = {}, options = {}) {
       parts.push(shellQuote(state.ecosystems.join(','), platform))
     }
   }
+  pushFlag(parts, '--library', state.library, platform)
   if (state.graphResolution) parts.push('--graph-resolution')
   if (
     state.gradleTask &&
@@ -293,6 +303,19 @@ function validateState (inputState = {}) {
   }
   if (!['on', 'off'].includes(state.banner)) {
     errors.push('Invalid banner mode.')
+  }
+
+  if (state.library) {
+    const raw = String(state.library).trim()
+    const idx = raw.indexOf(':')
+    if (idx <= 0 || idx === raw.length - 1) {
+      errors.push('Invalid library format. Use <ecosystem>:<name>.')
+    } else {
+      const eco = raw.slice(0, idx).trim().toLowerCase()
+      if (!SUPPORTED_ECOSYSTEMS.includes(eco)) {
+        errors.push(`Unsupported ecosystem in library: ${eco}`)
+      }
+    }
   }
   for (const [key, value] of [
     ['maxCritical', state.maxCritical],

@@ -7,6 +7,24 @@ const {
   SUPPORTED_ECOSYSTEMS
 } = require('../config/constants')
 
+function parseLibraryTarget (value) {
+  const raw = String(value == null ? '' : value).trim()
+  if (!raw) throw new Error('Missing value for --library')
+  const idx = raw.indexOf(':')
+  if (idx <= 0 || idx === raw.length - 1) {
+    throw new Error('Invalid --library. Use: --library <ecosystem>:<name>')
+  }
+  const ecosystem = raw.slice(0, idx).trim().toLowerCase()
+  const name = raw.slice(idx + 1).trim()
+  if (!SUPPORTED_ECOSYSTEMS.includes(ecosystem)) {
+    throw new Error(`Unsupported ecosystem in --library: ${ecosystem}`)
+  }
+  if (!name) {
+    throw new Error('Invalid --library. Missing package name.')
+  }
+  return { ecosystem, name }
+}
+
 function parseEcosystemList (value) {
   const list = value
     .split(',')
@@ -33,6 +51,9 @@ function printUsage () {
   )
   process.stdout.write(
     '  --global-only        Only scan global npm installs\n'
+  )
+  process.stdout.write(
+    '  --library <ecosystem>:<name>  Focus scan on a single library within one ecosystem (example: npm:lodash)\n'
   )
   process.stdout.write(
     '  --ecosystems <list>  Comma-separated ecosystems: npm,maven,gradle,nuget,vscode,python,go,ruby,rust,php,dart,elixir,conan,haskell,swift,r or scan-all (default: npm)\n'
@@ -146,6 +167,7 @@ function parseArgs (argv) {
     path: os.homedir(),
     pathExplicit: false,
     globalOnly: false,
+    libraryTarget: null,
     ecosystems: ['npm'],
     graphResolution: false,
     ui: false,
@@ -215,6 +237,15 @@ function parseArgs (argv) {
     }
     if (token === '--global-only') {
       args.globalOnly = true
+      continue
+    }
+    if (token === '--library' || token === '--lib') {
+      const next = argv[i + 1]
+      if (!next || next.startsWith('--')) {
+        throw new Error(`Missing value for ${token}`)
+      }
+      args.libraryTarget = parseLibraryTarget(next)
+      i += 1
       continue
     }
     if (token === '--ecosystems') {

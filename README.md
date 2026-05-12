@@ -51,6 +51,8 @@ set NVD_API_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx && node eco-guardian.js --e
 node eco-guardian.js --no-nvd --ecosystems gradle
 node eco-guardian.js --export-html report.html --export-sarif report.sarif
 node eco-guardian.js --baseline .eco-guardian-baseline.json --strict-baseline
+node eco-guardian.js --library npm:lodash --path ./my-project
+node eco-guardian.js --library maven:org.apache.logging.log4j:log4j-core --ecosystems maven --nvd-mode on
 node eco-guardian.js --watch --notify-on-severity high
 node eco-guardian.js --ui
 ```
@@ -61,6 +63,7 @@ node eco-guardian.js --ui
 | ------------------------------- | --------------------------------------------------------------------------------------- |
 | `--path <dir>`                  | Scan a specific directory.                                                              |
 | `--global-only`                 | Scan only global npm installs.                                                          |
+| `--library <ecosystem>:<name>`  | Focus scan on a single library within one ecosystem (e.g. `npm:lodash`).                |
 | `--ecosystems <list\|scan-all>` | Comma-separated list or `scan-all` for all 16 ecosystems (default: `npm`).              |
 | `--graph-resolution`            | Resolve dependency graphs with ecosystem-native resolvers.                              |
 | `--ui`                          | Launch a local browser UI for generating CLI commands.                                  |

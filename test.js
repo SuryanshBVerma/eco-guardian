@@ -159,6 +159,22 @@ async function testParseArgs () {
   assert(p.failOnSeverity === 'high', 'parseArgs --fail-on-severity failed')
   assert(p.maxCritical === 0, 'parseArgs --max-critical failed')
   assert(p.maxHigh === 2, 'parseArgs --max-high failed')
+
+  const lib = guardian.parseArgs(['--library', 'npm:lodash'])
+  assert(
+    lib.libraryTarget &&
+      lib.libraryTarget.ecosystem === 'npm' &&
+      lib.libraryTarget.name === 'lodash',
+    'parseArgs --library failed'
+  )
+
+  let threwLib = false
+  try {
+    guardian.parseArgs(['--library', 'badformat'])
+  } catch (_) {
+    threwLib = true
+  }
+  assert(threwLib, 'parseArgs should reject invalid --library format')
 }
 
 async function testPublicExportsSurface () {
