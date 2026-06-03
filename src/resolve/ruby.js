@@ -33,7 +33,7 @@ async function resolveRubyPackages (roots, options, state) {
           'require "bundler"; Bundler.load.specs.each{|s| puts "#{s.name} #{s.version}"}'
         const stdout = await shared.execTool('ruby', ['-e', rubyScript], {
           cwd: root,
-          timeout: 120000
+          timeoutMs: 120000
         })
         const lines = stdout.split(/\r?\n/).filter(Boolean)
 

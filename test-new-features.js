@@ -60,7 +60,7 @@ test('stablePackageId generates deterministic package IDs', () => {
   const context = { runId: 'test_run' }
   const pkg = { ecosystem: 'npm', name: 'lodash', version: '4.17.21' }
   const id1 = stablePackageId(pkg, context)
-  const id2 = stablePackageId(pkg, context)
+  const id2 = stablePackageId(pkg, { runId: 'different_run' })
   assert.strictEqual(id1, id2)
   assert.ok(id1.startsWith('pkg:'))
 })
@@ -69,7 +69,7 @@ test('stableFindingId generates deterministic finding IDs', () => {
   const context = { runId: 'test_run' }
   const finding = { ecosystem: 'npm', package: 'lodash', version: '4.17.21', advisory_id: 'GHSA-1234' }
   const id1 = stableFindingId(finding, context)
-  const id2 = stableFindingId(finding, context)
+  const id2 = stableFindingId(finding, { runId: 'different_run' })
   assert.strictEqual(id1, id2)
   assert.ok(id1.startsWith('finding:'))
 })
@@ -108,20 +108,45 @@ test('isBroadRoot detects broad roots', () => {
   assert.strictEqual(isBroadRoot(path.join(os.homedir(), 'projects')), false)
 })
 
-test('baselineCandidateRoots returns candidate roots', () => {
+test('resolveProfileRoots rejects broad roots for baseline profile', async () => {
+  const home = os.homedir()
+  await assert.rejects(
+    () => resolveProfileRoots({ profile: 'baseline', roots: [home] }),
+    /Broad root/
+  )
+})
+
+test('resolveProfileRoots rejects broad roots for project profile', async () => {
+  const home = os.homedir()
+  await assert.rejects(
+    () => resolveProfileRoots({ profile: 'project', roots: [home] }),
+    /Broad root/
+  )
+})
+
+test('resolveProfileRoots requires explicit roots for deep profile', async () => {
+  await assert.rejects(
+    () => resolveProfileRoots({ profile: 'deep', roots: [] }),
+    /Deep profile requires at least one explicit --root/
+  )
+})
+
+test('baselineCandidateRoots returns candidate roots without bare home', () => {
   const home = os.homedir()
   const candidates = baselineCandidateRoots(home)
   assert.ok(Array.isArray(candidates))
   assert.ok(candidates.length > 0)
   assert.ok(candidates.every((c) => c.path && c.kind))
+  assert.ok(!candidates.some((c) => c.path === home), 'Should not include bare home directory')
 })
 
-test('projectCandidateRoots returns candidate roots', () => {
+test('projectCandidateRoots returns candidate roots without bare home', () => {
   const home = os.homedir()
   const candidates = projectCandidateRoots(home)
   assert.ok(Array.isArray(candidates))
   assert.ok(candidates.length > 0)
   assert.ok(candidates.some((c) => c.kind === ROOT_KINDS.project))
+  assert.ok(!candidates.some((c) => c.path === home), 'Should not include bare home directory')
 })
 
 test('parseExposureCatalog parses valid catalog', () => {
@@ -152,6 +177,14 @@ test('parseExposureCatalog rejects missing schema_version', () => {
 test('parseExposureCatalog rejects missing entries', () => {
   const raw = JSON.stringify({ schema_version: '0.1.0' })
   assert.throws(() => parseExposureCatalog(raw), /entries/)
+})
+
+test('parseExposureCatalog rejects unsupported schema_version', () => {
+  const raw = JSON.stringify({
+    schema_version: '99.0.0',
+    entries: [{ id: 'test', ecosystem: 'npm', package: 'lodash', versions: ['1.0.0'] }]
+  })
+  assert.throws(() => parseExposureCatalog(raw), /Unsupported schema_version/)
 })
 
 test('validateExposureCatalogEntry validates entry fields', () => {
@@ -634,6 +667,7 @@ test('loadExposureCatalog loads valid JSON file', async () => {
     assert.strictEqual(result.entries.length, 1)
     assert.strictEqual(result.index.size, 1)
     assert.ok(result.index.has('npm|lodash|4.17.20'))
+    assert.strictEqual(result.schemaVersion, '0.1.0')
   })
 })
 

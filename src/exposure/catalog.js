@@ -2,7 +2,7 @@
 
 const fsp = require('fs/promises')
 const path = require('path')
-const { SUPPORTED_ECOSYSTEMS, DEFAULT_MAX_CATALOG_SIZE } = require('../config/constants')
+const { SUPPORTED_ECOSYSTEMS, DEFAULT_MAX_CATALOG_SIZE, SCAN_SCHEMA_VERSION } = require('../config/constants')
 
 function validateExposureCatalogEntry (entry, index) {
   const errors = []
@@ -42,6 +42,10 @@ function validateExposureCatalog (catalog) {
 
   if (!catalog.schema_version || typeof catalog.schema_version !== 'string') {
     return { valid: false, errors: ['Missing or invalid "schema_version"'] }
+  }
+
+  if (catalog.schema_version !== SCAN_SCHEMA_VERSION) {
+    return { valid: false, errors: [`Unsupported schema_version "${catalog.schema_version}"`] }
   }
 
   if (!catalog.entries || !Array.isArray(catalog.entries)) {
@@ -102,6 +106,7 @@ async function loadExposureCatalog (fileOrDir, options = {}) {
   }
 
   const allEntries = []
+  let catalogSchemaVersion = null
 
   if (stat.isDirectory()) {
     const files = await fsp.readdir(resolved)
@@ -116,6 +121,10 @@ async function loadExposureCatalog (fileOrDir, options = {}) {
       const raw = await fsp.readFile(filePath, 'utf8')
       const catalog = parseExposureCatalog(raw)
       allEntries.push(...catalog.entries)
+      if (catalogSchemaVersion && catalogSchemaVersion !== catalog.schema_version) {
+        throw new Error(`Schema version mismatch in directory: expected "${catalogSchemaVersion}", got "${catalog.schema_version}" in ${file}`)
+      }
+      catalogSchemaVersion = catalog.schema_version
     }
   } else {
     if (stat.size > maxSize) {
@@ -124,6 +133,7 @@ async function loadExposureCatalog (fileOrDir, options = {}) {
     const raw = await fsp.readFile(resolved, 'utf8')
     const catalog = parseExposureCatalog(raw)
     allEntries.push(...catalog.entries)
+    catalogSchemaVersion = catalog.schema_version
   }
 
   const index = buildCatalogIndex(allEntries)
@@ -131,7 +141,7 @@ async function loadExposureCatalog (fileOrDir, options = {}) {
   return {
     entries: allEntries,
     index,
-    schemaVersion: allEntries.length > 0 ? '0.1.0' : null
+    schemaVersion: catalogSchemaVersion
   }
 }
 

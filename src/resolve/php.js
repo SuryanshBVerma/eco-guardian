@@ -29,7 +29,7 @@ async function resolvePhpPackages (roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await shared.execTool('composer', ['show', '--format', 'json', '--no-dev'], { cwd: root, timeout: 120000 })
+        const stdout = await shared.execTool('composer', ['show', '--format', 'json', '--no-dev'], { cwd: root, timeoutMs: 120000 })
         const data = JSON.parse(stdout)
 
         const packages = data.installed || []

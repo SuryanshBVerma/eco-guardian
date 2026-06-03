@@ -19,8 +19,7 @@ function stablePackageId (pkg, context) {
   const parts = [
     pkg.ecosystem || '',
     pkg.name || '',
-    pkg.version || '',
-    context.runId || ''
+    pkg.version || ''
   ]
   return stableId('pkg', parts)
 }
@@ -30,8 +29,7 @@ function stableFindingId (finding, context) {
     finding.ecosystem || '',
     finding.package || '',
     finding.version || '',
-    finding.advisory_id || '',
-    context.runId || ''
+    finding.advisory_id || ''
   ]
   return stableId('finding', parts)
 }

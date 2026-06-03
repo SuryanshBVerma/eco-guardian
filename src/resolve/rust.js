@@ -29,7 +29,7 @@ async function resolveRustPackages (roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await shared.execTool('cargo', ['metadata', '--format-version', '1', '--no-deps'], { cwd: root, timeout: 120000 })
+        const stdout = await shared.execTool('cargo', ['metadata', '--format-version', '1', '--no-deps'], { cwd: root, timeoutMs: 120000 })
         const data = JSON.parse(stdout)
 
         if (!data.packages) return

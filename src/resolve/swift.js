@@ -29,7 +29,7 @@ async function resolveSwiftPackages (roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await shared.execTool('swift', ['package', 'show-dependencies', '--format', 'json'], { cwd: root, timeout: 120000 })
+        const stdout = await shared.execTool('swift', ['package', 'show-dependencies', '--format', 'json'], { cwd: root, timeoutMs: 120000 })
         const data = JSON.parse(stdout)
 
         // swift package show-dependencies --format json output:

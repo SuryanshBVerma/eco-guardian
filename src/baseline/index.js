@@ -55,7 +55,7 @@ async function loadBaseline (filePath, options = {}) {
 
 function normalizeEcosystem (value) {
   const raw = String(value || '').toLowerCase()
-  if (raw === 'vscode' || raw === 'VSCode') return 'vscode'
+  if (raw === 'vscode') return 'vscode'
   return raw
 }
 

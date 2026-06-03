@@ -61,8 +61,8 @@ async function runSelftest (options = {}) {
       const pkg = { ecosystem: 'npm', name: 'lodash', version: '4.17.21' }
       const id = stablePackageId(pkg, context)
       assert(typeof id === 'string' && id.startsWith('pkg:'), 'stablePackageId format')
-      const id2 = stablePackageId(pkg, context)
-      assert(id === id2, 'stablePackageId determinism')
+      const id2 = stablePackageId(pkg, { runId: 'test_run_2' })
+      assert(id === id2, 'stablePackageId cross-run determinism')
       logResult('stablePackageId is deterministic', true)
     } catch (err) {
       logResult('stablePackageId is deterministic', false, err.message)
@@ -73,6 +73,8 @@ async function runSelftest (options = {}) {
       const finding = { ecosystem: 'npm', package: 'lodash', version: '4.17.21', advisory_id: 'GHSA-test' }
       const id = stableFindingId(finding, context)
       assert(typeof id === 'string' && id.startsWith('finding:'), 'stableFindingId format')
+      const id2 = stableFindingId(finding, { runId: 'test_run_2' })
+      assert(id === id2, 'stableFindingId cross-run determinism')
       logResult('stableFindingId format', true)
     } catch (err) {
       logResult('stableFindingId format', false, err.message)

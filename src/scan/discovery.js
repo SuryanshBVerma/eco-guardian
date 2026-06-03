@@ -119,7 +119,7 @@ async function getGlobalNpmRoot () {
 }
 
 async function discoverScanRoots (options, state) {
-  if (options.profile && options.profile !== 'legacy') {
+  if ((options.roots && options.roots.length > 0) || (options.profile && options.profile !== 'legacy')) {
     return resolveProfileRoots(options, state)
   }
   return resolveLegacyRoots(options, state, { getGlobalNpmRoot })

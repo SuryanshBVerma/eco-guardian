@@ -31,7 +31,7 @@ async function resolveDartPackages (roots, options, state) {
       try {
         const stdout = await shared.execTool('dart', ['pub', 'deps', '--json'], {
           cwd: root,
-          timeout: 120000
+          timeoutMs: 120000
         })
         const data = JSON.parse(stdout)
 

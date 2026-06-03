@@ -68,9 +68,7 @@ async function filterExistingRoots (rootEntries) {
 }
 
 function baselineCandidateRoots (home) {
-  const candidates = [
-    { path: home, kind: ROOT_KINDS.userPackage }
-  ]
+  const candidates = []
 
   if (PLATFORM === 'win32') {
     candidates.push({ path: path.join(home, 'AppData', 'Roaming', 'npm'), kind: ROOT_KINDS.globalPackage })
@@ -84,9 +82,7 @@ function baselineCandidateRoots (home) {
 }
 
 function projectCandidateRoots (home) {
-  const candidates = [
-    { path: home, kind: ROOT_KINDS.userPackage }
-  ]
+  const candidates = []
 
   const projectDirs = ['projects', 'repos', 'code', 'src', 'dev', 'workspace', 'work']
   for (const dir of projectDirs) {
@@ -128,8 +124,12 @@ async function resolveProfileRoots (options, state) {
 
   if (options.roots && options.roots.length > 0) {
     for (const root of options.roots) {
+      const resolved = path.resolve(root)
+      if ((options.profile === 'baseline' || options.profile === 'project') && isBroadRoot(resolved)) {
+        throw new Error(`Broad root "${root}" is not allowed for profile "${options.profile}". Use a more specific path.`)
+      }
       rootEntries.push({
-        path: path.resolve(root),
+        path: resolved,
         kind: classifyRoot(root, options.profile)
       })
     }
@@ -145,12 +145,7 @@ async function resolveProfileRoots (options, state) {
         notes.push('Project profile: common project directories and editor extensions')
         break
       case 'deep':
-        rootEntries = [
-          ...baselineCandidateRoots(home),
-          ...systemCandidateRoots()
-        ]
-        notes.push('Deep profile: broad filesystem scan (use with caution)')
-        break
+        throw new Error('Deep profile requires at least one explicit --root. Pass --root /path/to/scan.')
       default:
         rootEntries = baselineCandidateRoots(home)
         notes.push(`Unknown profile "${options.profile}", falling back to baseline`)
@@ -162,7 +157,17 @@ async function resolveProfileRoots (options, state) {
       const publicDir = process.env.PUBLIC || 'C:\\Users\\Public'
       rootEntries.push({ path: publicDir, kind: ROOT_KINDS.userPackage })
     } else {
-      rootEntries.push({ path: '/home', kind: ROOT_KINDS.userPackage })
+      let userDirs
+      try {
+        userDirs = await fsp.readdir('/home', { withFileTypes: true })
+      } catch (_) {
+        userDirs = []
+      }
+      for (const entry of userDirs) {
+        if (entry.isDirectory()) {
+          rootEntries.push({ path: path.join('/home', entry.name), kind: ROOT_KINDS.userPackage })
+        }
+      }
     }
     notes.push('Including all-user directories')
   }

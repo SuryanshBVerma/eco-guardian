@@ -258,9 +258,7 @@ async function analyzePackageMap (
         log('info', `Exposure catalog matched ${exposureFindings.length} package(s)`, options)
       }
     } catch (err) {
-      if (!options.json) {
-        log('warn', `Exposure catalog error: ${err.message}`, options)
-      }
+      throw new Error(`Exposure catalog error: ${err.message}`)
     }
   }
 

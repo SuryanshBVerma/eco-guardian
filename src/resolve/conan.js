@@ -29,7 +29,7 @@ async function resolveConanPackages (roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await shared.execTool('conan', ['graph', 'info', '.', '--format', 'json'], { cwd: root, timeout: 120000 })
+        const stdout = await shared.execTool('conan', ['graph', 'info', '.', '--format', 'json'], { cwd: root, timeoutMs: 120000 })
         const data = JSON.parse(stdout)
 
         const nodes = (data.graph && data.graph.nodes) || data.nodes || {}
