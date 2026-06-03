@@ -29,7 +29,7 @@ async function resolvePythonPackages (roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await shared.execAsync('python -m pip inspect', {
+        const stdout = await shared.execTool('python', ['-m', 'pip', 'inspect'], {
           cwd: root
         })
         const data = JSON.parse(stdout)

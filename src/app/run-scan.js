@@ -39,7 +39,9 @@ const { writeCsvReport } = require('../report/csv')
 const { ResourceMonitor } = require('../shared/monitor')
 const { loadBaseline, applyBaseline, writeBaseline } = require('../baseline')
 const { writeSarifReport } = require('../report/sarif')
+const { writeInventoryJsonl } = require('../report/inventory-jsonl')
 const { resolveEcosystemPackages } = require('../resolve')
+const { createScanContext } = require('../shared/ids')
 const {
   DEFAULT_BASELINE_FILE,
   OSV_ECOSYSTEM_MAP,
@@ -230,15 +232,38 @@ async function analyzePackageMap (
   state = {},
   metadata = {}
 ) {
-  const { phaseTimes = {}, resolutionSummary = [], counters = {} } = metadata
+  const { phaseTimes = {}, resolutionSummary = [], counters = {}, scanContext } = metadata
 
-  const queryStart = nowMs()
-  const vulnerabilityMap = await queryVulnerabilities(packageMap, options)
-  const queryDiagnostics = vulnerabilityMap.__diagnostics || null
-  phaseTimes.query = Date.now() - queryStart
+  let vulnerabilityMap = {}
+  let queryDiagnostics = null
+
+  if (!options.offlineExposureOnly) {
+    const queryStart = nowMs()
+    vulnerabilityMap = await queryVulnerabilities(packageMap, options)
+    queryDiagnostics = vulnerabilityMap.__diagnostics || null
+    phaseTimes.query = Date.now() - queryStart
+  }
 
   const reportStart = nowMs()
-  const findings = await buildFindings(packageMap, vulnerabilityMap, state)
+  const findings = await buildFindings(packageMap, vulnerabilityMap, state, scanContext)
+
+  if (options.exposureCatalog) {
+    const { loadExposureCatalog } = require('../exposure/catalog')
+    const { matchExposureCatalog } = require('../exposure/match')
+    try {
+      const catalog = await loadExposureCatalog(options.exposureCatalog, options)
+      const exposureFindings = matchExposureCatalog(packageMap, catalog, options, scanContext)
+      findings.push(...exposureFindings)
+      if (!options.json) {
+        log('info', `Exposure catalog matched ${exposureFindings.length} package(s)`, options)
+      }
+    } catch (err) {
+      if (!options.json) {
+        log('warn', `Exposure catalog error: ${err.message}`, options)
+      }
+    }
+  }
+
   phaseTimes.report = Date.now() - reportStart
 
   const fixFile = await writeFixScript(findings, options)
@@ -403,6 +428,7 @@ async function analyzePackageMap (
 async function runScan (options, state = {}) {
   const monitor = new ResourceMonitor(options)
   let monitorStopped = false
+  const scanContext = createScanContext(options)
 
   if (options.benchmark) monitor.start()
   if (!options.json) musing.start()
@@ -444,6 +470,7 @@ async function runScan (options, state = {}) {
     const collection = await collectPackageMap(options, state)
     const metrics = options.benchmark ? monitor.stop() : null
     if (options.benchmark) monitorStopped = true
+    scanContext.roots = collection.rootsInfo.rootEntries || []
 
     if (options.libraryTarget) {
       const focused = filterPackageMapByLibraryTarget(
@@ -475,10 +502,18 @@ async function runScan (options, state = {}) {
       collection.packageMap = focused
     }
 
-    return analyzePackageMap(collection.packageMap, options, state, {
+    const result = await analyzePackageMap(collection.packageMap, options, state, {
       ...collection,
-      metrics
+      metrics,
+      scanContext
     })
+
+    scanContext.status = 'complete'
+    scanContext.result = result
+
+    await writeInventoryJsonl(collection.packageMap, options, scanContext)
+
+    return { ...result, scanContext }
   } finally {
     if (!options.json) musing.stop()
     if (options.benchmark && !monitorStopped) {

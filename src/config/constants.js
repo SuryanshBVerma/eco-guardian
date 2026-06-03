@@ -1,9 +1,26 @@
 'use strict'
 
 const VERSION = '2.0.0'
+const SCAN_SCHEMA_VERSION = '0.1.0'
 const DEFAULT_BASELINE_FILE = '.eco-guardian-baseline.json'
 const PLATFORM = process.platform
 const SEVERITY_ORDER = { low: 1, moderate: 2, high: 3, critical: 4 }
+
+const SCAN_PROFILES = ['legacy', 'baseline', 'project', 'deep']
+const DEFAULT_SCAN_PROFILE = 'legacy'
+const ROOT_KINDS = {
+  globalPackage: 'global_package_root',
+  userPackage: 'user_package_root',
+  project: 'project_root',
+  editorExtension: 'editor_extension_root',
+  browserExtension: 'browser_extension_root',
+  mcpConfig: 'mcp_config_root',
+  agentSkill: 'agent_skill_root',
+  homebrew: 'homebrew_root',
+  deepHome: 'deep_home_root',
+  unknown: 'unknown'
+}
+const DEFAULT_MAX_CATALOG_SIZE = 64 * 1024 * 1024
 
 const SUPPORTED_ECOSYSTEMS = [
   'npm',
@@ -173,6 +190,7 @@ const DEFAULT_WATCH_DEBOUNCE_MS = 1500
 
 module.exports = {
   VERSION,
+  SCAN_SCHEMA_VERSION,
   PLATFORM,
   SEVERITY_ORDER,
   COLORS,
@@ -182,6 +200,10 @@ module.exports = {
   API_CONCURRENCY,
   RESOLUTION_CONCURRENCY,
   DEFAULT_BASELINE_FILE,
+  SCAN_PROFILES,
+  DEFAULT_SCAN_PROFILE,
+  ROOT_KINDS,
+  DEFAULT_MAX_CATALOG_SIZE,
   OSV_BATCH_SIZE,
   CACHE_TTL_MS,
   HTTP_RETRY_MAX,

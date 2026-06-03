@@ -30,7 +30,7 @@ async function resolveNpmPackages (roots, options, state) {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
         const stdout = await shared
-          .execAsync('npm ls --all --json', {
+          .execTool('npm', ['ls', '--all', '--json'], {
             cwd: root
           })
           .catch((err) => {

@@ -1,6 +1,6 @@
 'use strict'
 
-const { SUPPORTED_ECOSYSTEMS } = require('../config/constants')
+const { SUPPORTED_ECOSYSTEMS, SCAN_PROFILES } = require('../config/constants')
 
 const UI_MANIFEST = {
   title: 'eco-guardian command builder',
@@ -11,6 +11,35 @@ const UI_MANIFEST = {
       label: 'Target',
       description: 'Where the scan should run.',
       fields: [
+        {
+          key: 'profile',
+          label: 'Scan profile',
+          type: 'select',
+          options: SCAN_PROFILES.map((value) => ({
+            value,
+            label: value
+          })),
+          help: 'Matches --profile <mode>. Controls root discovery behavior.'
+        },
+        {
+          key: 'roots',
+          label: 'Explicit roots',
+          type: 'text',
+          placeholder: '/path/to/scan (comma-separated)',
+          help: 'Matches --root <dir>. Repeatable, comma-separated.'
+        },
+        {
+          key: 'listRoots',
+          label: 'List discovered roots',
+          type: 'boolean',
+          help: 'Matches --list-roots. Shows roots and exits.'
+        },
+        {
+          key: 'allUsers',
+          label: 'Include all-user directories',
+          type: 'boolean',
+          help: 'Matches --all-users.'
+        },
         {
           key: 'path',
           label: 'Scan directory',
@@ -181,6 +210,26 @@ const UI_MANIFEST = {
           type: 'text',
           placeholder: 'report.csv',
           help: 'Matches --export-csv <file>.'
+        },
+        {
+          key: 'exportInventoryJsonl',
+          label: 'Export inventory NDJSON',
+          type: 'text',
+          placeholder: 'inventory.ndjson',
+          help: 'Matches --export-inventory-jsonl <file>.'
+        },
+        {
+          key: 'exposureCatalog',
+          label: 'Exposure catalog',
+          type: 'text',
+          placeholder: 'catalog.json or directory',
+          help: 'Matches --exposure-catalog <file-or-dir>.'
+        },
+        {
+          key: 'offlineExposureOnly',
+          label: 'Offline exposure only',
+          type: 'boolean',
+          help: 'Matches --offline-exposure-only. Skips vulnerability DB queries.'
         }
       ]
     },
@@ -322,6 +371,12 @@ const UI_MANIFEST = {
           label: 'Verbose output',
           type: 'boolean',
           help: 'Matches --verbose.'
+        },
+        {
+          key: 'selftest',
+          label: 'Run selftest',
+          type: 'boolean',
+          help: 'Matches --selftest. Runs self-contained validation.'
         }
       ]
     }

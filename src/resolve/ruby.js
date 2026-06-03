@@ -31,7 +31,7 @@ async function resolveRubyPackages (roots, options, state) {
       try {
         const rubyScript =
           'require "bundler"; Bundler.load.specs.each{|s| puts "#{s.name} #{s.version}"}'
-        const stdout = await shared.execAsync(`ruby -e '${rubyScript}'`, {
+        const stdout = await shared.execTool('ruby', ['-e', rubyScript], {
           cwd: root,
           timeout: 120000
         })

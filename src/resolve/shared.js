@@ -1,30 +1,26 @@
 'use strict'
 
-const { exec } = require('child_process')
+const { runCommand } = require('../shared/command')
 
 /**
- * Execute a shell command and return output as a string.
+ * Execute a command using execFile (safer than shell string execution).
  * Resolves with stdout, rejects with Error if command fails.
  */
-function execAsync (command, options = {}) {
-  return new Promise((resolve, reject) => {
-    exec(
-      command,
-      { maxBuffer: 10 * 1024 * 1024, ...options },
-      (error, stdout, stderr) => {
-        if (error) {
-          const err = new Error(
-            `Command failed: ${command}\n${stderr}\nstdout: ${stdout}`
-          )
-          err.code = error.code
-          err.stderr = stderr
-          err.stdout = stdout
-          return reject(err)
-        }
-        resolve(stdout)
-      }
-    )
+async function execTool (file, args = [], options = {}) {
+  const result = await runCommand(file, args, {
+    cwd: options.cwd,
+    timeoutMs: options.timeoutMs || 60000
   })
+  if (!result.ok) {
+    const err = new Error(
+      `Command failed: ${file} ${args.join(' ')}\n${result.stderr}\nstdout: ${result.stdout}`
+    )
+    err.code = result.error && result.error.code
+    err.stderr = result.stderr
+    err.stdout = result.stdout
+    throw err
+  }
+  return result.stdout
 }
 
 /**
@@ -47,12 +43,12 @@ function createGraphPackage (
     resolution_mode: 'graph',
     resolved_path: pathArray,
     depth,
-    paths: [], // Locations for reporting
-    occurrences: [] // For legacy compatibility
+    paths: [],
+    occurrences: []
   }
 }
 
 module.exports = {
-  execAsync,
+  execTool,
   createGraphPackage
 }

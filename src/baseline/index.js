@@ -53,6 +53,12 @@ async function loadBaseline (filePath, options = {}) {
   }
 }
 
+function normalizeEcosystem (value) {
+  const raw = String(value || '').toLowerCase()
+  if (raw === 'vscode' || raw === 'VSCode') return 'vscode'
+  return raw
+}
+
 function applyBaseline (findings, baseline) {
   if (!baseline || baseline.length === 0) {
     return { findings, suppressedCount: 0 }
@@ -65,8 +71,7 @@ function applyBaseline (findings, baseline) {
   for (const finding of findings) {
     const match = baseline.find((b) => {
       if (b.status === 'disabled') return false
-      // Basic match
-      if (b.ecosystem !== finding.ecosystem) return false
+      if (normalizeEcosystem(b.ecosystem) !== normalizeEcosystem(finding.ecosystem)) return false
       if (b.package !== finding.package) return false
       if (b.advisory_id !== finding.advisory_id) return false
       if (b.version && b.version !== finding.version) return false

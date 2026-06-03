@@ -7,6 +7,7 @@ const {
   fixStepsToDisplayCommands
 } = require('./fix')
 const { generateRemediationHint } = require('./remediation')
+const { stableFindingId } = require('../shared/ids')
 
 /**
  * Builds structured finding objects from harvested packages and vulnerability data.
@@ -15,9 +16,10 @@ const { generateRemediationHint } = require('./remediation')
  * @param {Map} packageMap - Harvested packages.
  * @param {object} vulnerabilityMap - Results from queryVulnerabilities.
  * @param {object} state - Runtime state (used for global root path).
+ * @param {object} [scanContext] - Optional scan context for stable IDs.
  * @returns {Promise<object[]>}
  */
-async function buildFindings (packageMap, vulnerabilityMap, state) {
+async function buildFindings (packageMap, vulnerabilityMap, state, scanContext) {
   const findings = []
   const globalRoot = state.globalRoot || null
 
@@ -61,7 +63,7 @@ async function buildFindings (packageMap, vulnerabilityMap, state) {
     })
 
     for (const advisory of record.advisories) {
-      findings.push({
+      const finding = {
         fingerprint: `${pkg.ecosystem}|${pkg.name}|${pkg.version}|${advisory.id}`,
         ecosystem: pkg.ecosystem,
         package: pkg.name,
@@ -83,7 +85,15 @@ async function buildFindings (packageMap, vulnerabilityMap, state) {
         fix_commands: fixCommands,
         fix_command: fixCommand,
         references: advisory.references || []
-      })
+      }
+
+      if (scanContext) {
+        finding.finding_id = stableFindingId(finding, scanContext)
+        finding.run_id = scanContext.runId
+        finding.scan_profile = scanContext.profile || 'legacy'
+      }
+
+      findings.push(finding)
     }
   }
 

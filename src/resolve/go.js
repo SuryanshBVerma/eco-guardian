@@ -29,10 +29,10 @@ async function resolveGoPackages (roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const graphStdout = await shared.execAsync('go mod graph', {
+        const graphStdout = await shared.execTool('go', ['mod', 'graph'], {
           cwd: root
         })
-        const listStdout = await shared.execAsync('go list -m -json all', {
+        const listStdout = await shared.execTool('go', ['list', '-m', '-json', 'all'], {
           cwd: root
         })
 

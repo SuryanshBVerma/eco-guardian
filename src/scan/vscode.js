@@ -76,12 +76,12 @@ async function collectVSCodeExtensions (roots, options, state) {
         ) {
           const name = getOSVPackageName(manifest)
           const version = manifest.version
-          const key = `VSCode|${name}|${version}`
+          const key = `vscode|${name}|${version}`
 
           if (!packageMap.has(key)) {
             packageMap.set(key, {
               key,
-              ecosystem: 'VSCode',
+              ecosystem: 'vscode',
               name,
               version,
               osvEcosystem: 'VSCode',

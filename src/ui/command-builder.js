@@ -7,7 +7,10 @@ const {
   DEFAULT_RECONCILE_INTERVAL_SEC,
   DEFAULT_WATCH_DEBOUNCE_MS,
   DEFAULT_WATCH_STATE_FILE,
-  SUPPORTED_ECOSYSTEMS
+  SUPPORTED_ECOSYSTEMS,
+  SCAN_PROFILES,
+  DEFAULT_SCAN_PROFILE,
+  DEFAULT_MAX_CATALOG_SIZE
 } = require('../config/constants')
 
 function shellQuote (value, platform = process.platform) {
@@ -44,6 +47,21 @@ function normalizeEcosystems (value) {
 
 function normalizeState (input = {}) {
   const state = { ...input }
+  state.profile = String(state.profile || DEFAULT_SCAN_PROFILE).toLowerCase()
+  state.roots = Array.isArray(state.roots)
+    ? state.roots
+    : state.roots
+      ? String(state.roots).split(',').map((s) => s.trim()).filter(Boolean)
+      : []
+  state.listRoots = Boolean(state.listRoots)
+  state.allUsers = Boolean(state.allUsers)
+  state.exposureCatalog = state.exposureCatalog == null ? null : String(state.exposureCatalog)
+  state.offlineExposureOnly = Boolean(state.offlineExposureOnly)
+  state.maxCatalogSize = state.maxCatalogSize == null || state.maxCatalogSize === ''
+    ? DEFAULT_MAX_CATALOG_SIZE
+    : Number(state.maxCatalogSize)
+  state.exportInventoryJsonl = state.exportInventoryJsonl == null ? null : String(state.exportInventoryJsonl)
+  state.selftest = Boolean(state.selftest)
   state.path = state.path == null ? '' : String(state.path)
   state.globalOnly = Boolean(state.globalOnly)
   state.ecosystems = normalizeEcosystems(state.ecosystems)
@@ -179,6 +197,16 @@ function buildCommand (inputState = {}, options = {}) {
   const state = normalizeState(inputState)
   const parts = [UI_MANIFEST.commandPrefix]
 
+  if (state.profile && state.profile !== DEFAULT_SCAN_PROFILE) {
+    pushFlag(parts, '--profile', state.profile, platform)
+  }
+  if (state.roots && state.roots.length > 0) {
+    for (const root of state.roots) {
+      pushFlag(parts, '--root', root, platform)
+    }
+  }
+  if (state.listRoots) parts.push('--list-roots')
+  if (state.allUsers) parts.push('--all-users')
   if (!state.globalOnly && state.path) {
     pushFlag(parts, '--path', state.path, platform)
   }
@@ -233,6 +261,9 @@ function buildCommand (inputState = {}, options = {}) {
   pushFlag(parts, '--export-sarif', state.exportSarif, platform)
   pushFlag(parts, '--export-json', state.exportJson, platform)
   pushFlag(parts, '--export-csv', state.exportCsv, platform)
+  pushFlag(parts, '--export-inventory-jsonl', state.exportInventoryJsonl, platform)
+  pushFlag(parts, '--exposure-catalog', state.exposureCatalog, platform)
+  if (state.offlineExposureOnly) parts.push('--offline-exposure-only')
   pushFlag(parts, '--baseline', state.baseline, platform)
   pushFlag(parts, '--write-baseline', state.writeBaseline, platform)
   if (state.strictBaseline) parts.push('--strict-baseline')
@@ -279,6 +310,7 @@ function buildCommand (inputState = {}, options = {}) {
   if (state.global) parts.push('--global')
   if (state.allDrives) parts.push('--all-drives')
   if (state.verbose) parts.push('--verbose')
+  if (state.selftest) parts.push('--selftest')
 
   return parts.join(' ')
 }
@@ -303,6 +335,9 @@ function validateState (inputState = {}) {
   }
   if (!['on', 'off'].includes(state.banner)) {
     errors.push('Invalid banner mode.')
+  }
+  if (!SCAN_PROFILES.includes(state.profile)) {
+    errors.push(`Invalid profile. Use: ${SCAN_PROFILES.join(', ')}`)
   }
 
   if (state.library) {

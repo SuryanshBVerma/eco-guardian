@@ -29,7 +29,7 @@ async function resolveDartPackages (roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await shared.execAsync('dart pub deps --json', {
+        const stdout = await shared.execTool('dart', ['pub', 'deps', '--json'], {
           cwd: root,
           timeout: 120000
         })

@@ -4,7 +4,10 @@ const os = require('os')
 const {
   VERSION,
   SEVERITY_ORDER,
-  SUPPORTED_ECOSYSTEMS
+  SUPPORTED_ECOSYSTEMS,
+  SCAN_PROFILES,
+  DEFAULT_SCAN_PROFILE,
+  DEFAULT_MAX_CATALOG_SIZE
 } = require('../config/constants')
 
 function parseLibraryTarget (value) {
@@ -152,6 +155,36 @@ function printUsage () {
   process.stdout.write(
     '  --all-drives         Alias for full-disk opt-in behavior\n'
   )
+  process.stdout.write(
+    '  --profile <mode>     Scan profile: legacy|baseline|project|deep (default: legacy)\n'
+  )
+  process.stdout.write(
+    '  --root <dir>         Explicit root directory (repeatable)\n'
+  )
+  process.stdout.write(
+    '  --list-roots         List discovered scan roots and exit\n'
+  )
+  process.stdout.write(
+    '  --all-users          Include all-user directories\n'
+  )
+  process.stdout.write(
+    '  --exposure-catalog <file-or-dir>  Load offline exposure catalog\n'
+  )
+  process.stdout.write(
+    '  --offline-exposure-only  Skip vulnerability DB queries, use catalog only\n'
+  )
+  process.stdout.write(
+    '  --max-catalog-size <bytes>  Max exposure catalog file size (default: 67108864)\n'
+  )
+  process.stdout.write(
+    '  --export-inventory-jsonl <file>  Export inventory as NDJSON\n'
+  )
+  process.stdout.write(
+    '  --selftest           Run self-contained validation test\n'
+  )
+  process.stdout.write(
+    '  --selftest-quiet     Run selftest with minimal output\n'
+  )
 }
 
 function parseArgs (argv) {
@@ -164,6 +197,16 @@ function parseArgs (argv) {
   } = require('../config/constants')
 
   const args = {
+    profile: DEFAULT_SCAN_PROFILE,
+    roots: [],
+    listRoots: false,
+    allUsers: false,
+    exposureCatalog: null,
+    offlineExposureOnly: false,
+    maxCatalogSize: DEFAULT_MAX_CATALOG_SIZE,
+    exportInventoryJsonl: null,
+    selftest: false,
+    selftestQuiet: false,
     path: os.homedir(),
     pathExplicit: false,
     globalOnly: false,
@@ -546,6 +589,80 @@ function parseArgs (argv) {
       }
       args.echo = next
       i += 1
+      continue
+    }
+    if (token === '--profile') {
+      const next = argv[i + 1]
+      if (!next || next.startsWith('--')) {
+        throw new Error('Missing value for --profile')
+      }
+      const normalized = String(next).toLowerCase()
+      if (!SCAN_PROFILES.includes(normalized)) {
+        throw new Error(`Invalid --profile. Use: ${SCAN_PROFILES.join(', ')}`)
+      }
+      args.profile = normalized
+      i += 1
+      continue
+    }
+    if (token === '--root') {
+      const next = argv[i + 1]
+      if (!next || next.startsWith('--')) {
+        throw new Error('Missing value for --root')
+      }
+      args.roots.push(next)
+      i += 1
+      continue
+    }
+    if (token === '--list-roots') {
+      args.listRoots = true
+      continue
+    }
+    if (token === '--all-users') {
+      args.allUsers = true
+      continue
+    }
+    if (token === '--exposure-catalog') {
+      const next = argv[i + 1]
+      if (!next || next.startsWith('--')) {
+        throw new Error('Missing value for --exposure-catalog')
+      }
+      args.exposureCatalog = next
+      i += 1
+      continue
+    }
+    if (token === '--offline-exposure-only') {
+      args.offlineExposureOnly = true
+      continue
+    }
+    if (token === '--max-catalog-size') {
+      const next = argv[i + 1]
+      if (!next || next.startsWith('--')) {
+        throw new Error('Missing value for --max-catalog-size')
+      }
+      const parsed = Number(next)
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new Error('--max-catalog-size must be a positive integer')
+      }
+      args.maxCatalogSize = parsed
+      i += 1
+      continue
+    }
+    if (token === '--export-inventory-jsonl') {
+      const next = argv[i + 1]
+      if (!next || next.startsWith('--')) {
+        throw new Error('Missing value for --export-inventory-jsonl')
+      }
+      args.exportInventoryJsonl = next
+      i += 1
+      continue
+    }
+    if (token === '--selftest') {
+      args.selftest = true
+      continue
+    }
+    if (token === '--selftest-quiet') {
+      args.selftest = true
+      args.selftestQuiet = true
       continue
     }
     throw new Error(`Unknown argument: ${token}`)

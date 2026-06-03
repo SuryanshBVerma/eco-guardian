@@ -17,6 +17,7 @@ const {
   dedupePaths,
   toRootPathWindows
 } = require('../shared/path-utils')
+const { resolveProfileRoots, resolveLegacyRoots } = require('./roots')
 
 let cachedRgAvailable = null
 
@@ -118,24 +119,10 @@ async function getGlobalNpmRoot () {
 }
 
 async function discoverScanRoots (options, state) {
-  const roots = []
-  const globalRoot = await getGlobalNpmRoot()
-  if (!globalRoot) state.globalRootUnavailable = true
-
-  if (options.globalOnly) {
-    if (globalRoot) roots.push(globalRoot)
-    return { roots: dedupePaths(roots), globalRoot }
+  if (options.profile && options.profile !== 'legacy') {
+    return resolveProfileRoots(options, state)
   }
-
-  if (options.pathExplicit) roots.push(options.path)
-  else if (PLATFORM === 'win32') roots.push(...(await discoverWindowsDrives()))
-  else {
-    roots.push(os.homedir())
-    if (options.global || options.allDrives) roots.push('/')
-  }
-
-  if (globalRoot) roots.push(globalRoot)
-  return { roots: dedupePaths(roots), globalRoot }
+  return resolveLegacyRoots(options, state, { getGlobalNpmRoot })
 }
 
 async function discoverNodeModulesViaNative (root) {

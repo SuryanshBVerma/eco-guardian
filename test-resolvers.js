@@ -13,9 +13,9 @@ const { resolvePythonPackages } = require("./src/resolve/python");
 const { resolveGradlePackages } = require("./src/resolve/gradle");
 const { resolveEcosystemPackages } = require("./src/resolve/index");
 
-// Mock shared execAsync
+// Mock shared execTool
 const shared = require("./src/resolve/shared");
-const originalExec = shared.execAsync;
+const originalExec = shared.execTool;
 
 async function testNpmResolver() {
   const jsonContent = JSON.stringify({
@@ -27,7 +27,7 @@ async function testNpmResolver() {
     },
   });
   // Mock the function AND its usage in the module
-  require("./src/resolve/shared").execAsync = async () => jsonContent;
+  require("./src/resolve/shared").execTool = async () => jsonContent;
 
   const map = await resolveNpmPackages(["/root"], { verbose: true }, {});
   if (!map.has("npm|axios|1.0.0")) {
@@ -53,7 +53,7 @@ async function testNpmResolver() {
 }
 
 async function testMavenResolver() {
-  require("./src/resolve/shared").execAsync = async () => `
+  require("./src/resolve/shared").execTool = async () => `
 [INFO] com.example:my-app:jar:1.0.0
 [INFO] +- org.slf4j:slf4j-api:jar:1.7.36:compile
 [INFO] |  \\- org.slf4j:slf4j-parent:jar:1.7.36:compile
@@ -76,7 +76,7 @@ async function testMavenResolver() {
 }
 
 async function testNuGetResolver() {
-  require("./src/resolve/shared").execAsync = async () =>
+  require("./src/resolve/shared").execTool = async () =>
     JSON.stringify({
       projects: [
         {
@@ -110,8 +110,8 @@ async function testGoResolver() {
   // go list -m -json all returns objects separated by newline } newline
   let callCount = 0;
   // go list -m -json all returns objects separated by newline } newline
-  require("./src/resolve/shared").execAsync = async (cmd) => {
-    if (cmd.includes("go mod graph")) {
+  require("./src/resolve/shared").execTool = async (file, args) => {
+    if (args && args[0] === "mod" && args[1] === "graph") {
       return "my-app github.com/gin-gonic/gin@v1.9.1\ngithub.com/gin-gonic/gin@v1.9.1 github.com/go-playground/validator/v10@v10.14.0";
     }
     return (
@@ -142,7 +142,7 @@ async function testGoResolver() {
 }
 
 async function testPythonResolver() {
-  require("./src/resolve/shared").execAsync = async () =>
+  require("./src/resolve/shared").execTool = async () =>
     JSON.stringify({
       installed: [{ metadata: { name: "requests", version: "2.31.0" } }],
     });
@@ -264,7 +264,7 @@ async function testResolveEcosystemFallback() {
   assert(res1.mode === "n/a", "vscode mode should be n/a");
 
   // Test 2: resolver failure
-  require("./src/resolve/shared").execAsync = async () => {
+  require("./src/resolve/shared").execTool = async () => {
     throw new Error("tool missing");
   };
   const res2 = await resolveEcosystemPackages(
@@ -281,7 +281,7 @@ async function testResolveEcosystemFallback() {
   assert(res2.packageMap.size === 0, "packageMap should be empty on failure");
 
   // Test 3: empty results
-  require("./src/resolve/shared").execAsync = async () =>
+  require("./src/resolve/shared").execTool = async () =>
     JSON.stringify({ dependencies: {} });
   const res3 = await resolveEcosystemPackages(
     "npm",

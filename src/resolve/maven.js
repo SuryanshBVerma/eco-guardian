@@ -29,10 +29,7 @@ async function resolveMavenPackages (roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await shared.execAsync(
-          'mvn dependency:tree -DoutputType=text',
-          { cwd: root, timeout: 120000 }
-        )
+        const stdout = await shared.execTool('mvn', ['dependency:tree', '-DoutputType=text'], { cwd: root, timeout: 120000 })
         const lines = stdout.split('\n')
 
         const stack = []

@@ -70,6 +70,28 @@ async function main (argv = process.argv.slice(2)) {
     return
   }
 
+  if (options.listRoots) {
+    const { discoverScanRoots } = require('../scan/discovery')
+    const rootsInfo = await discoverScanRoots(options, state)
+    for (const root of rootsInfo.rootEntries || []) {
+      process.stdout.write(`${root.kind}\t${root.path}\n`)
+    }
+    if (rootsInfo.notes && rootsInfo.notes.length > 0) {
+      for (const note of rootsInfo.notes) {
+        process.stderr.write(`[INFO] ${note}\n`)
+      }
+    }
+    process.exitCode = 0
+    return
+  }
+
+  if (options.selftest) {
+    const { runSelftest } = require('./selftest')
+    const result = await runSelftest(options)
+    process.exitCode = result.exitCode
+    return
+  }
+
   if (options.seek) {
     if (options.seek === '01001000') {
       process.stdout.write('\nIn the shadow of the dependency tree,\n')

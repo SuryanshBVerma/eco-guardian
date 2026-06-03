@@ -29,10 +29,7 @@ async function resolveNuGetPackages (roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await shared.execAsync(
-          'dotnet list package --include-transitive --format json',
-          { cwd: root }
-        )
+        const stdout = await shared.execTool('dotnet', ['list', 'package', '--include-transitive', '--format', 'json'], { cwd: root })
         const data = JSON.parse(stdout)
 
         if (!data.projects) return

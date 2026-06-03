@@ -29,7 +29,7 @@ async function resolveHaskellPackages (roots, options, state) {
   try {
     await asyncPool(RESOLUTION_CONCURRENCY, rootsArray, async (root) => {
       try {
-        const stdout = await shared.execAsync('stack ls dependencies --json', {
+        const stdout = await shared.execTool('stack', ['ls', 'dependencies', '--json'], {
           cwd: root,
           timeout: 120000
         })
