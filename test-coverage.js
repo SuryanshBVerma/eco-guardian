@@ -21,7 +21,16 @@ async function withTempDir(fn) {
   }
 }
 
-const originalExec = shared.execAsync;
+async function waitForFile(filePath, timeoutMs = 2000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (fs.existsSync(filePath)) return true;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  return fs.existsSync(filePath);
+}
+
+const originalExec = shared.execTool;
 const silence = () => {
   const originalWrite = process.stdout.write;
   const originalStderr = process.stderr.write;
@@ -38,7 +47,7 @@ async function testGraphResolutionBranches() {
   try {
     // Mock resolvers to return empty to trigger fallbacks and specific branches.
     // Empty string is safe for both JSON-based and line-based resolvers.
-    shared.execAsync = async () => "";
+    shared.execTool = async () => "";
 
     await withTempDir(async (root) => {
       const options = {
@@ -71,7 +80,7 @@ async function testGraphResolutionBranches() {
       assert(result.packageCount === 0, "Should handle empty graph results");
     });
   } finally {
-    shared.execAsync = originalExec;
+    shared.execTool = originalExec;
     restore();
   }
 }
@@ -943,11 +952,11 @@ async function testPolicyExitCodeAndFileExports() {
 
         assert(result.exitCode === 3, "Policy failure should set exit code 3");
         assert(
-          fs.existsSync(path.join(root, "out.json")),
+          await waitForFile(path.join(root, "out.json")),
           "JSON export file should exist",
         );
         assert(
-          fs.existsSync(path.join(root, "out.csv")),
+          await waitForFile(path.join(root, "out.csv")),
           "CSV export file should exist",
         );
       } finally {
