@@ -456,13 +456,14 @@ test('agent dep-interceptor mentions fail-open behavior', () => {
 
 test('hooks.json exists and is valid JSON', () => {
   const hooks = readJson('claude-plugin/hooks/hooks.json')
-  assert(Array.isArray(hooks.PreToolUse), 'should have PreToolUse array')
-  assert(hooks.PreToolUse.length > 0, 'should have at least one hook entry')
+  assert(typeof hooks.hooks === 'object' && hooks.hooks !== null, 'should have hooks object')
+  assert(Array.isArray(hooks.hooks.PreToolUse), 'should have PreToolUse array')
+  assert(hooks.hooks.PreToolUse.length > 0, 'should have at least one hook entry')
 })
 
 test('hooks.json has Bash matcher with command hook', () => {
   const hooks = readJson('claude-plugin/hooks/hooks.json')
-  const entry = hooks.PreToolUse.find((e) => e.matcher === 'Bash')
+  const entry = hooks.hooks.PreToolUse.find((e) => e.matcher === 'Bash')
   assert(entry, 'should have a Bash matcher entry')
   assert(Array.isArray(entry.hooks), 'should have hooks array')
   assert(entry.hooks[0].type === 'command', 'hook should be type command')
@@ -470,6 +471,75 @@ test('hooks.json has Bash matcher with command hook', () => {
     entry.hooks[0].command.includes('check-install.js'),
     'hook should invoke check-install.js'
   )
+})
+
+test('hooks.json top-level has exactly one key (hooks)', () => {
+  const raw = readJson('claude-plugin/hooks/hooks.json')
+  const keys = Object.keys(raw)
+  assert.strictEqual(keys.length, 1, 'should have exactly one top-level key')
+  assert.strictEqual(keys[0], 'hooks', 'top-level key should be "hooks"')
+})
+
+test('hooks object is a record not an array', () => {
+  const raw = readJson('claude-plugin/hooks/hooks.json')
+  assert(typeof raw.hooks === 'object', 'hooks should be an object')
+  assert(!Array.isArray(raw.hooks), 'hooks should not be an array')
+  assert(raw.hooks !== null, 'hooks should not be null')
+})
+
+test('hooks.json PreToolUse entries have required fields', () => {
+  const hooks = readJson('claude-plugin/hooks/hooks.json')
+  for (const entry of hooks.hooks.PreToolUse) {
+    assert(typeof entry.matcher === 'string' && entry.matcher.length > 0, 'matcher should be a non-empty string')
+    assert(Array.isArray(entry.hooks), 'hooks should be an array')
+    assert(entry.hooks.length > 0, 'hooks array should not be empty')
+    for (const hook of entry.hooks) {
+      assert(typeof hook.type === 'string' && hook.type.length > 0, 'hook type should be a non-empty string')
+      assert(typeof hook.command === 'string' && hook.command.length > 0, 'hook command should be a non-empty string')
+    }
+  }
+})
+
+test('hooks.json hook entries have valid timeout', () => {
+  const hooks = readJson('claude-plugin/hooks/hooks.json')
+  for (const entry of hooks.hooks.PreToolUse) {
+    for (const hook of entry.hooks) {
+      if (hook.timeout !== undefined) {
+        assert(typeof hook.timeout === 'number', 'timeout should be a number')
+        assert(hook.timeout > 0, 'timeout should be positive')
+        assert(Number.isFinite(hook.timeout), 'timeout should be finite')
+      }
+    }
+  }
+})
+
+test('hooks.json has no duplicate event types in PreToolUse', () => {
+  const hooks = readJson('claude-plugin/hooks/hooks.json')
+  const matchers = hooks.hooks.PreToolUse.map((e) => e.matcher)
+  const unique = [...new Set(matchers)]
+  assert.strictEqual(matchers.length, unique.length, 'should have no duplicate matchers')
+})
+
+test('hooks.json command references a .js file', () => {
+  const hooks = readJson('claude-plugin/hooks/hooks.json')
+  for (const entry of hooks.hooks.PreToolUse) {
+    for (const hook of entry.hooks) {
+      assert(hook.command.endsWith('.js"') || hook.command.endsWith('.js'),
+        'command should reference a .js file')
+    }
+  }
+})
+
+test('hooks.json uses CLAUDE_PLUGIN_DIR variable in command', () => {
+  const hooks = readJson('claude-plugin/hooks/hooks.json')
+  for (const entry of hooks.hooks.PreToolUse) {
+    for (const hook of entry.hooks) {
+      assert(
+        hook.command.includes('${CLAUDE_PLUGIN_DIR}') || hook.command.includes('$CLAUDE_PLUGIN_DIR'),
+        'command should use CLAUDE_PLUGIN_DIR variable'
+      )
+    }
+  }
 })
 
 test('check-install.js exists', () => {
@@ -503,4 +573,122 @@ test('check-install.js handles JSON parse failure gracefully', () => {
   const text = readText('claude-plugin/hooks/check-install.js')
   assert(text.includes('catch'), 'should have try/catch for JSON parse')
   assert(text.includes('JSON.parse'), 'should parse stdin JSON')
+})
+
+// --- daily-scan.js ---
+
+test('daily-scan.js exists', () => {
+  assert(
+    fs.existsSync(path.join(__dirname, 'claude-plugin', 'hooks', 'daily-scan.js')),
+    'daily-scan.js should exist'
+  )
+})
+
+test('daily-scan.js always exits with code 0', () => {
+  const text = readText('claude-plugin/hooks/daily-scan.js')
+  const exitCalls = text.match(/process\.exit\((\d+)\)/g) || []
+  for (const call of exitCalls) {
+    assert(call === 'process.exit(0)', `all exit calls should be 0, found: ${call}`)
+  }
+})
+
+test('daily-scan.js reads CLAUDE_PLUGIN_DATA environment variable', () => {
+  const text = readText('claude-plugin/hooks/daily-scan.js')
+  assert(text.includes('CLAUDE_PLUGIN_DATA'), 'should read CLAUDE_PLUGIN_DATA env var')
+  assert(text.includes('process.env.CLAUDE_PLUGIN_DATA'), 'should access via process.env')
+})
+
+test('daily-scan.js checks timestamp file before scanning', () => {
+  const text = readText('claude-plugin/hooks/daily-scan.js')
+  assert(text.includes('.last-scan-ts'), 'should use .last-scan-ts stamp file')
+  assert(text.includes('getLastScanTime'), 'should have getLastScanTime function')
+  assert(text.includes('readFileSync'), 'should read timestamp file')
+})
+
+test('daily-scan.js writes timestamp after successful scan', () => {
+  const text = readText('claude-plugin/hooks/daily-scan.js')
+  assert(text.includes('setLastScanTime'), 'should have setLastScanTime function')
+  assert(text.includes('writeFileSync'), 'should write timestamp file')
+  assert(text.includes('Date.now'), 'should use current timestamp')
+})
+
+test('daily-scan.js uses 24-hour scan interval', () => {
+  const text = readText('claude-plugin/hooks/daily-scan.js')
+  assert(text.includes('SCAN_INTERVAL_MS'), 'should define scan interval constant')
+  assert(text.includes('24 * 60 * 60 * 1000'), 'should be 24 hours in milliseconds')
+})
+
+test('daily-scan.js outputs additionalContext in correct format', () => {
+  const text = readText('claude-plugin/hooks/daily-scan.js')
+  assert(text.includes('additionalContext'), 'should output additionalContext')
+  assert(text.includes('hookSpecificOutput'), 'should wrap in hookSpecificOutput')
+  assert(text.includes('hookEventName'), 'should include hookEventName')
+  assert(text.includes('SessionStart'), 'should reference SessionStart event')
+})
+
+test('daily-scan.js runs eco-guardian with correct arguments', () => {
+  const text = readText('claude-plugin/hooks/daily-scan.js')
+  assert(text.includes('github:boredom1234/eco-guardian'), 'should use correct package')
+  assert(text.includes('--ecosystems'), 'should pass --ecosystems flag')
+  assert(text.includes('scan-all'), 'should scan all ecosystems')
+  assert(text.includes('--json'), 'should output JSON')
+  assert(text.includes("'--banner'"), 'should disable banner')
+  assert(text.includes("'off'"), 'should pass off value')
+  assert(text.includes('--no-cache'), 'should disable cache')
+})
+
+test('daily-scan.js handles eco-guardian failure gracefully', () => {
+  const text = readText('claude-plugin/hooks/daily-scan.js')
+  assert(text.includes('catch'), 'should have try/catch for eco-guardian execution')
+  assert(text.includes('fail open'), 'should fail open on error')
+})
+
+test('daily-scan.js handles empty findings', () => {
+  const text = readText('claude-plugin/hooks/daily-scan.js')
+  assert(text.includes('findings.length === 0'), 'should handle empty findings')
+  assert(text.includes('process.exit(0)'), 'should exit cleanly with no findings')
+})
+
+test('daily-scan.js limits summary to 10 findings', () => {
+  const text = readText('claude-plugin/hooks/daily-scan.js')
+  assert(text.includes('slice(0, 10)'), 'should limit summary to 10 findings')
+  assert(text.includes('...and'), 'should indicate when more findings exist')
+})
+
+test('daily-scan.js handles missing CLAUDE_PLUGIN_DATA gracefully', () => {
+  const text = readText('claude-plugin/hooks/daily-scan.js')
+  assert(text.includes("process.env.CLAUDE_PLUGIN_DATA || ''"), 'should default to empty string')
+  assert(text.includes('if (!dataDir)'), 'should check for empty dataDir')
+})
+
+test('daily-scan.js creates data directory if missing', () => {
+  const text = readText('claude-plugin/hooks/daily-scan.js')
+  assert(text.includes('mkdirSync'), 'should create directory')
+  assert(text.includes('recursive: true'), 'should use recursive option')
+})
+
+test('daily-scan.js handles timestamp read failure gracefully', () => {
+  const text = readText('claude-plugin/hooks/daily-scan.js')
+  assert(text.includes('parseInt'), 'should parse timestamp as integer')
+  assert(text.includes('Number.isFinite'), 'should validate parsed timestamp')
+  assert(text.includes('return 0'), 'should return 0 on invalid timestamp')
+})
+
+test('hooks.json has SessionStart hook with async flag', () => {
+  const hooks = readJson('claude-plugin/hooks/hooks.json')
+  assert(Array.isArray(hooks.hooks.SessionStart), 'should have SessionStart array')
+  assert(hooks.hooks.SessionStart.length > 0, 'should have at least one SessionStart entry')
+  const entry = hooks.hooks.SessionStart[0]
+  assert(entry.matcher === '*', 'should match all session starts')
+  assert(entry.hooks[0].async === true, 'should run async')
+  assert(entry.hooks[0].type === 'command', 'should be command type')
+  assert(entry.hooks[0].command.includes('daily-scan.js'), 'should invoke daily-scan.js')
+})
+
+test('hooks.json SessionStart hook has reasonable timeout', () => {
+  const hooks = readJson('claude-plugin/hooks/hooks.json')
+  const entry = hooks.hooks.SessionStart[0]
+  assert(typeof entry.hooks[0].timeout === 'number', 'timeout should be a number')
+  assert(entry.hooks[0].timeout >= 60000, 'timeout should be at least 60s')
+  assert(entry.hooks[0].timeout <= 300000, 'timeout should be at most 300s')
 })

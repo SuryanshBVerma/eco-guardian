@@ -1,14 +1,29 @@
 {
-  "PreToolUse": [
-    {
-      "matcher": "Bash",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "node \"${CLAUDE_PLUGIN_DIR}/hooks/check-install.js\"",
-          "timeout": 20000
-        }
-      ]
-    }
-  ]
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_DIR}/hooks/check-install.js\"",
+            "timeout": 20000
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_DIR}/hooks/daily-scan.js\"",
+            "timeout": 120000,
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
 }
