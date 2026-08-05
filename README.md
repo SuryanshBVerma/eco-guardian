@@ -39,11 +39,11 @@ node eco-guardian.js [flags]
 Examples:
 
 ```bash
-node eco-guardian.js --path ./my-project --severity high
+cd ./my-project; node ../eco-guardian.js --severity high
 node eco-guardian.js --ecosystems scan-all
 node eco-guardian.js --ecosystems npm,maven,gradle,nuget,vscode,python,go,ruby,rust,php,dart,elixir,conan,haskell,swift,r
 node eco-guardian.js --graph-resolution --ecosystems npm,maven,gradle
-node eco-guardian.js --ecosystems gradle --graph-resolution --gradle-task :application:dependencies --path ./service
+cd ./service; node ../eco-guardian.js --ecosystems gradle --graph-resolution --gradle-task :application:dependencies
 node eco-guardian.js --nvd-mode on --ecosystems maven,gradle
 node eco-guardian.js --nvd-mode on --ecosystems maven --nvd-api-key xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 # Or via environment variable:
@@ -51,7 +51,7 @@ set NVD_API_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx && node eco-guardian.js --e
 node eco-guardian.js --no-nvd --ecosystems gradle
 node eco-guardian.js --export-html report.html --export-sarif report.sarif
 node eco-guardian.js --baseline .eco-guardian-baseline.json --strict-baseline
-node eco-guardian.js --library npm:lodash --path ./my-project
+cd ./my-project; node ../eco-guardian.js --library npm:lodash
 node eco-guardian.js --library maven:org.apache.logging.log4j:log4j-core --ecosystems maven --nvd-mode on
 node eco-guardian.js --watch --notify-on-severity high
 node eco-guardian.js --ui
@@ -61,7 +61,7 @@ node eco-guardian.js --ui
 
 | Flag                            | Description                                                                             |
 | ------------------------------- | --------------------------------------------------------------------------------------- |
-| `--path <dir>`                  | Scan a specific directory.                                                              |
+| `--root <dir>`                  | Add an explicit scan root (repeatable).                                                  |
 | `--global-only`                 | Scan only global npm installs.                                                          |
 | `--library <ecosystem>:<name>`  | Focus scan on a single library within one ecosystem (e.g. `npm:lodash`).                |
 | `--ecosystems <list\|scan-all>` | Comma-separated list or `scan-all` for all 16 ecosystems (default: `npm`).              |
@@ -109,7 +109,7 @@ node eco-guardian.js --ui
 - On Windows, drives are discovered via PowerShell `Get-CimInstance`, with `wmic` and A–Z letter fallbacks.
 - `--ecosystems scan-all` expands to all 16 supported ecosystems.
 - Default scan roots:
-  - current working directory, or `--path` if provided
+  - current working directory
   - `--global` scans system roots and the global npm root
   - `--global-only` scans only the global npm root
   - local scans do not include the global npm root
@@ -271,7 +271,7 @@ Restart Claude Code if prompted.
 
 ```text
 /eco-guardian:scan
-/eco-guardian:scan --path . --ecosystems npm,python --severity high
+/eco-guardian:scan --ecosystems npm,python --severity high
 /eco-guardian:ci-gate
 /eco-guardian:fix-plan
 /eco-guardian:why lodash

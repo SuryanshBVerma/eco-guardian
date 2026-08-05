@@ -25,7 +25,7 @@ npx -y github:boredom1234/eco-guardian $ARGUMENTS; status=$?; echo "eco-guardian
 If no arguments are provided, run:
 
 ```bash
-npx -y github:boredom1234/eco-guardian --path . --ecosystems scan-all --baseline .eco-guardian-baseline.json --strict-baseline --json --banner off; status=$?; echo "eco-guardian exit code: $status"; exit 0
+npx -y github:boredom1234/eco-guardian --ecosystems scan-all --baseline .eco-guardian-baseline.json --strict-baseline --json --banner off; status=$?; echo "eco-guardian exit code: $status"; exit 0
 ```
 
 Summarize:

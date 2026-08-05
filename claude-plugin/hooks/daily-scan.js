@@ -38,7 +38,6 @@ function main () {
   try {
     const out = execFileSync('npx', [
       '-y', 'github:boredom1234/eco-guardian',
-      '--path', '.',
       '--ecosystems', 'scan-all',
       '--json',
       '--banner', 'off',

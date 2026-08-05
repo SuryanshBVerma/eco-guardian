@@ -206,7 +206,7 @@ async function resolveLegacyRoots (options, state, helpers = {}) {
   }
 
   if (!options.global && !options.allDrives) {
-    const localRoot = options.path || process.cwd()
+    const localRoot = process.cwd()
     roots.push(localRoot)
     rootEntries.push({ path: localRoot, kind: classifyRoot(localRoot, 'legacy') })
   } else if (PLATFORM === 'win32') {

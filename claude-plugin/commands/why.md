@@ -21,7 +21,7 @@ If the user did not provide a package name, ask for one.
 Otherwise run:
 
 ```bash
-npx -y github:boredom1234/eco-guardian --path . --ecosystems scan-all --why $ARGUMENTS --banner off; status=$?; echo "eco-guardian exit code: $status"; exit 0
+npx -y github:boredom1234/eco-guardian --ecosystems scan-all --why $ARGUMENTS --banner off; status=$?; echo "eco-guardian exit code: $status"; exit 0
 ```
 
 Summarize:

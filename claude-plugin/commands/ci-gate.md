@@ -25,7 +25,7 @@ npx -y github:boredom1234/eco-guardian $ARGUMENTS; status=$?; echo "eco-guardian
 If no arguments are provided, use this safe default:
 
 ```bash
-npx -y github:boredom1234/eco-guardian --path . --ecosystems scan-all --fail-on-severity high --max-critical 0 --export-sarif eco-guardian.sarif --banner off; status=$?; echo "eco-guardian exit code: $status"; exit 0
+npx -y github:boredom1234/eco-guardian --ecosystems scan-all --fail-on-severity high --max-critical 0 --export-sarif eco-guardian.sarif --banner off; status=$?; echo "eco-guardian exit code: $status"; exit 0
 ```
 
 Summarize:

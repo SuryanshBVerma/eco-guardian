@@ -32,11 +32,8 @@ async function collectVSCodeExtensions (roots, options, state) {
   const packageMap = new Map()
   const extensionsDirs = []
 
-  // If path was explicitly provided, we look there.
-  // Otherwise we look in the default VSCode extensions directory.
-  if (options.pathExplicit) {
-    extensionsDirs.push(path.resolve(options.path))
-  } else {
+  extensionsDirs.push(...roots.map((root) => path.resolve(root)))
+  if (extensionsDirs.length === 0) {
     extensionsDirs.push(getDefaultVSCodeExtensionsDir())
   }
 

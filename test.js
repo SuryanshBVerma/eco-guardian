@@ -29,8 +29,6 @@ async function withTempDir (fn) {
 
 async function testParseArgs () {
   const a = guardian.parseArgs([
-    '--path',
-    '/tmp/x',
     '--ui',
     '--json',
     '--severity',
@@ -39,11 +37,6 @@ async function testParseArgs () {
     '--global-only',
     '--no-cache'
   ])
-  assert(a.path === '/tmp/x', 'parseArgs --path failed')
-  assert(
-    a.pathExplicit === true,
-    'parseArgs pathExplicit should be true when --path is provided'
-  )
   assert(
     a.json === true &&
       a.fix === true &&
@@ -57,14 +50,6 @@ async function testParseArgs () {
   assert(e.exportTxt === 'report.txt', 'parseArgs --export-txt failed')
 
   const b = guardian.parseArgs([])
-  assert(
-    b.pathExplicit === false,
-    'parseArgs pathExplicit default should be false'
-  )
-  assert(
-    b.path === process.cwd(),
-    'parseArgs default path should be the current directory'
-  )
   assert(b.banner === 'on', 'parseArgs --banner default should be on')
 
   const bo = guardian.parseArgs(['--banner', 'off'])
@@ -623,6 +608,7 @@ async function testCliHelpAndVersion () {
 
 async function testCliBannerOffResultOnly () {
   await withTempDir(async (root) => {
+    const originalCwd = process.cwd()
     const prevDisableGlobal = process.env.NPM_GUARDIAN_DISABLE_GLOBAL
     const originalStdoutWrite = process.stdout.write
     const originalStderrWrite = process.stderr.write
@@ -633,6 +619,7 @@ async function testCliBannerOffResultOnly () {
     process.env.NPM_GUARDIAN_DISABLE_GLOBAL = '1'
 
     try {
+      process.chdir(root)
       process.stdout.write = (chunk) => {
         out += String(chunk)
         return true
@@ -644,8 +631,6 @@ async function testCliBannerOffResultOnly () {
       process.exitCode = undefined
 
       await guardian.main([
-        '--path',
-        root,
         '--ecosystems',
         'npm',
         '--banner',
@@ -677,6 +662,7 @@ async function testCliBannerOffResultOnly () {
       } else {
         process.env.NPM_GUARDIAN_DISABLE_GLOBAL = prevDisableGlobal
       }
+      process.chdir(originalCwd)
     }
   })
 }

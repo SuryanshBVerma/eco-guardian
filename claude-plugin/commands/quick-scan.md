@@ -25,7 +25,7 @@ npx -y github:boredom1234/eco-guardian $ARGUMENTS; status=$?; echo "eco-guardian
 If no arguments are provided, run:
 
 ```bash
-npx -y github:boredom1234/eco-guardian --path . --ecosystems npm --severity high --banner off; status=$?; echo "eco-guardian exit code: $status"; exit 0
+npx -y github:boredom1234/eco-guardian --ecosystems npm --severity high --banner off; status=$?; echo "eco-guardian exit code: $status"; exit 0
 ```
 
 Summarize high and critical findings first. Treat exit code 1 as findings found, not a plugin failure.

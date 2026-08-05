@@ -62,7 +62,6 @@ function normalizeState (input = {}) {
     : Number(state.maxCatalogSize)
   state.exportInventoryJsonl = state.exportInventoryJsonl == null ? null : String(state.exportInventoryJsonl)
   state.selftest = Boolean(state.selftest)
-  state.path = state.path == null ? '' : String(state.path)
   state.globalOnly = Boolean(state.globalOnly)
   state.ecosystems = normalizeEcosystems(state.ecosystems)
   state.library = state.library == null ? null : String(state.library)
@@ -207,9 +206,6 @@ function buildCommand (inputState = {}, options = {}) {
   }
   if (state.listRoots) parts.push('--list-roots')
   if (state.allUsers) parts.push('--all-users')
-  if (!state.globalOnly && state.path) {
-    pushFlag(parts, '--path', state.path, platform)
-  }
   if (state.globalOnly) parts.push('--global-only')
   if (
     state.ecosystems.length > 0 &&

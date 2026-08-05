@@ -26,5 +26,5 @@
 
 ```bash
 node test.js
-node eco-guardian.js --path . --json --no-cache
+node eco-guardian.js --json --no-cache
 ```

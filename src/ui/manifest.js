@@ -41,14 +41,6 @@ const UI_MANIFEST = {
           help: 'Matches --all-users.'
         },
         {
-          key: 'path',
-          label: 'Scan directory',
-          type: 'text',
-          placeholder: 'e.g. ~/projects/my-app',
-          help: 'Local scans recurse inside this directory. Leave global scan off for local-by-default behavior.',
-          showIf: [{ key: 'globalOnly', truthy: false }]
-        },
-        {
           key: 'globalOnly',
           label: 'Global npm installs only',
           type: 'boolean',

@@ -52,8 +52,7 @@ async function processDirtyProjects (snapshot, dirtyProjectKeys, options) {
 
     const scopeOptions = {
       ...options,
-      path: projectRoot,
-      pathExplicit: true,
+      roots: [projectRoot],
       ecosystems: [ecosystem]
     }
     const collection = await runScan.collectPackageMap(scopeOptions, {})

@@ -6,7 +6,7 @@ const { colorize } = require('./output-utils')
 function printScanScope (options) {
   const isGlobal = Boolean(options.global || options.allDrives || options.globalOnly)
   const scope = isGlobal ? 'GLOBAL' : 'LOCAL'
-  const target = isGlobal ? 'system roots' : (options.path || process.cwd())
+  const target = isGlobal ? 'system roots' : process.cwd()
   process.stderr.write(`[INFO] Scan scope: ${scope} (${target})\n`)
 }
 

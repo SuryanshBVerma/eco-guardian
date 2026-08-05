@@ -89,7 +89,7 @@ async function writeSarifReport (
         },
         originalUriBaseIds: {
           PROJECTROOT: {
-            uri: `file:///${path.resolve(options.path).replace(/\\/g, '/')}/`
+            uri: `file:///${path.resolve(process.cwd()).replace(/\\/g, '/')}/`
           }
         },
         results,

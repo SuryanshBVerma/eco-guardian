@@ -444,10 +444,7 @@ async function runScan (options, state = {}) {
         options
       )
 
-      if (
-        path.resolve(options.path) === path.resolve(__dirname, '../../') ||
-        path.resolve(options.path) === path.resolve(process.cwd())
-      ) {
+      if (path.resolve(process.cwd()) === path.resolve(__dirname, '../../')) {
         const pkgName = require('../../package.json').name
         if (
           [

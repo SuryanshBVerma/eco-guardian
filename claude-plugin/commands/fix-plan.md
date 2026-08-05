@@ -19,7 +19,7 @@ Before running Bash, inspect `$ARGUMENTS`. If it contains shell control operator
 Default behavior:
 
 ```bash
-npx -y github:boredom1234/eco-guardian --path . --ecosystems scan-all --json --banner off; status=$?; echo "eco-guardian exit code: $status"; exit 0
+npx -y github:boredom1234/eco-guardian --ecosystems scan-all --json --banner off; status=$?; echo "eco-guardian exit code: $status"; exit 0
 ```
 
 If the user provided arguments, include them instead of the defaults:
