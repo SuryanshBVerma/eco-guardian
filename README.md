@@ -109,10 +109,11 @@ node eco-guardian.js --ui
 - On Windows, drives are discovered via PowerShell `Get-CimInstance`, with `wmic` and A–Z letter fallbacks.
 - `--ecosystems scan-all` expands to all 16 supported ecosystems.
 - Default scan roots:
-  - `--path` if provided
-  - `--global-only` scans only npm global root
-  - otherwise: Windows drive roots, or Unix home directory (plus `/` when `--global`/`--all-drives` is set)
-  - npm global root is also added unless disabled by env var (below)
+  - current working directory, or `--path` if provided
+  - `--global` scans system roots and the global npm root
+  - `--global-only` scans only the global npm root
+  - local scans do not include the global npm root
+  - `--all-drives` remains an alias for a global scan on supported platforms
 - Graph resolution support matrix:
 
 | Ecosystem | Support        |
@@ -235,7 +236,7 @@ Current `npm test` pipeline:
 
 Environment variables:
 
-- `NPM_GUARDIAN_DISABLE_GLOBAL=1`: do not add npm global root to scan roots.
+- `NPM_GUARDIAN_DISABLE_GLOBAL=1`: do not add the npm global root during global scans.
 - `NVD_API_KEY`: NVD API key for higher rate limits (alternative to `--nvd-api-key`).
 
 ## Exit Codes

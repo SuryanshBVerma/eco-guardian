@@ -61,6 +61,10 @@ async function testParseArgs () {
     b.pathExplicit === false,
     'parseArgs pathExplicit default should be false'
   )
+  assert(
+    b.path === process.cwd(),
+    'parseArgs default path should be the current directory'
+  )
   assert(b.banner === 'on', 'parseArgs --banner default should be on')
 
   const bo = guardian.parseArgs(['--banner', 'off'])
@@ -660,7 +664,10 @@ async function testCliBannerOffResultOnly () {
         out.includes('[OK] All clear.'),
         'banner off run should print final result message'
       )
-      assert(err.length === 0, 'banner off run should suppress stderr output')
+      assert(
+        err.includes('[INFO] Scan scope: LOCAL'),
+        'banner off run should report the local scan scope on stderr'
+      )
     } finally {
       process.stdout.write = originalStdoutWrite
       process.stderr.write = originalStderrWrite

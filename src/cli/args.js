@@ -50,7 +50,7 @@ function printUsage () {
   process.stdout.write('Usage:\n  node eco-guardian.js [flags]\n\n')
   process.stdout.write('Flags:\n')
   process.stdout.write(
-    '  --path <dir>         Scan specific directory (default: home directory)\n'
+    '  --path <dir>         Scan specific directory (default: current directory)\n'
   )
   process.stdout.write(
     '  --global-only        Only scan global npm installs\n'
@@ -151,7 +151,9 @@ function printUsage () {
   )
   process.stdout.write('  --help               Show this help\n')
   process.stdout.write('  --version            Show version\n')
-  process.stdout.write('  --global             Include / root scan on Unix\n')
+  process.stdout.write(
+    '  --global             Scan globally across system roots (default: local)\n'
+  )
   process.stdout.write(
     '  --all-drives         Alias for full-disk opt-in behavior\n'
   )
@@ -207,7 +209,7 @@ function parseArgs (argv) {
     exportInventoryJsonl: null,
     selftest: false,
     selftestQuiet: false,
-    path: os.homedir(),
+    path: process.cwd(),
     pathExplicit: false,
     globalOnly: false,
     libraryTarget: null,

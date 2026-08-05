@@ -2,7 +2,7 @@
 
 const { VERSION } = require('../config/constants')
 const { parseArgs, printUsage } = require('../cli/args')
-const { printBanner, log } = require('../cli/output')
+const { printBanner, printScanScope, log } = require('../cli/output')
 const { runScan } = require('./run-scan')
 
 function attachSignalHandlers (context) {
@@ -71,6 +71,7 @@ async function main (argv = process.argv.slice(2)) {
   }
 
   if (options.listRoots) {
+    printScanScope(options)
     const { discoverScanRoots } = require('../scan/discovery')
     const rootsInfo = await discoverScanRoots(options, state)
     for (const root of rootsInfo.rootEntries || []) {
@@ -113,6 +114,7 @@ async function main (argv = process.argv.slice(2)) {
   if (options.banner !== 'off') {
     printBanner(options)
   }
+  printScanScope(options)
 
   try {
     const result = await withMutedStderr(options.banner === 'off', () =>

@@ -39,7 +39,7 @@
             label: 'Scan directory',
             type: 'text',
             placeholder: 'e.g. ~/projects/my-app',
-            help: '--path is only included when a directory is entered.',
+            help: 'Local scans recurse inside this directory. Leave global scan off for local-by-default behavior.',
             showIf: [{ key: 'globalOnly', truthy: false }]
           },
           {
@@ -59,23 +59,23 @@
           },
           {
             key: 'library',
-            label: 'Focus library',
+            label: 'Focus library (--lib)',
             type: 'text',
             placeholder: 'npm:lodash',
             help:
-              'Matches --library <ecosystem>:<name>. When set, scan is focused to that one library.'
+              'Matches --library/--lib <ecosystem>:<name>. When set, scan is focused to that one library.'
           },
           {
             key: 'global',
-            label: 'Include / root on Unix-like systems',
+            label: 'Global scan',
             type: 'boolean',
-            help: 'Matches --global.'
+            help: 'Matches --global. Local scan is the default; enable this to scan system roots.'
           },
           {
             key: 'allDrives',
-            label: 'Include all drives',
+            label: 'All drives (global alias)',
             type: 'boolean',
-            help: 'Matches --all-drives.'
+            help: 'Matches --all-drives. Enables a global scan across all available drives.'
           }
         ]
       },

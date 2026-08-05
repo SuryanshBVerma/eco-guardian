@@ -126,6 +126,20 @@ async function testCommandBuilder() {
     "globalOnly flag should be present",
   );
 
+  const focusedGlobal = buildCommand({
+    path: "C:\\scan",
+    library: "npm:lodash",
+    global: true,
+  });
+  assert(
+    focusedGlobal.includes("--library 'npm:lodash'"),
+    "library focus should be available in the UI command",
+  );
+  assert(
+    focusedGlobal.includes("--global"),
+    "global scan should be available in the UI command",
+  );
+
   // dependencyCheckMode alone emits --dependency-check-mode (no nvdMode=on required)
   const depCheckAlone = buildCommand({
     dependencyCheckMode: true,
@@ -180,6 +194,18 @@ async function testVisibilityRules() {
   assert(
     !watchFields.some((field) => field.key === "seek" || field.key === "echo"),
     "easter-egg fields should not appear in the UI manifest",
+  );
+
+  const scanFields = getVisibleFields({});
+  const libraryField = scanFields.find((field) => field.key === "library");
+  const globalField = scanFields.find((field) => field.key === "global");
+  assert(
+    libraryField && libraryField.help.includes("--lib"),
+    "UI should document the --lib library alias",
+  );
+  assert(
+    globalField && globalField.help.includes("Local scan is the default"),
+    "UI should describe local scans as the default",
   );
 }
 

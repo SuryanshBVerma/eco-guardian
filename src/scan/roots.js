@@ -191,7 +191,8 @@ async function resolveLegacyRoots (options, state, helpers = {}) {
   const rootEntries = []
   let globalRoot = null
 
-  if (getGlobalNpmRoot) {
+  const needsGlobalRoot = Boolean(options.global || options.allDrives || options.globalOnly)
+  if (getGlobalNpmRoot && needsGlobalRoot) {
     globalRoot = await getGlobalNpmRoot()
     if (!globalRoot && state) state.globalRootUnavailable = true
   }
@@ -204,9 +205,10 @@ async function resolveLegacyRoots (options, state, helpers = {}) {
     return { roots: dedupePaths(roots), rootEntries, globalRoot, notes: [] }
   }
 
-  if (options.pathExplicit) {
-    roots.push(options.path)
-    rootEntries.push({ path: options.path, kind: classifyRoot(options.path, 'legacy') })
+  if (!options.global && !options.allDrives) {
+    const localRoot = options.path || process.cwd()
+    roots.push(localRoot)
+    rootEntries.push({ path: localRoot, kind: classifyRoot(localRoot, 'legacy') })
   } else if (PLATFORM === 'win32') {
     const discovered = []
     try {
@@ -244,7 +246,7 @@ async function resolveLegacyRoots (options, state, helpers = {}) {
     }
   }
 
-  if (globalRoot) {
+  if (globalRoot && (options.global || options.allDrives)) {
     roots.push(globalRoot)
     rootEntries.push({ path: globalRoot, kind: ROOT_KINDS.globalPackage })
   }
